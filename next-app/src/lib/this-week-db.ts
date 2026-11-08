@@ -3,7 +3,7 @@
  * Server-only (service-role client); the page gates with plannerAccess first. Reads run side by side; nothing here
  * loops per scout or per group (the query count is pinned by tests/this-week-db.test.ts).
  */
-import { loadRotation } from '@/lib/station-rotation-db';
+import { loadMovesAndAlso, loadRotation } from '@/lib/station-rotation-db';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { fetchAllRows } from '@/lib/supabase/paginate';
@@ -200,7 +200,7 @@ export async function loadThisWeekData(
 ): Promise<ThisWeekData> {
   const catalog = given ?? (await loadAdvancementCatalog());
   const scoutsIn = boardScoutsOf(lists);
-  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes, splits, teacherAnswers, teacherAsks, scoutConfirm, rotation] = await Promise.all([
+  const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes, splits, teacherAnswers, teacherAsks, scoutConfirm, rotation, step4] = await Promise.all([
     loadBoardState(sb, meeting, catalog, scoutsIn),
     loadLeafCodes(sb, scoutsIn.map((s) => s.scoutId)),
     loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: lists.pool }),
@@ -216,7 +216,8 @@ export async function loadThisWeekData(
     loadTeacherAnswers(sb, meeting.entryId),
     loadTeacherAsks(sb, meeting.entryId),
     loadScoutAnswers(sb, meeting.entryId),
-    loadRotation(sb, meeting.entryId)
+    loadRotation(sb, meeting.entryId),
+    loadMovesAndAlso(sb, meeting.entryId)
   ]);
   // A family-page "Can't make it" note shows under each group the person was down to teach (F3b).
   const adultIds = new Set(lists.pool.adults);
@@ -243,7 +244,9 @@ export async function loadThisWeekData(
       ...splits,
       adultNames: new Map(lists.pool.people.filter((p) => adultIds.has(p.id)).map((p) => [p.id, p.display_name])),
       // A meeting that never used Stations has no row: leave the rotation out entirely.
-      rotation: rotation.on || rotation.stations.length ? rotation : undefined
+      rotation: rotation.on || rotation.stations.length ? rotation : undefined,
+      rotationMoves: step4.moves,
+      also: step4.also
     }
   };
 }

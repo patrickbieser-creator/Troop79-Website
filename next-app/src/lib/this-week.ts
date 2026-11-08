@@ -71,6 +71,10 @@ export interface ThisWeekInput {
   adultNames?: ReadonlyMap<number, string>;
   /** Station rotations: the night's Stations switch and station order (lib/station-rotation-db); absent = never used. */
   rotation?: MeetingRotation;
+  /** Station rotations step 4: planners' moves into rotation Group N, by personId. */
+  rotationMoves?: ReadonlyMap<number, number>;
+  /** Station rotations step 4: "also" assignments (group or class keys), by personId. */
+  also?: ReadonlyMap<number, readonly string[]>;
   /** Set by buildThisWeek while a rotation runs: scouts in a rotation group, left out of the ordinary placement. */
   rotating?: ReadonlySet<number>;
 }
@@ -174,9 +178,13 @@ export interface TwGroup {
   declineNotes: { name: string; note: string }[];
   /** Confirmations C-D2: who said No to this card (now off it), with their note: the card needs a teacher. */
   saidNo: { personId: number; name: string; note: string | null; enteredBy?: string }[];
+  /** Station rotations step 4: scouts whose primary place is elsewhere but who are also here ("Also in"). */
+  alsoMembers?: TwPerson[];
 }
 
 export interface TwRow extends TwPerson {
+  /** Station rotations step 4: what else they're in tonight, by title ("Also in: …"); never enforced. */
+  also?: string[];
   counted: boolean;
   groupKey: string | null;
   open: string[];
@@ -231,6 +239,8 @@ export interface TwExtra {
   offerNotes: { name: string; note: string }[];
   /** Confirmations C-D2: who said No to this class (now off it). */
   saidNo: { personId: number; name: string; note: string | null; enteredBy?: string }[];
+  /** Station rotations step 4: scouts also in this class on top of their primary place. */
+  alsoScouts?: TwPerson[];
 }
 
 export interface AnswerCounts {
@@ -263,6 +273,8 @@ export interface ThisWeek {
   everyone: TwTeacher[];
   /** Station rotations: null when the night has never used Stations. */
   rotation: TwRotation | null;
+  /** Station rotations step 4: scouts in two places tonight (a primary place plus an "also"), flagged, never refused. */
+  doubles: { personId: number; name: string; primary: string; also: string[] }[];
 }
 
 const NEW_SCOUT = 'New scout';
@@ -343,6 +355,7 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
     scouts: given.scouts,
     progress: given.progress,
     roles: given.roles,
+    moves: given.rotationMoves,
     topicTeachers: given.topicTeachers,
     teachers: given.teachers,
     nameOf: boardName,
@@ -604,7 +617,7 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
   const responses = responsesOf(input.scouts.map(person), input.intents, input.adultNames ?? new Map(adults.map((a) => [a.personId, a.displayName])));
   const rankWork = may.filter((r) => r.status === 'rank-work').length;
   const nothing = may.filter((r) => r.status === 'nothing').length;
-  return {
+  const out: ThisWeek = {
     focus: input.focus.map((f) => ({ key: f.key, setId: f.setId, name: f.title })),
     badges,
     groups,
@@ -636,6 +649,46 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
       .sort((a, b) => a.name.localeCompare(b.name)),
     unplaced: plan.unplaced,
     everyone: pool.map((p) => teacherOf(p)).sort((a, b) => a.name.localeCompare(b.name)),
-    rotation: rot.view
+    rotation: rot.view,
+    doubles: []
   };
+  return withAlso(out, given.also, (key) => topicWords(key, catalog.ranks, catalog.rankRequirements, catalog.meritBadges, input.titles, more)?.label ?? key, person);
+}
+
+/**
+ * Station rotations step 4: "also" assignments on top of each scout's one primary place (Patrick, 2026-11-08: a scout
+ * can be in a group and something optional; call it out, never enforce it). Lists them on the card they're also in,
+ * notes "Also in" on their own row, and collects the double-assigned.
+ */
+function withAlso(
+  tw: ThisWeek,
+  also: ReadonlyMap<number, readonly string[]> | undefined,
+  words: (key: string) => string,
+  person: (s: TwScoutIn) => TwPerson
+): ThisWeek {
+  const groups = tw.groups.map((g) => ({ ...g, alsoMembers: [] as TwPerson[] }));
+  const extras = tw.extras.map((x) => ({ ...x, alsoScouts: [] as TwPerson[] }));
+  if (!also?.size) return { ...tw, groups, extras };
+  const title = (key: string) => groups.find((g) => g.key === key)?.title ?? extras.find((x) => x.key === key)?.title ?? words(key);
+  const rows = new Map(tw.sections.flatMap((sec) => sec.rows.map((r) => [r.personId, { r, sec }] as const)));
+  const rotating = new Map((tw.rotation?.groups ?? []).flatMap((g) => g.members.map((m) => [m.personId, { m, g }] as const)));
+  const doubles: ThisWeek['doubles'] = [];
+  for (const [personId, keys] of also) {
+    const titles = keys.map(title);
+    const inRotation = rotating.get(personId);
+    const inSection = rows.get(personId);
+    if (!inRotation && !inSection) continue;
+    const who: TwPerson = inSection
+      ? inSection.r
+      : person({ personId, scoutId: '', name: inRotation!.m.name, currentRank: inRotation!.m.rank, intent: null, picks: [] });
+    for (const k of keys) {
+      groups.find((g) => g.key === k)?.alsoMembers.push(who);
+      extras.find((x) => x.key === k)?.alsoScouts.push(who);
+    }
+    if (inRotation) inRotation.m.also = titles;
+    const primary = inRotation ? inRotation.g.name : inSection!.r.groupKey ? (groups.find((g) => g.key === inSection!.r.groupKey)?.title ?? inSection!.sec.title) : inSection!.sec.title;
+    doubles.push({ personId, name: who.name, primary, also: titles });
+  }
+  const sections = tw.sections.map((sec) => ({ ...sec, rows: sec.rows.map((r) => (also.has(r.personId) && rows.has(r.personId) ? { ...r, also: also.get(r.personId)!.map(title) } : r)) }));
+  return { ...tw, groups, extras, sections, doubles: doubles.sort((a, b) => a.name.localeCompare(b.name)) };
 }

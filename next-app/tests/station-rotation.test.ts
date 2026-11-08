@@ -232,6 +232,32 @@ describe('hand choices', () => {
     expect([groupOf(r, s), r.teaching]).toEqual([null, [s.personId]]);
   });
 
+  it('Draft_ScoutPlacedInAnOrdinaryGroup_LeavesTheRotation', () => {
+    const s = scout(null);
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'group', key: 'fr:mb:citizenship-community' }]]);
+    const r = rotate([s, scout(null)], { roles });
+    expect([groupOf(r, s), r.elsewhere]).toEqual([null, [s.personId]]);
+  });
+
+  it('Draft_ScoutPlacedInAClass_LeavesTheRotation', () => {
+    const s = scout('star');
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'request', key: 'star-5' }]]);
+    expect(rotate([s], { roles }).elsewhere).toEqual([s.personId]);
+  });
+
+  it('Draft_AMoveOutranksAnOldRole', () => {
+    const s = scout(null);
+    const roles = new Map<number, ScoutRole>([[s.personId, { role: 'group', key: 'fr:mb:citizenship-community' }]]);
+    const r = rotate([s, scout(null), scout('scout')], { roles, moves: new Map([[s.personId, 2]]) });
+    expect(groupOf(r, s)).toBe(2);
+  });
+
+  it('Rows_MarkAHandMove', () => {
+    const s = scout(null);
+    const r = rotate([s, scout(null), scout('scout')], { moves: new Map([[s.personId, 2]]) });
+    expect(r.rows.find((x) => x.personId === s.personId)!.hand).toBe(true);
+  });
+
   it('Rows_CarryTheGroupNumber', () => {
     const s = scout('scout');
     const r = rotate([scout(null), s]);

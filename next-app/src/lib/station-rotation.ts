@@ -39,7 +39,8 @@ export interface StationInput {
   scouts: readonly FocusScout[];
   /** Keyed by scoutId. */
   progress: ReadonlyMap<string, FocusProgress>;
-  /** Hand choices: 'none' = unassigned, 'teach' = teaching tonight; others are ignored here. */
+  /** Hand choices: 'none' = unassigned, 'teach' = teaching tonight, 'group' / 'request' = placed in an ordinary group
+   *  or class instead of the rotation. A move (below) outranks them. */
   roles?: ReadonlyMap<number, ScoutRole>;
   /** Hand moves: the group number (1-based) a planner put the scout in, by personId. */
   moves?: ReadonlyMap<number, number>;
@@ -75,6 +76,8 @@ export interface RotationRow {
   done: string[];
   /** Stations whose every cell is done: the scout stays with the group and can help there. */
   helperAt: string[];
+  /** A planner moved them into this group. */
+  hand: boolean;
 }
 
 export interface StationRotation {
@@ -86,6 +89,8 @@ export interface StationRotation {
   holders: number[];
   unassigned: number[];
   teaching: number[];
+  /** Placed by hand in an ordinary group or class instead of the rotation. */
+  elsewhere: number[];
   /** The longest station goal; null when no station has one. */
   roundMinutes: number | null;
   totalMinutes: number | null;
@@ -125,6 +130,7 @@ export function buildStationRotation(input: StationInput): StationRotation {
   const holders: number[] = [];
   const unassigned: number[] = [];
   const teaching: number[] = [];
+  const elsewhere: number[] = [];
   const seeds = new Map<string, number[]>(ROTATION_RANKS.map((r) => [r, []]));
   const scoutById = new Map<number, FocusScout>();
   const movedTo = new Map<number, number>();
@@ -132,6 +138,11 @@ export function buildStationRotation(input: StationInput): StationRotation {
     scoutById.set(s.personId, s);
     if (input.progress.get(s.scoutId)?.awardedMbs?.has(badge)) {
       holders.push(s.personId);
+      continue;
+    }
+    const moved = input.moves?.get(s.personId);
+    if (moved !== undefined) {
+      movedTo.set(s.personId, moved);
       continue;
     }
     const role = input.roles?.get(s.personId);
@@ -143,9 +154,8 @@ export function buildStationRotation(input: StationInput): StationRotation {
       teaching.push(s.personId);
       continue;
     }
-    const moved = input.moves?.get(s.personId);
-    if (moved !== undefined) {
-      movedTo.set(s.personId, moved);
+    if (role?.role === 'group' || role?.role === 'request') {
+      elsewhere.push(s.personId);
       continue;
     }
     seeds.get(seedRank(s.currentRank, rankOrder))!.push(s.personId);
@@ -188,11 +198,11 @@ export function buildStationRotation(input: StationInput): StationRotation {
       const isDone = (cell: string) => !!p?.mbCodes.has(cell);
       const done = stations.flatMap((s) => s.cells.filter(isDone));
       const helperAt = stations.filter((s) => s.cells.length && s.cells.every(isDone)).map((s) => s.topicKey);
-      rows.push({ personId, group: g.number, done, helperAt });
+      rows.push({ personId, group: g.number, done, helperAt, hand: valid.has(personId) });
     }
   }
 
   const goals = stations.map((s) => s.goalMinutes).filter((m): m is number => m !== null);
   const roundMinutes = goals.length ? Math.max(...goals) : null;
-  return { stations, groups, rounds, rows, holders, unassigned, teaching, roundMinutes, totalMinutes: roundMinutes === null ? null : roundMinutes * N };
+  return { stations, groups, rounds, rows, holders, unassigned, teaching, elsewhere, roundMinutes, totalMinutes: roundMinutes === null ? null : roundMinutes * N };
 }

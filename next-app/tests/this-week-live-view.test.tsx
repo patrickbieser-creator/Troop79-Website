@@ -50,7 +50,8 @@ const view: ThisWeek = {
   responses: { coming: { scouts: [], adults: [] }, undecided: { scouts: [], adults: [] }, not_coming: { scouts: [], adults: [] } },
   unplaced: [],
   everyone: [],
-  rotation: null
+  rotation: null,
+  doubles: []
 };
 
 afterEach(() => {

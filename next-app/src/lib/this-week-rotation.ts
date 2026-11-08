@@ -33,6 +33,10 @@ export interface TwRotationMember extends TwRotationPerson {
   done: string[];
   /** Station keys the scout has finished: they stay with the group and can help there (a hint only). */
   helperAt: string[];
+  /** A planner moved them into this group. */
+  hand?: boolean;
+  /** Station rotations step 4: what else they're in tonight, by title ("Also in: …"). */
+  also?: string[];
 }
 
 export interface TwRotationGroup {
@@ -65,6 +69,8 @@ export interface RotationIn {
   scouts: readonly { personId: number; scoutId: string; name: string; currentRank: string | null; intent: null | string }[];
   progress: ReadonlyMap<string, FocusProgress>;
   roles: ReadonlyMap<number, ScoutRole>;
+  /** Planners' moves into rotation Group N, by personId. */
+  moves?: ReadonlyMap<number, number>;
   topicTeachers: readonly { key: string; personId: number }[];
   teachers: readonly TeacherPerson[];
   /** The display name for a person row (This week's boardName). */
@@ -111,7 +117,8 @@ export function rotationOf(input: RotationIn): RotationOut {
     stations: stationsIn.map((s) => ({ topicKey: s.key, name: s.title, goalMinutes: s.goalMinutes, itemKeys: focusBy.get(s.key)!.members })),
     scouts: input.scouts.map((s) => ({ personId: s.personId, scoutId: s.scoutId, name: s.name, currentRank: s.currentRank, intent: null })),
     progress: input.progress,
-    roles: input.roles
+    roles: input.roles,
+    moves: input.moves
   });
   const running = r.on && problem === null;
   const scoutBy = new Map(input.scouts.map((s) => [s.personId, s]));
@@ -140,7 +147,7 @@ export function rotationOf(input: RotationIn): RotationOut {
           number: g.number,
           name: g.name,
           seededFrom: g.seededFrom,
-          members: g.members.map((id) => ({ ...person(id), done: rowBy.get(id)?.done ?? [], helperAt: rowBy.get(id)?.helperAt ?? [] }))
+          members: g.members.map((id) => ({ ...person(id), done: rowBy.get(id)?.done ?? [], helperAt: rowBy.get(id)?.helperAt ?? [], hand: rowBy.get(id)?.hand ?? false, also: [] as string[] }))
         }))
       : [],
     rounds: running ? engine.rounds.map((x) => x.stationOf) : [],

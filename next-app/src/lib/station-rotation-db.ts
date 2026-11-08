@@ -59,3 +59,16 @@ export async function setStations(sb: SupabaseClient, entryId: number, on: boole
 export async function orderStations(sb: SupabaseClient, entryId: number, keys: readonly string[]): Promise<StationWrite> {
   return result(await sb.rpc('meeting_order_stations', { p_entry: entryId, p_keys: keys }));
 }
+
+/** Step 4: planners' moves into rotation Group N, and "also" assignments, by personId. */
+export async function loadMovesAndAlso(sb: SupabaseClient, entryId: number): Promise<{ moves: Map<number, number>; also: Map<number, string[]> }> {
+  const [m, a] = await Promise.all([
+    sb.from('meeting_rotation_moves').select('person_id, group_number').eq('calendar_entry_id', entryId),
+    sb.from('meeting_scout_also').select('person_id, topic_key').eq('calendar_entry_id', entryId).order('set_at')
+  ]);
+  if (m.error) throw new Error(m.error.message);
+  if (a.error) throw new Error(a.error.message);
+  const also = new Map<number, string[]>();
+  for (const r of (a.data ?? []) as { person_id: number; topic_key: string }[]) also.set(r.person_id, [...(also.get(r.person_id) ?? []), r.topic_key]);
+  return { moves: new Map(((m.data ?? []) as { person_id: number; group_number: number }[]).map((r) => [r.person_id, r.group_number])), also };
+}

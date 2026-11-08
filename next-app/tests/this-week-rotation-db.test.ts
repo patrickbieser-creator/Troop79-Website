@@ -126,3 +126,47 @@ describe('a station list that can’t rotate', () => {
     expect(buildThisWeek({ ...base, rotation: undefined }).rotation).toBeNull();
   });
 });
+
+describe('moves and also (step 4)', () => {
+  const firstRotating = () => buildThisWeek(withStations()).rotation!.groups[0].members[0].personId;
+
+  it('Move_PutsAScoutInTheGroupItNames', () => {
+    const pid = firstRotating();
+    const tw = buildThisWeek(withStations({ rotationMoves: new Map([[pid, 2]]) }));
+    expect(tw.rotation!.groups[1].members.find((m) => m.personId === pid)?.hand).toBe(true);
+  });
+
+  it('PlacedInAnOrdinaryGroup_LeavesTheRotation_AndShowsInSections', () => {
+    const pid = firstRotating();
+    const tw = buildThisWeek(withStations({ roles: new Map([[pid, { role: 'none' as const }]]) }));
+    expect([rotationIds(tw).includes(pid), sectionIds(tw).includes(pid)]).toEqual([false, true]);
+  });
+
+  it('Also_ShowsOnTheRotationMember', () => {
+    const pid = firstRotating();
+    const tw = buildThisWeek(withStations({ also: new Map([[pid, ['fr:mb:citizenship-community']]]) }));
+    expect(tw.rotation!.groups[0].members.find((m) => m.personId === pid)?.also?.join()).toMatch(/^Citizenship in The Community/);
+  });
+
+  it('Also_IsListedAsDoubleAssigned', () => {
+    const pid = firstRotating();
+    const tw = buildThisWeek(withStations({ also: new Map([[pid, ['fr:mb:citizenship-community']]]) }));
+    expect(tw.doubles.map((d) => [d.personId, d.primary, d.also.length])).toEqual([[pid, 'Group 1', 1]]);
+  });
+
+  it('Also_OnASectionScout_ShowsOnTheirRow', () => {
+    const holder = buildThisWeek(withStations()).sections.flatMap((x) => x.rows)[0];
+    const tw = buildThisWeek(withStations({ also: new Map([[holder.personId, ['star-5']]]) }));
+    expect(tw.sections.flatMap((x) => x.rows).find((r) => r.personId === holder.personId)?.also?.length).toBe(1);
+  });
+
+  it('Also_ListsTheScoutOnThatCard', () => {
+    const pid = firstRotating();
+    const tw = buildThisWeek(withStations({ nightBadges: [...base.nightBadges, 'citizenship-community'], also: new Map([[pid, ['fr:mb:citizenship-community']]]) }));
+    expect(tw.groups.find((g) => g.key === 'fr:mb:citizenship-community')?.alsoMembers?.map((m) => m.personId)).toEqual([pid]);
+  });
+
+  it('NoAlso_NoDoubles', () => {
+    expect(buildThisWeek(withStations()).doubles).toEqual([]);
+  });
+});
