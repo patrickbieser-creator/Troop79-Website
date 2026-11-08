@@ -298,3 +298,64 @@ describe('split groups (S6)', () => {
     expect([rows.length, rows.every((x) => x.merged_at != null)]).toEqual([2, true]);
   });
 });
+
+// Station rotations step 6 (Plans/Planner-Station-Rotations.md): a plan carries Stations on/off and the station order
+// (never the hand moves or also-assignments: a saved plan holds no people).
+describe('stations', () => {
+  const rot = async (entryId: number) => (await import('../src/lib/station-rotation-db')).loadRotation(sb, entryId);
+  let setB = 0;
+
+  async function stationsOnFrom() {
+    asSeeder();
+    const { data: set, error } = await sb.from('focus_sets').insert({ name: `${TEST_PREFIX} SP set B` }).select('id').single();
+    if (error) throw new Error(error.message);
+    setB = set!.id as number;
+    sets.push(setB);
+    await sb.from('focus_set_items').insert([{ set_id: setB, topic_key: 'first-aid-1', position: 0 }]);
+    const t = await tw();
+    // Earlier tests in this file change `from`'s focus: put both sets on it here, and fail loudly if a step is refused.
+    for (const res of [
+      await t.twAddFocusSetAction({ entryId: from, setId }),
+      await t.twAddFocusSetAction({ entryId: from, setId: setB }),
+      await t.twSetStationsAction({ entryId: from, on: true }),
+      await t.twOrderStationsAction({ entryId: from, keys: [`fg:${setB}`, `fg:${setId}`] })
+    ])
+      if (!res.ok) throw new Error(res.error);
+  }
+
+  it('SavedPlan_CapturesTheStationOrder', async () => {
+    await stationsOnFrom();
+    const r = await save(`${TEST_PREFIX} SP stations`);
+    const { data } = await sb.from('meeting_saved_plans').select('criteria').eq('id', r.ok ? r.id : 0).single();
+    const c = (data as { criteria: { focus: { setId: number }[]; stations?: number[] } }).criteria;
+    expect(c.stations?.map((i) => c.focus[i].setId)).toEqual([setB, setId]);
+  });
+
+  it('SavedPlan_RoundTripsStationsOnAndTheOrder', async () => {
+    const plan = plans[plans.length - 1];
+    const loaded = await (await actions()).twLoadPlanAction({ entryId: to, planId: plan });
+    expect(loaded.ok ? 'ok' : loaded.error).toBe('ok');
+    const r = await rot(to);
+    expect([r.on, r.stations.map((x) => x.key)]).toEqual([true, [`fg:${setB}`, `fg:${setId}`]]);
+  });
+
+  it('SavedPlan_WithoutStations_TurnsStationsOff', async () => {
+    asSeeder();
+    const { data: p } = await sb
+      .from('meeting_saved_plans')
+      .insert({ name: `${TEST_PREFIX} SP no stations`, plan_date: '2086-03-04', criteria: { focus: [{ setId, title: `${TEST_PREFIX} SP set`, items: ['tenderfoot-4a'] }], singles: [], badges: [] } })
+      .select('id')
+      .single();
+    plans.push((p as { id: number }).id);
+    expect((await (await actions()).twLoadPlanAction({ entryId: to, planId: (p as { id: number }).id })).ok).toBe(true);
+    expect((await rot(to)).on).toBe(false);
+  });
+
+  it('StationsOff_SavesNoStations', async () => {
+    asSeeder();
+    await (await tw()).twSetStationsAction({ entryId: from, on: false });
+    const r = await save(`${TEST_PREFIX} SP stations off`);
+    const { data } = await sb.from('meeting_saved_plans').select('criteria').eq('id', r.ok ? r.id : 0).single();
+    expect((data as { criteria: { stations?: number[] } }).criteria.stations).toBeUndefined();
+  });
+});

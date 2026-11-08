@@ -14,6 +14,9 @@ export interface SavedCriteria {
   /** Split groups (S6): each group's requirements and levels, Group 1 first. Absent = none (a plan saved before split
    *  groups, or with none): loading it merges the meeting's splits. */
   splits?: { group: string; sections: string[][]; levels: number[] }[];
+  /** Station rotations (step 6): Stations on, with the station order as indexes into `focus`. Absent = Stations off
+   *  (loading it turns the meeting's off). Never the hand moves or also-assignments: a plan holds no people. */
+  stations?: number[];
 }
 
 export interface SavedPlan {
@@ -64,6 +67,11 @@ export function validCriteria(c: SavedCriteria): boolean {
             x.levels.length === x.sections.length &&
             x.levels.every((n, i) => Number.isInteger(n) && n >= 0 && n <= 500 && (i === 0 ? n === 0 : n >= x.levels[i - 1]))
         ))) &&
+    (c.stations === undefined ||
+      (Array.isArray(c.stations) &&
+        c.stations.length <= 50 &&
+        new Set(c.stations).size === c.stations.length &&
+        c.stations.every((i) => Number.isInteger(i) && i >= 0 && i < c.focus.length))) &&
     JSON.stringify(c).length < SAVED_PLAN_BYTES
   );
 }

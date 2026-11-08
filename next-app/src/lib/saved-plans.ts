@@ -12,12 +12,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadMeetingFocus, loadNightBadges } from '@/lib/this-week-db';
 import { loadGroupSplits } from '@/lib/group-splits-db';
+import { loadRotation } from '@/lib/station-rotation-db';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { boardName } from '@/lib/meeting-board-shared';
 import { SAVED_PLAN_CAP, validCriteria, type SavedCriteria, type SavedPlan } from '@/lib/saved-plans-shared';
 
 export async function captureCriteria(sb: SupabaseClient, entryId: number): Promise<SavedCriteria> {
-  const [focus, badges, split] = await Promise.all([loadMeetingFocus(sb, entryId), loadNightBadges(sb, entryId), loadGroupSplits(sb, entryId)]);
+  const [focus, badges, split, rotation] = await Promise.all([loadMeetingFocus(sb, entryId), loadNightBadges(sb, entryId), loadGroupSplits(sb, entryId), loadRotation(sb, entryId)]);
+  // Station rotations (step 6): Stations on, as indexes into the focus in station order.
+  const focusKeys = focus.focus.map((f) => f.key);
+  const stations = rotation.on ? rotation.stations.map((st) => focusKeys.indexOf(st.key)).filter((i) => i >= 0) : [];
   // Split groups (S6): the ones in force, not merged ones.
   const splits = [...split.splits]
     .filter(([group]) => !split.mergedBases.has(group))
@@ -26,7 +30,8 @@ export async function captureCriteria(sb: SupabaseClient, entryId: number): Prom
     focus: focus.focus.map((f) => ({ setId: f.setId, title: f.title, items: [...f.members] })),
     singles: [...focus.seededSingles],
     badges,
-    ...(splits.length ? { splits } : {})
+    ...(splits.length ? { splits } : {}),
+    ...(rotation.on ? { stations } : {})
   };
 }
 
@@ -41,7 +46,13 @@ export async function listSavedPlans(sb: SupabaseClient): Promise<SavedPlan[]> {
     id: r.id,
     name: r.name,
     planDate: r.plan_date,
-    criteria: { focus: r.criteria.focus ?? [], singles: r.criteria.singles ?? [], badges: r.criteria.badges ?? [], ...(r.criteria.splits ? { splits: r.criteria.splits } : {}) },
+    criteria: {
+      focus: r.criteria.focus ?? [],
+      singles: r.criteria.singles ?? [],
+      badges: r.criteria.badges ?? [],
+      ...(r.criteria.splits ? { splits: r.criteria.splits } : {}),
+      ...(r.criteria.stations ? { stations: r.criteria.stations } : {})
+    },
     updatedAt: r.updated_at,
     createdBy: one(r.people) ? boardName(one(r.people)!.display_name) : null
   }));

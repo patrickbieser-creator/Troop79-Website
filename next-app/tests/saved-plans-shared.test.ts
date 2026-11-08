@@ -112,3 +112,21 @@ describe('validCriteria (qa-lead: write-side limits)', () => {
     ]).toEqual([false, false, false]);
   });
 });
+
+describe('validCriteria: stations (step 6)', () => {
+  it('Stations_AsIndexesIntoTheFocus_AreValid', () => {
+    expect(validCriteria({ ...BASE, stations: [0] })).toBe(true);
+  });
+
+  it('Stations_PointingPastTheFocus_AreRefused', () => {
+    expect(validCriteria({ ...BASE, stations: [1] })).toBe(false);
+  });
+
+  it('Stations_Repeated_AreRefused', () => {
+    expect(validCriteria({ focus: [...BASE.focus, { setId: 2, title: 'B', items: ['tenderfoot-4b'] }], singles: [], badges: [], stations: [0, 0] })).toBe(false);
+  });
+
+  it('Stations_NotWholeNumbers_AreRefused', () => {
+    expect(validCriteria({ ...BASE, stations: [0.5] })).toBe(false);
+  });
+});
