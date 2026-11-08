@@ -76,6 +76,52 @@ export async function twOrderStationsAction(input: { entryId: number; keys: stri
   return res.ok ? done(s) : res;
 }
 
+/** An active scout's person id, or the reason not. */
+async function activeScout(s: Gate, personId: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { data, error } = await s.sb.from('scouts').select('id').eq('person_id', personId).eq('active', true).maybeSingle();
+  if (error) return fail('Couldn’t save that. Try again.');
+  return data ? { ok: true } : fail('That isn’t an active scout.');
+}
+
+/** Station rotations step 4: move a scout into rotation Group `group` (1-based), or back to the draft (null). Either
+ *  way their hand placement elsewhere is cleared: the rotation is now their one primary place. */
+export async function twRotationMoveAction(input: { entryId: number; personId: number; group: number | null }): Promise<TwResult> {
+  const g = input?.group;
+  if (!Number.isInteger(input?.personId) || (g !== null && !(Number.isInteger(g) && g >= 1 && g <= 50))) return fail('Malformed request');
+  const s = await gate(input.entryId, 'edit');
+  if (!s.ok) return s;
+  const ok = await activeScout(s, input.personId);
+  if (!ok.ok) return ok;
+  const where = { calendar_entry_id: s.meeting.entryId, person_id: input.personId };
+  for (const t of ['meeting_scout_roles', 'meeting_scout_helpers'] as const) {
+    const { error } = await s.sb.from(t).delete().match(where);
+    if (error) return fail('Couldn’t save that. Try again.');
+  }
+  const { error } =
+    g === null
+      ? await s.sb.from('meeting_rotation_moves').delete().match(where)
+      : await s.sb.from('meeting_rotation_moves').upsert({ ...where, group_number: g, set_by_person_id: s.actorPersonId, set_at: new Date().toISOString() }, { onConflict: 'calendar_entry_id,person_id' });
+  if (error) return fail('Couldn’t save that. Try again.');
+  return done(s);
+}
+
+/** Station rotations step 4: an "also" assignment (a group or a class) on top of the scout's one primary place.
+ *  Allowed and flagged, never enforced (Patrick, 2026-11-08). */
+export async function twSetAlsoAction(input: { entryId: number; personId: number; key: string; on: boolean }): Promise<TwResult> {
+  const key = input?.key;
+  if (!Number.isInteger(input?.personId) || typeof input.on !== 'boolean' || typeof key !== 'string' || !(GROUP_KEY.test(key) || (REQUEST_KEY.test(key) && !key.startsWith('fg:')))) return fail('Malformed request');
+  const s = await gate(input.entryId, 'edit');
+  if (!s.ok) return s;
+  const ok = await activeScout(s, input.personId);
+  if (!ok.ok) return ok;
+  const row = { calendar_entry_id: s.meeting.entryId, person_id: input.personId, topic_key: key };
+  const { error } = input.on
+    ? await s.sb.from('meeting_scout_also').upsert({ ...row, set_by_person_id: s.actorPersonId, set_at: new Date().toISOString() }, { onConflict: 'calendar_entry_id,person_id,topic_key' })
+    : await s.sb.from('meeting_scout_also').delete().match(row);
+  if (error) return fail('Couldn’t save that. Try again.');
+  return done(s);
+}
+
 /** Add a merit badge to the night, or take one off (`on`). A badge in the focus stays while its set does. */
 export async function twSetNightBadgeAction(input: { entryId: number; mbId: string; on: boolean }): Promise<TwResult> {
   if (typeof input?.mbId !== 'string' || !MB_ID.test(input.mbId) || typeof input.on !== 'boolean') return fail('Malformed request');
@@ -110,6 +156,9 @@ export async function twSetRoleAction(input: { entryId: number; personId: number
   const where = { calendar_entry_id: s.meeting.entryId, person_id: input.personId };
   const helpers = role === null ? await s.sb.from('meeting_scout_helpers').delete().match(where) : { error: null };
   if (helpers.error) return fail('Couldn’t save that. Try again.');
+  // Station rotations: a new primary place replaces a move into a rotation group.
+  const moved = role === null ? { error: null } : await s.sb.from('meeting_rotation_moves').delete().match(where);
+  if (moved.error) return fail('Couldn’t save that. Try again.');
   const { error } =
     role === null
       ? await s.sb.from('meeting_scout_roles').delete().match(where)
