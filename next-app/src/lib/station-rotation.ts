@@ -8,7 +8,9 @@
  * Scout and Tenderfoot whole, combine Second + First). Group g is at station (g + r) mod N in round r, so with fewer
  * groups than stations a station sits empty some rounds and every group still visits every station.
  *
- * A planner's hand move names a seed rank, not a group, so a move follows whichever merged group holds that rank.
+ * Groups are named by position, Group 1..N (Patrick, 2026-11-08: naming them by rank confuses a re-assignment); the
+ * ranks they were seeded from are only a subtitle. A planner's hand move names a group number: the scout joins that
+ * group after the draft has formed, and falls back to placement when the number no longer exists.
  * Computed on every read, never stored. Pure: no I/O, no framework imports.
  */
 import type { CatalogMeritBadgeRequirement, CatalogRank } from '@/lib/advancement-catalog';
@@ -39,16 +41,19 @@ export interface StationInput {
   progress: ReadonlyMap<string, FocusProgress>;
   /** Hand choices: 'none' = unassigned, 'teach' = teaching tonight; others are ignored here. */
   roles?: ReadonlyMap<number, ScoutRole>;
-  /** Hand moves: the seed rank a planner put the scout in, by personId. */
-  moves?: ReadonlyMap<number, string>;
+  /** Hand moves: the group number (1-based) a planner put the scout in, by personId. */
+  moves?: ReadonlyMap<number, number>;
 }
 
 export interface RotationGroup {
-  /** The group's first seed rank: 'second-class'. */
-  key: string;
+  /** 1-based position: Group 1 starts at station 1. */
+  number: number;
+  /** 'Group 2'. */
+  name: string;
   /** Seed ranks in the group, in order. */
   ranks: string[];
-  name: string;
+  /** The subtitle: 'Second Class + First Class'. */
+  seededFrom: string;
   members: number[];
 }
 
@@ -64,7 +69,8 @@ export interface RotationRound {
 
 export interface RotationRow {
   personId: number;
-  groupKey: string;
+  /** The group number. */
+  group: number;
   /** Cells signed off (or every cell, when the badge is earned). */
   done: string[];
   /** Stations whose every cell is done: the scout stays with the group and can help there. */
@@ -121,6 +127,7 @@ export function buildStationRotation(input: StationInput): StationRotation {
   const teaching: number[] = [];
   const seeds = new Map<string, number[]>(ROTATION_RANKS.map((r) => [r, []]));
   const scoutById = new Map<number, FocusScout>();
+  const movedTo = new Map<number, number>();
   for (const s of input.scouts) {
     scoutById.set(s.personId, s);
     if (input.progress.get(s.scoutId)?.awardedMbs?.has(badge)) {
@@ -137,19 +144,40 @@ export function buildStationRotation(input: StationInput): StationRotation {
       continue;
     }
     const moved = input.moves?.get(s.personId);
-    const rank = moved && ROTATION_RANKS.includes(moved) ? moved : seedRank(s.currentRank, rankOrder);
-    seeds.get(rank)!.push(s.personId);
+    if (moved !== undefined) {
+      movedTo.set(s.personId, moved);
+      continue;
+    }
+    seeds.get(seedRank(s.currentRank, rankOrder))!.push(s.personId);
   }
 
   // Seed groups, empty ones dropped, then merge from the top until they fit the stations.
-  const groups: RotationGroup[] = N === 0 ? [] : ROTATION_RANKS.filter((r) => seeds.get(r)!.length).map((r) => ({ key: r, ranks: [r], name: '', members: [...seeds.get(r)!] }));
-  while (groups.length > N) {
-    const b = groups.pop()!;
-    const a = groups.pop()!;
-    groups.push({ key: a.key, ranks: [...a.ranks, ...b.ranks], name: '', members: [...a.members, ...b.members] });
+  type Draft = { ranks: string[]; members: number[] };
+  const form = (): Draft[] => {
+    const out: Draft[] = N === 0 ? [] : ROTATION_RANKS.filter((r) => seeds.get(r)!.length).map((r) => ({ ranks: [r], members: [...seeds.get(r)!] }));
+    while (out.length > N) {
+      const b = out.pop()!;
+      const a = out.pop()!;
+      out.push({ ranks: [...a.ranks, ...b.ranks], members: [...a.members, ...b.members] });
+    }
+    return out;
+  };
+  // A move to a group that doesn't exist without the moved scouts falls back to placement: that scout seeds as usual.
+  const formed = form().length;
+  const valid = new Map<number, number>();
+  for (const [personId, n] of movedTo) {
+    if (Number.isInteger(n) && n >= 1 && n <= formed) valid.set(personId, n);
+    else seeds.get(seedRank(scoutById.get(personId)!.currentRank, rankOrder))!.push(personId);
   }
-  // A merged group names its ranks: 'Second Class + First Class'.
-  for (const g of groups) g.name = g.ranks.map((r) => rankName.get(r) ?? r).join(' + ');
+  const drafts = form();
+  for (const [personId, n] of valid) drafts[n - 1].members.push(personId);
+  const groups: RotationGroup[] = drafts.map((d, i) => ({
+    number: i + 1,
+    name: `Group ${i + 1}`,
+    ranks: d.ranks,
+    seededFrom: d.ranks.map((r) => rankName.get(r) ?? r).join(' + '),
+    members: d.members
+  }));
 
   const rounds: RotationRound[] = Array.from({ length: N }, (_, r) => ({ stationOf: groups.map((_, g) => (g + r) % N) }));
 
@@ -160,7 +188,7 @@ export function buildStationRotation(input: StationInput): StationRotation {
       const isDone = (cell: string) => !!p?.mbCodes.has(cell);
       const done = stations.flatMap((s) => s.cells.filter(isDone));
       const helperAt = stations.filter((s) => s.cells.length && s.cells.every(isDone)).map((s) => s.topicKey);
-      rows.push({ personId, groupKey: g.key, done, helperAt });
+      rows.push({ personId, group: g.number, done, helperAt });
     }
   }
 

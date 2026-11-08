@@ -37,6 +37,15 @@ single-badge nights will follow, with any number of stations (usually 3–4, som
 8. **Teachers belong to a station for the whole evening** (Patrick: "We don't rotate teachers in the evening. They
    teach one thing for the evening."). The groups rotate to them. Teachers are not modeled per round.
 
+9. **Groups are named Group 1, Group 2, Group 3** by position, never by rank (Patrick: "If I have to make
+   re-assignments, assigning a rank to a group could be confusing."). The ranks a group was seeded from are a quiet
+   subtitle only. A hand move is "Move to Group 2" and stores the group number. A move to a number that doesn't exist
+   (without the moved scouts) falls back to placement.
+10. **Turning Stations off and on again keeps** the station order and the hand moves.
+11. **Station names are the focus set names as they are.** Patrick removes the numerals from the sets himself.
+12. **No goal on any station:** "No time goal yet", never blocking. **Helpers** are a hint only. **Checklist columns**
+    stay in station order. **On a phone** the rotation grid stacks one block per group.
+
 ## Draft algorithm (pure, computed on every read like `lib/focus-plan.ts`)
 
 - **Badge:** taken from the stations' focus items (`climbing-*`). All stations must belong to one badge. Rank-skill
@@ -69,6 +78,10 @@ single-badge nights will follow, with any number of stations (usually 3–4, som
 - [ ] The teacher email names the station, its minutes, and the groups coming through it round by round.
 - [ ] The family email and card show the group and the station order, with one-tap accept and "Ask for something
       else". Every state stays a proposal (planned / asked / confirmed / changed, per split-groups-and-confirmations).
+- [ ] **Station sign-off sheets (Patrick liked the 2026-11-08 stopgap):** a printable page per station. It shows
+      the teacher, the minutes and each round's group, plus a table of scouts × the station's leaf requirements with
+      tick boxes. Done cells print pre-ticked or greyed. There is no "Here" column (Patrick). It is for entering at
+      Fast Entry afterward.
 - [ ] Saved meeting plans capture and restore Stations mode, the station order and the hand moves.
 - [ ] Create/edit/delete: turning Stations on can be undone, station order can be edited, and removing a focus set
       from the meeting removes its station. The time goal can be edited and cleared.
@@ -101,10 +114,13 @@ single-badge nights will follow, with any number of stations (usually 3–4, som
     Don't name it `meeting_stations`: that was a retired Build-a-Plan table. Add it to `meeting_board_stamp` (count
     and max(updated_at)) or the poller won't refresh. `meeting_unseed_topic` treats a station like picks and
     teachers.
-  - **Hand moves name a seed rank, not a traveling group:** `meeting_rotation_moves(entry, person_id, to_rank)`, or
-    `meeting_scout_roles` widened with `role='rotate'` and `ref_key = rank id`. The engine seeds that scout into the
-    rank's bucket before merging, so a re-merge can't strand a move. `role:'none'` and `teach` work unchanged.
-    `merge_people` must gain the moves (full function body in that migration).
+  - **Hand moves store a group number** (decision 9, superseding tech-lead's seed-rank idea, which Patrick found
+    confusing): `meeting_rotation_moves(calendar_entry_id, person_id, group_number smallint, primary key (entry,
+    person_id))`. The engine forms groups without the moved scouts, then adds each one to their group. `role:'none'`
+    and `teach` in `meeting_scout_roles` work unchanged. `merge_people` must gain the moves table (full function body
+    in that migration).
+  - **The switch is its own row** (decision 10, superseding "no rows = off"):
+    `meeting_rotations(calendar_entry_id pk, on boolean, updated_at)`. Turning it off keeps the stations and moves.
 - **Teachers:** use `meeting_topic_teachers` on the `fg:` topic, with no new table. `twSetTeacherAction`
   (this-week-actions.ts:106) accepts only group and request keys, so widen it to `fg:`. this-week.ts:475 excludes `fg:`
   from the extra classes, so add a station-teacher read path. Check the one-teacher rule in `teachTopic` against a

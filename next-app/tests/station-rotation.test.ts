@@ -50,7 +50,9 @@ function rotate(scouts: FocusScout[], extra: Partial<StationInput> & { done?: Re
   const progress = new Map(Object.entries(extra.done ?? {}));
   return buildStationRotation({ ranks: RANKS, mbReqs: MB_REQS, badgeId: 'climbing', stations: THREE, scouts, progress, ...extra });
 }
-const groupOf = (r: ReturnType<typeof rotate>, s: FocusScout) => r.groups.find((g) => g.members.includes(s.personId))?.key ?? null;
+const groupOf = (r: ReturnType<typeof rotate>, s: FocusScout) => r.groups.find((g) => g.members.includes(s.personId))?.number ?? null;
+/** The ranks the draft seeded a scout's group from. */
+const seededOf = (r: ReturnType<typeof rotate>, s: FocusScout) => r.groups.find((g) => g.members.includes(s.personId))?.ranks ?? null;
 
 describe('who rotates', () => {
   it('Draft_PlacesEveryNonHolder_WhenStationsOn', () => {
@@ -75,12 +77,12 @@ describe('who rotates', () => {
 describe('seeding by the rank worked on', () => {
   it('Draft_NewScout_SeedsScoutGroup', () => {
     const s = scout(null);
-    expect(groupOf(rotate([s]), s)).toBe('scout');
+    expect(seededOf(rotate([s]), s)).toEqual(['scout']);
   });
 
   it('Draft_ScoutRankHolder_SeedsTenderfootGroup', () => {
     const s = scout('scout');
-    expect(groupOf(rotate([s]), s)).toBe('tenderfoot');
+    expect(seededOf(rotate([s]), s)).toEqual(['tenderfoot']);
   });
 
   it('Draft_FirstClassAndUpWithoutBadge_FoldIntoFirstClassGroup', () => {
@@ -88,7 +90,7 @@ describe('seeding by the rank worked on', () => {
     const star = scout('star');
     const life = scout('life');
     const r = rotate([fc, star, life]);
-    expect([groupOf(r, fc), groupOf(r, star), groupOf(r, life)]).toEqual(['first-class', 'first-class', 'first-class']);
+    expect([seededOf(r, fc), seededOf(r, star), seededOf(r, life)]).toEqual([['first-class'], ['first-class'], ['first-class']]);
   });
 });
 
@@ -110,14 +112,19 @@ describe('group count', () => {
     expect(r.groups.map((g) => g.ranks)).toEqual([['scout'], ['tenderfoot', 'second-class', 'first-class']]);
   });
 
-  it('Draft_MergedGroup_IsNamedForItsRanks', () => {
+  it('Draft_GroupsAreNamedByPosition', () => {
     const r = rotate([scout(null), scout('scout'), scout('tenderfoot'), scout('second-class')]);
-    expect(r.groups[2].name).toBe('Second Class + First Class');
+    expect(r.groups.map((g) => g.name)).toEqual(['Group 1', 'Group 2', 'Group 3']);
+  });
+
+  it('Draft_MergedGroup_SubtitleNamesItsRanks', () => {
+    const r = rotate([scout(null), scout('scout'), scout('tenderfoot'), scout('second-class')]);
+    expect(r.groups[2].seededFrom).toBe('Second Class + First Class');
   });
 
   it('Draft_DropsEmptyRankGroups', () => {
     const r = rotate([scout(null), scout('second-class')]);
-    expect(r.groups.map((g) => g.key)).toEqual(['scout', 'first-class']);
+    expect(r.groups.map((g) => g.ranks)).toEqual([['scout'], ['first-class']]);
   });
 });
 
@@ -181,7 +188,7 @@ describe('checklist', () => {
   it('Draft_KeepsScoutWithGroup_WhenStationAlreadyDone', () => {
     const s = scout(null);
     const r = rotate([s], { done: { [s.scoutId]: done(['climbing-4a', 'climbing-4b']) } });
-    expect(groupOf(r, s)).toBe('scout');
+    expect(seededOf(r, s)).toEqual(['scout']);
   });
 
   it('Draft_FlagsHelper_WhenStationAlreadyDone', () => {
@@ -194,15 +201,21 @@ describe('checklist', () => {
 describe('hand choices', () => {
   it('Draft_HonorsHandMove_OverPlacement', () => {
     const s = scout(null);
-    const r = rotate([s, scout('scout')], { moves: new Map([[s.personId, 'tenderfoot']]) });
-    expect(groupOf(r, s)).toBe('tenderfoot');
+    const r = rotate([s, scout(null), scout('scout')], { moves: new Map([[s.personId, 2]]) });
+    expect(groupOf(r, s)).toBe(2);
   });
 
-  it('Draft_HandMoveFollowsMergedGroup', () => {
-    // Moved into Second Class, which merges with First Class: the scout goes with the merged group.
+  it('Draft_HandMoveToGroupThatNoLongerExists_FallsBackToPlacement', () => {
     const s = scout(null);
-    const r = rotate([s, scout(null), scout('scout'), scout('tenderfoot'), scout('second-class')], { moves: new Map([[s.personId, 'second-class']]) });
-    expect(groupOf(r, s)).toBe('second-class');
+    const r = rotate([s, scout('scout')], { moves: new Map([[s.personId, 3]]) });
+    expect(seededOf(r, s)).toEqual(['scout']);
+  });
+
+  it('Draft_MovedScout_DoesNotSeedTheirOwnRankGroup', () => {
+    // The only Tenderfoot-group scout moved to Group 1: no group is left for Tenderfoot.
+    const s = scout('scout');
+    const r = rotate([s, scout(null), scout('tenderfoot')], { moves: new Map([[s.personId, 1]]) });
+    expect(r.groups.map((g) => g.ranks)).toEqual([['scout'], ['second-class']]);
   });
 
   it('Draft_HonorsUnassign', () => {
@@ -219,9 +232,9 @@ describe('hand choices', () => {
     expect([groupOf(r, s), r.teaching]).toEqual([null, [s.personId]]);
   });
 
-  it('Draft_UnknownMoveRank_FallsBackToPlacement', () => {
-    const s = scout(null);
-    const r = rotate([s], { moves: new Map([[s.personId, 'eagle']]) });
-    expect(groupOf(r, s)).toBe('scout');
+  it('Rows_CarryTheGroupNumber', () => {
+    const s = scout('scout');
+    const r = rotate([scout(null), s]);
+    expect(r.rows.find((x) => x.personId === s.personId)!.group).toBe(2);
   });
 });
