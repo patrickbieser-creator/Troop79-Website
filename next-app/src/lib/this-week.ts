@@ -665,7 +665,8 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
         })
       : [];
   const out: ThisWeek = {
-    focus: input.focus.map((f) => ({ key: f.key, setId: f.setId, name: f.title })),
+    // The whole focus, station sets included: the focus card and the title list (and remove) every set on the night.
+    focus: given.focus.map((f) => ({ key: f.key, setId: f.setId, name: f.title })),
     badges,
     groups: [...groups, ...stationGroups],
     sections,

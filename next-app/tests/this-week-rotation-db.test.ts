@@ -203,3 +203,10 @@ describe('stations on the teacher side (step 5)', () => {
     expect(buildThisWeek(withStations()).coverage.groupsWithoutTeacher).toBeLessThanOrEqual(off);
   });
 });
+
+describe('the focus card on a station night (bug 2026-11-08)', () => {
+  it('Focus_StillListsTheStationFocusSets', () => {
+    const tw = buildThisWeek(withStations());
+    expect(tw.focus.map((f) => f.key)).toEqual(expect.arrayContaining([SAFETY.key, TERMS.key]));
+  });
+});
