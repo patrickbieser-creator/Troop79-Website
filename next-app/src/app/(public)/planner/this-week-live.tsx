@@ -23,6 +23,8 @@ interface Session {
   tone: string;
   teachers: TwTeacher[];
   people: TwPerson[];
+  /** A card with no teacher slot (Helping teach, a rotation group: its teachers are the stations'). */
+  noSlot?: boolean;
 }
 
 export function LiveView({ entryId, view, isToday, present }: { entryId: number; view: ThisWeek; isToday: boolean; present: readonly number[] }) {
@@ -36,7 +38,20 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
     return next;
   });
   const coming = (x: TwPerson) => x.intent !== 'not_coming';
+  // Station rotations: each rotation group is a card with its route; the stations' teachers check in on one card.
+  const rot = view.rotation?.on && !view.rotation.problem ? view.rotation : null;
+  const rotationSessions: Session[] = (rot?.groups ?? []).map((g, gi) => ({
+    key: `rot:${g.number}`,
+    title: `${g.name} · Stations`,
+    sub: `${rot!.rounds.map((round) => rot!.stations[round[gi]]?.title ?? 'Empty').join(' → ')}${rot!.roundMinutes ? ` · ${rot!.roundMinutes} min each` : ''}`,
+    summary: g.seededFrom,
+    tone: s['tone-extra'],
+    teachers: [],
+    people: g.members.filter((x) => x.intent !== 'not_coming').map((x) => ({ personId: x.personId, name: x.name, rank: x.rank, rankName: x.rankName, intent: x.intent ?? null })),
+    noSlot: true
+  }));
   const sessions: Session[] = [
+    ...rotationSessions,
     // A station isn't a session: every rotating scout visits it (station rotations); the plan view draws the rotation.
     ...view.groups.filter((g) => g.kind !== 'station').map((g) => ({
       key: g.key,
@@ -47,7 +62,7 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
       teachers: g.teachers,
       people: g.members.filter(coming)
     })),
-    ...(view.helpers.length ? [{ key: 'help', title: 'Helping teach', sub: 'Older scouts and anyone done with the focus', summary: '', tone: s['tone-mb'], teachers: [], people: view.helpers.filter(coming) }] : []),
+    ...(view.helpers.length ? [{ key: 'help', title: 'Helping teach', sub: 'Older scouts and anyone done with the focus', summary: '', tone: s['tone-mb'], teachers: [], people: view.helpers.filter(coming), noSlot: true }] : []),
     ...view.extras.map((x) => ({ key: x.key, title: x.title, sub: `From requests and offers${x.codeLabel ? ` · ${x.codeLabel}` : ''}`, summary: '', tone: s['tone-extra'], teachers: x.teachers, people: x.scouts.filter(coming) }))
   ];
   const canTap = !!p?.canEdit && isToday;
@@ -85,6 +100,28 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
       ) : null}
       {sessions.length ? null : <p className={s.muted}>Nothing is planned yet. Pick a focus on Plan.</p>}
       <div className={s.sessions}>
+        {rot ? (
+          <section className={s.group} aria-labelledby="live-stations">
+            <div className={`${s.groupHead} ${s['tone-mb']}`}>
+              <div>
+                <h2 id="live-stations" className={s.groupName}>
+                  Station teachers
+                </h2>
+                <span className={s.groupSub}>They stay put; the groups come to them</span>
+              </div>
+            </div>
+            <div className={s.groupBody}>
+              {rot.stations.map((st, i) => (
+                <div key={st.key} className={s.row}>
+                  <span className={s.rowLabel}>
+                    {i + 1}. {st.title}
+                  </span>
+                  {st.teachers.length ? st.teachers.map((t) => button(t, s['tone-mb'])) : <span className={s.slotTextEmpty}>No teacher yet</span>}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
         {sessions.map((x) => (
           <section key={x.key} className={s.group} aria-labelledby={`live-${x.key}`}>
             <div className={`${s.groupHead} ${x.tone}`}>
@@ -102,7 +139,7 @@ export function LiveView({ entryId, view, isToday, present }: { entryId: number;
                   <span className={s.rowLabel}>{x.teachers.length > 1 ? 'Teachers' : 'Teacher'}</span>
                   {x.teachers.map((t) => button(t, x.tone))}
                 </div>
-              ) : x.key === 'help' ? null : (
+              ) : x.noSlot ? null : (
                 <span className={s.slotTextEmpty}>No teachers yet</span>
               )}
               <div className={s.chips}>{x.people.map((p) => button(p))}</div>

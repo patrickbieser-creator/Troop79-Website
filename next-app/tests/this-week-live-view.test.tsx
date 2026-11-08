@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, within, fireEvent, waitFor } from '@testing-library/react';
 import type { ThisWeek, TwPerson } from '../src/lib/this-week';
 
 /** Live at the meeting (Plans/Completed/Meeting-Planner-III.md, Decision 10): the plan as session cards; tap to check in
@@ -97,5 +97,67 @@ describe('Live at the meeting', () => {
   it('Live_BeforeTheMeetingDay_NamesAreNotTappable', () => {
     render(<LiveView entryId={1} view={view} isToday={false} present={[]} />);
     expect((screen.getByRole('button', { name: 'Adi A' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+// Station rotations: at the meeting, each rotation group is a card with its route, and the stations' teachers check in
+// on one card. A station isn't a session of its own (every group visits it).
+describe('Live on a station night', () => {
+  const t = (personId: number, name: string) => ({ personId, name, formal: name, kind: 'adult' as const }) as unknown as ThisWeek['everyone'][number];
+  const mem = (personId: number, name: string, intent: TwPerson['intent'] = 'coming') => ({ personId, name, rank: 'scout', rankName: 'Scout', intent, done: [], helperAt: [] });
+  const rot: ThisWeek['rotation'] = {
+    on: true,
+    problem: null,
+    badgeId: 'climbing',
+    badgeName: 'Climbing',
+    stations: [
+      { key: 'fg:1', title: 'Safety', goalMinutes: 20, cells: [], teachers: [t(50, 'Paul R')] },
+      { key: 'fg:2', title: 'Terms', goalMinutes: 20, cells: [], teachers: [] }
+    ],
+    groups: [
+      { number: 1, name: 'Group 1', seededFrom: 'Scout', members: [mem(11, 'Ava M'), mem(12, 'Ben B', 'not_coming')] },
+      { number: 2, name: 'Group 2', seededFrom: 'Tenderfoot', members: [mem(21, 'Ezra L')] }
+    ],
+    rounds: [
+      [0, 1],
+      [1, 0]
+    ],
+    roundMinutes: 20,
+    totalMinutes: 40
+  };
+  const night = { ...view, rotation: rot };
+
+  it('LiveStations_EachRotationGroupIsACard_WithItsRoute', () => {
+    render(<LiveView entryId={1} view={night} isToday present={[]} />);
+    const card = screen.getByRole('heading', { name: 'Group 2 · Stations' }).closest('section')!;
+    expect(within(card).getByText('Terms → Safety · 20 min each')).toBeTruthy();
+  });
+
+  it('LiveStations_GroupCardLeavesOutScoutsWhoCantCome', () => {
+    render(<LiveView entryId={1} view={night} isToday present={[]} />);
+    const card = screen.getByRole('heading', { name: 'Group 1 · Stations' }).closest('section')!;
+    expect(within(card).queryByRole('button', { name: /Ben B/ })).toBeNull();
+  });
+
+  it('LiveStations_StationTeachersCheckInOnOneCard', () => {
+    render(<LiveView entryId={1} view={night} isToday present={[]} />);
+    const card = screen.getByRole('heading', { name: 'Station teachers' }).closest('section')!;
+    expect([within(card).getByRole('button', { name: 'Paul R' }) !== null, within(card).getByText('No teacher yet') !== null]).toEqual([true, true]);
+  });
+
+  it('LiveStations_RotationGroupsComeFirst', () => {
+    render(<LiveView entryId={1} view={night} isToday present={[]} />);
+    expect(screen.getAllByRole('heading', { level: 2 }).slice(0, 3).map((h) => h.textContent)).toEqual(['Station teachers', 'Group 1 · Stations', 'Group 2 · Stations']);
+  });
+
+  it('LiveStations_TappingAGroupMember_ChecksThemIn', async () => {
+    render(<LiveView entryId={1} view={night} isToday present={[]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Ezra L' }));
+    await waitFor(() => expect(m.present).toHaveBeenCalledWith({ entryId: 1, personId: 21, present: true }));
+  });
+
+  it('LiveStations_Off_NoStationCards', () => {
+    render(<LiveView entryId={1} view={{ ...night, rotation: { ...rot, on: false } }} isToday present={[]} />);
+    expect(screen.queryByRole('heading', { name: 'Station teachers' })).toBeNull();
   });
 });

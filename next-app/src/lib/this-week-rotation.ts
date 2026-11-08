@@ -9,6 +9,7 @@ import type { FocusProgress, ScoutRole } from '@/lib/focus-plan';
 import { buildStationRotation } from '@/lib/station-rotation';
 import type { MeetingRotation } from '@/lib/station-rotation-db';
 import type { TeacherPerson } from '@/lib/meeting-board-teach';
+import type { Intent } from '@/lib/meeting-board-shared';
 import type { TwTeacher } from '@/lib/this-week';
 
 type Catalog = Pick<AdvancementCatalog, 'ranks' | 'meritBadges' | 'meritBadgeRequirements'>;
@@ -18,6 +19,8 @@ export interface TwRotationPerson {
   name: string;
   rank: string | null;
   rankName: string;
+  /** Their answer to "Coming Sunday?": Live at the meeting leaves out who can't come. */
+  intent?: Intent | null;
 }
 
 export interface TwRotationStation {
@@ -130,7 +133,7 @@ export function rotationOf(input: RotationIn): RotationOut {
   const scoutBy = new Map(input.scouts.map((s) => [s.personId, s]));
   const person = (id: number): TwRotationPerson => {
     const s = scoutBy.get(id)!;
-    return { personId: id, name: input.nameOf(s.name), rank: s.currentRank, rankName: s.currentRank ? (rankName.get(s.currentRank) ?? s.currentRank) : NEW_SCOUT };
+    return { personId: id, name: input.nameOf(s.name), rank: s.currentRank, rankName: s.currentRank ? (rankName.get(s.currentRank) ?? s.currentRank) : NEW_SCOUT, intent: (s.intent as Intent | null) ?? null };
   };
   const rowBy = new Map(engine.rows.map((x) => [x.personId, x]));
 
