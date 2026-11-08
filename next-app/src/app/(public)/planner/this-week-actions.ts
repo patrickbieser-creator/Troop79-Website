@@ -22,6 +22,7 @@ import { isGroupKey, MAX_SECTIONS, parseGroupKey } from '@/lib/focus-plan';
 import { mergeGroup, splitGroup, unmergeGroup } from '@/lib/group-splits-db';
 import { proposeSplit, splitView, type SplitView } from '@/lib/group-split-proposal';
 import { loadThisWeekData } from '@/lib/this-week-db';
+import { orderStations, setStations } from '@/lib/station-rotation-db';
 import { focusInputOf } from '@/lib/this-week';
 
 export type TwResult = { ok: true; stamp: string } | { ok: false; error: string };
@@ -52,6 +53,26 @@ export async function twRemoveFocusAction(input: { entryId: number; key: string 
   const s = await gate(input.entryId, 'seed');
   if (!s.ok) return s;
   const res = await unseedTopic(s.sb, s.meeting.entryId, input.key);
+  return res.ok ? done(s) : res;
+}
+
+/** Station rotations (Plans/Planner-Station-Rotations.md): turn the night's Stations mode on or off. On with no
+ *  stations yet makes every focus set on the night a station; off keeps them, so on again brings them back. */
+export async function twSetStationsAction(input: { entryId: number; on: boolean }): Promise<TwResult> {
+  if (typeof input?.on !== 'boolean') return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await setStations(s.sb, s.meeting.entryId, input.on);
+  return res.ok ? done(s) : res;
+}
+
+/** Put the night's stations in this order (focus set topics only; one left out stops being a station). */
+export async function twOrderStationsAction(input: { entryId: number; keys: string[] }): Promise<TwResult> {
+  const keys = input?.keys;
+  if (!Array.isArray(keys) || keys.length > 50 || !keys.every((k) => typeof k === 'string' && FG_KEY.test(k))) return fail('Malformed request');
+  const s = await gate(input.entryId, 'seed');
+  if (!s.ok) return s;
+  const res = await orderStations(s.sb, s.meeting.entryId, keys);
   return res.ok ? done(s) : res;
 }
 
