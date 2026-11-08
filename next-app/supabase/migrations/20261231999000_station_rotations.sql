@@ -85,8 +85,9 @@ begin
   delete from meeting_rotation_stations where calendar_entry_id = p_entry;
   insert into meeting_rotation_stations (calendar_entry_id, topic_id, position, updated_at)
   select p_entry, id, o::smallint, now() from unnest(v_ids) with ordinality u(id, o);
-  -- An order change counts as a change of the switch row too (the stamp's max(updated_at) sees an emptied list).
-  insert into meeting_rotations (calendar_entry_id, stations_on, updated_at) values (p_entry, true, now())
+  -- An order change counts as a change of the switch row too (the stamp's max(updated_at) sees an emptied list); a
+  -- first-ever order leaves Stations off (the switch alone turns it on).
+  insert into meeting_rotations (calendar_entry_id, stations_on, updated_at) values (p_entry, false, now())
   on conflict (calendar_entry_id) do update set updated_at = now();
 end;
 $$;

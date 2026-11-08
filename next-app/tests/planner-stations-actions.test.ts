@@ -140,6 +140,12 @@ describe('station order', () => {
     expect(await stationKeys()).toEqual([`fg:${terms}`, `fg:${ropes}`, `fg:${safety}`]);
   });
 
+  it('Order_BeforeTheSwitch_LeavesStationsOff', async () => {
+    await seedThree();
+    await (await tw()).twOrderStationsAction({ entryId: meeting, keys: [`fg:${terms}`] });
+    expect((await (await db()).loadRotation(sb, meeting)).on).toBe(false);
+  });
+
   it('Order_RefusesAFocusSetNotOnTheMeeting', async () => {
     await seedThree();
     const other = await makeSet('Not tonight', ['climbing-13']);
