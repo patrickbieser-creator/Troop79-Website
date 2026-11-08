@@ -1,6 +1,6 @@
 # Planner — Station Rotations (merit badge focus nights)
 
-**Status:** Draft, awaiting tech-lead review
+**Status:** SHIPPED v1.262.0 (2026-11-08, 72796ef8)
 **Parked:** 2026-11-08
 **Priority:** High (first Climbing MB night is imminent)
 
