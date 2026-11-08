@@ -138,7 +138,8 @@ export function columnMinutes(c: TwGroup['columns'][number], catalog: Catalog, m
   return classMinutes((open.length ? open : c.subs).reduce((n, s) => n + partMinutes(s.key, catalog), 0));
 }
 
-export const groupMinutes = (g: TwGroup, catalog: Catalog) => (g.kind === 'badge' ? MB_CLASS_MIN : classMinutes(g.columns.reduce((n, c) => n + columnMinutes(c, catalog), 0)));
+export const groupMinutes = (g: TwGroup, catalog: Catalog) =>
+  g.kind === 'station' && g.minutes ? g.minutes : g.kind === 'badge' ? MB_CLASS_MIN : classMinutes(g.columns.reduce((n, c) => n + columnMinutes(c, catalog), 0));
 
 export function alsoFor(kind: FamilyScoutKind, row: TwRow | undefined, tw: ThisWeek, firstName: string, help: TwGroup | null, catalog: Catalog): FamilyOption[] {
   const out: FamilyOption[] = [];

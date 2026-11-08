@@ -123,3 +123,11 @@ describe('placeChoices on a Stations night', () => {
     expect(placeChoices(week(row({ groupKey: 'fr:tenderfoot', status: 'rank-work', gap: false })), 7)!.also.map((a) => a.key)).toEqual(['fr:second-class', 'mb:first-aid']);
   });
 });
+
+describe('placeChoices never offers a station as a place', () => {
+  it('StationGroups_AreNotPlaces', () => {
+    const v = { ...week(row({})), groups: [...week(row({})).groups, { key: 'fg:27', kind: 'station', title: 'Safety', name: 'Safety' } as unknown as TwGroup] } as ThisWeek;
+    const c = placeChoices(v, 7)!;
+    expect([c.options.some((o) => o.id === 'fg:27'), c.also.some((a) => a.key === 'fg:27')]).toEqual([false, false]);
+  });
+});

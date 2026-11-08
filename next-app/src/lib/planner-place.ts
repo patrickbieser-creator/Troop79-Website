@@ -61,7 +61,7 @@ export function placeChoices(view: ThisWeek, personId: number): PlaceChoices | n
   const helping = row?.status === 'teach';
   const options: PlaceChoice[] = [
     ...(rot?.groups ?? []).map((g) => ({ id: `rot:${g.number}`, label: stationWords(g), role: { role: 'rotate' as const, group: g.number }, current: rotGroup?.number === g.number })),
-    ...view.groups.map((g) => ({
+    ...view.groups.filter((g) => g.kind !== 'station').map((g) => ({
       id: g.key,
       label: groupWords(g),
       role: { role: 'group' as const, key: g.key },
@@ -74,7 +74,7 @@ export function placeChoices(view: ThisWeek, personId: number): PlaceChoices | n
   // "Also" (Patrick, 2026-11-08): any group or class but where they already are; flagged on the plan, never refused.
   const primaryKey = row?.requestKey ?? row?.groupKey ?? null;
   const on = new Set(view.doubles?.find((d) => d.personId === personId)?.keys ?? []);
-  const also = [...view.groups.map((g) => ({ key: g.key, label: groupWords(g) })), ...view.extras.map((x) => ({ key: x.key, label: x.title }))]
+  const also = [...view.groups.filter((g) => g.kind !== 'station').map((g) => ({ key: g.key, label: groupWords(g) })), ...view.extras.map((x) => ({ key: x.key, label: x.title }))]
     .filter((a) => a.key !== primaryKey)
     .map((a) => ({ ...a, on: on.has(a.key) }));
   return rotGroup

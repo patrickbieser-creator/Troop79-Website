@@ -73,7 +73,7 @@ describe('Stations on', () => {
 
   it('Rotation_On_StationItemsLeaveTheOrdinaryGroups', () => {
     const tw = buildThisWeek(withStations());
-    expect(tw.groups.flatMap((g) => g.columns.map((c) => c.key)).filter((k) => k.startsWith('climbing-'))).toEqual([]);
+    expect(tw.groups.filter((g) => g.kind !== 'station').flatMap((g) => g.columns.map((c) => c.key)).filter((k) => k.startsWith('climbing-'))).toEqual([]);
   });
 
   it('Rotation_On_NeverMoreGroupsThanStations', () => {
@@ -168,5 +168,38 @@ describe('moves and also (step 4)', () => {
 
   it('NoAlso_NoDoubles', () => {
     expect(buildThisWeek(withStations()).doubles).toEqual([]);
+  });
+});
+
+describe('stations on the teacher side (step 5)', () => {
+  it('Stations_AreGroupsOfKindStation_InStationOrder', () => {
+    const tw = buildThisWeek(withStations());
+    expect(tw.groups.filter((g) => g.kind === 'station').map((g) => g.key)).toEqual([SAFETY.key, TERMS.key]);
+  });
+
+  it('StationGroup_CarriesItsTeacher', () => {
+    const t = base.teachers[0];
+    const tw = buildThisWeek(withStations({ topicTeachers: [...base.topicTeachers, { key: SAFETY.key, personId: t.personId }] }));
+    expect(tw.groups.find((g) => g.key === SAFETY.key)?.teachers.map((x) => x.personId)).toEqual([t.personId]);
+  });
+
+  it('StationGroup_ListsEveryRotatingScout', () => {
+    const tw = buildThisWeek(withStations());
+    expect(tw.groups.find((g) => g.key === TERMS.key)?.members.length).toBe(rotationIds(tw).length);
+  });
+
+  it('StationGroup_ColumnsAreItsCells_WithWhoStillNeedsThem', () => {
+    const tw = buildThisWeek(withStations());
+    const g = tw.groups.find((x) => x.key === TERMS.key)!;
+    expect(g.columns.map((c) => c.code)).toEqual(['4a', '4b', '4c', '4d']);
+  });
+
+  it('StationsOff_NoStationGroups', () => {
+    expect(buildThisWeek(withStations({}, [SAFETY, TERMS], false)).groups.some((g) => g.kind === 'station')).toBe(false);
+  });
+
+  it('Coverage_DoesNotCountStationsAsGroupsWithoutATeacher', () => {
+    const off = buildThisWeek({ ...base, roles: new Map() }).coverage.groupsWithoutTeacher;
+    expect(buildThisWeek(withStations()).coverage.groupsWithoutTeacher).toBeLessThanOrEqual(off);
   });
 });

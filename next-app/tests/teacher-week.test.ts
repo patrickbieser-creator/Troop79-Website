@@ -129,3 +129,18 @@ describe('what a teacher was asked about', () => {
     expect([w.asked, w.needs.map((c) => c.key)]).toEqual([[], ['fr:a']]);
   });
 });
+
+// Station rotations step 5: a station's teacher sees it as their class, at the station's time goal.
+describe('a station teacher', () => {
+  const station = group('fg:27', { kind: 'station', name: 'Climbing MB - Safety', title: 'Climbing MB - Safety', minutes: 20 });
+  const me = { personId: 5, name: 'Paul R', junior: false, intent: null };
+  const week = () => buildTeacherWeek({ groups: [station] }, { topicTeachers: [{ key: 'fg:27', personId: 5, enteredByPersonId: 9 }], skillOffers: [] }, me, catalog, 1, () => null);
+
+  it('StationTeacher_SeesTheStationAsTheirClass', () => {
+    expect(week().mine.map((m) => m.key)).toEqual(['fg:27']);
+  });
+
+  it('StationTeacher_LoadIsTheStationsTimeGoal', () => {
+    expect(week().load.minutes).toBe(20);
+  });
+});

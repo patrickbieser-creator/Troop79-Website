@@ -146,7 +146,9 @@ export interface TwColumn {
 
 export interface TwGroup {
   key: string;
-  kind: 'rank' | 'badge';
+  /** 'station' (station rotations step 5): a station of a running rotation, listed so the teacher side (Emails,
+   *  teacher cards, answers) reaches its teachers. The plan screen draws stations in its own section. */
+  kind: 'rank' | 'badge' | 'station';
   refId: string;
   /** The rank's or badge's own name ('Tenderfoot'): code labels build on it. */
   name: string;
@@ -180,6 +182,8 @@ export interface TwGroup {
   saidNo: { personId: number; name: string; note: string | null; enteredBy?: string }[];
   /** Station rotations step 4: scouts whose primary place is elsewhere but who are also here ("Also in"). */
   alsoMembers?: TwPerson[];
+  /** A station's time goal: its teacher card and family page show it instead of the requirements' sum. */
+  minutes?: number | null;
 }
 
 export interface TwRow extends TwPerson {
@@ -590,7 +594,7 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
   const sectionOf = (r: FocusRow) => r.groupKey ?? (r.counted ? (r.homeKey ?? 'none') : 'older');
   const sections: TwSection[] = groups.map((g) => {
     const rows = plan.rows.filter((r) => sectionOf(r) === g.key).map(toRow).sort(byName);
-    return { key: g.key, kind: g.kind, name: g.name, title: g.title, columns: g.columns.flatMap(({ key, code, label, subs }) => (subs.length ? subs : [{ key, code, label }])), rows, gaps: rows.filter((r) => r.gap).length };
+    return { key: g.key, kind: g.kind === 'station' ? 'none' : g.kind, name: g.name, title: g.title, columns: g.columns.flatMap(({ key, code, label, subs }) => (subs.length ? subs : [{ key, code, label }])), rows, gaps: rows.filter((r) => r.gap).length };
   });
   const olderAll = plan.rows.filter((r) => sectionOf(r) === 'older');
   const teachingRows = olderAll.filter((r) => teaches.has(r.personId)).map(toRow).sort(byName);
@@ -629,10 +633,41 @@ export function buildThisWeek(given: ThisWeekInput): ThisWeek {
         })
       }
     : null;
+  // Step 5: each station is also a group of kind 'station' (after the plan's groups, so coverage and sections never
+  // count it): its cells as columns, every rotating scout as a member (each group visits every station).
+  const stationGroups: TwGroup[] =
+    rotation && !rotation.problem && rotation.on
+      ? rotation.stations.map((st, i) => {
+          const rotating = rotation.groups.flatMap((g) => g.members);
+          return {
+            key: st.key,
+            kind: 'station' as const,
+            refId: rotation.badgeId ?? '',
+            name: st.title,
+            title: st.title,
+            base: st.key,
+            section: 1,
+            sections: 1,
+            fromDone: 0,
+            merged: false,
+            offer: null,
+            stored: null,
+            subtitle: `Station ${i + 1}${st.goalMinutes ? ` · ${st.goalMinutes} min` : ''}`,
+            minutes: st.goalMinutes,
+            summary: rotation.badgeName ?? '',
+            columns: st.cells.map((c) => ({ ...c, need: rotating.filter((m) => !m.done.includes(c.key)).length, subs: [] })),
+            members: rotating.map((m) => person(scoutBy.get(m.personId)!)),
+            teachers: st.teachers as TwTeacher[],
+            candidates: st.candidates ?? [],
+            declineNotes: (input.teacherNotes ?? []).filter((n) => n.key === st.key).flatMap((n) => (poolBy.get(n.personId) ? [{ name: teacherName(poolBy.get(n.personId)!, 'admin'), note: n.note }] : [])),
+            saidNo: st.saidNo ?? []
+          };
+        })
+      : [];
   const out: ThisWeek = {
     focus: input.focus.map((f) => ({ key: f.key, setId: f.setId, name: f.title })),
     badges,
-    groups,
+    groups: [...groups, ...stationGroups],
     sections,
     older,
     extras,

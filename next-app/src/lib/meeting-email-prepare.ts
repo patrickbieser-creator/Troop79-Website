@@ -69,7 +69,8 @@ export function scoutsOf(row: Pick<EmailRow, 'about' | 'plan_sent'>): ScoutPlanS
 
 /** A teacher email's group as This week has it now (null for a key that isn't a group of the night). */
 async function teacherCardFor(sb: SupabaseClient, meeting: { entryId: number; date: string }, key: string): Promise<TeacherCard | null> {
-  if (!isGroupKey(key)) return null;
+  // A station (station rotations step 5) is a group of the night too: its focus set topic 'fg:<id>'.
+  if (!isGroupKey(key) && !/^fg:\d{1,18}$/.test(key)) return null;
   const catalog = await loadAdvancementCatalog();
   const data = await loadThisWeekData(sb, meeting, await loadPlannerLists(), catalog);
   return teacherCardOf(buildThisWeek(data.input), data.input, key, catalog);

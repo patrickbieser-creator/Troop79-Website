@@ -450,7 +450,7 @@ const shortTitle = (slot: { title: string; kind?: string; name?: string }) => (s
  */
 export function AdultsCard({ view }: { view: Pick<ThisWeek, 'groups' | 'extras'> }) {
   const slots = [
-    ...view.groups.map((g) => ({ key: g.key, id: `g-${g.key}`, title: shortTitle(g), tone: toneOf({ kind: g.kind, key: g.key }), teachers: g.teachers })),
+    ...view.groups.map((g) => ({ key: g.key, id: `g-${g.key}`, title: shortTitle(g), tone: toneOf({ kind: g.kind === 'station' ? 'none' : g.kind, key: g.key }), teachers: g.teachers })),
     ...view.extras.map((x) => ({ key: x.key, id: `x-${x.key}`, title: x.title, tone: toneOf({ kind: 'none', key: x.key }), teachers: x.teachers }))
   ];
   const by = new Map<number, { name: string; first: number; slots: { title: string; state?: PlanState }[] }>();
@@ -710,7 +710,7 @@ function Checklist({
 function PlaceMenu({ row, view, onRole, busy }: { row: TwRow; view: ThisWeek; onRole: (personId: number, role: RoleInput) => Promise<boolean>; busy: boolean }) {
   const p = usePlanner();
   if (!p?.canEdit || !(row.gap || row.hand)) return null;
-  const groups = view.groups.filter((g) => g.key !== row.groupKey);
+  const groups = view.groups.filter((g) => g.kind !== 'station' && g.key !== row.groupKey);
   const pick = (role: RoleInput, close: () => void) => async () => {
     if (await onRole(row.personId, role)) close();
   };
