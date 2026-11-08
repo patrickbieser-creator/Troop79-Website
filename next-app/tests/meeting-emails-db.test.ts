@@ -232,6 +232,26 @@ describe('unfinished sends', () => {
     const [sent] = await rows();
     expect(await claimRetry(sb, { entryId: meeting, ids: [sent.id] })).toEqual([]);
   });
+
+  // Patrick, 2026-11-08: a bounce Resend reports later leaves the row 'sent'; it can be sent again too.
+  it('SendAgain_ClaimsASentEmailThatBounced', async () => {
+    const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [plan('bounced@example.com', [scoutA])] });
+    const { d } = deps();
+    await sendNextEmail(sb, { entryId: meeting, batchId: q.ok ? q.batchId : '' }, d);
+    const [sent] = await rows();
+    await sb.from('meeting_emails').update({ delivery_status: 'bounced' }).eq('id', sent.id);
+    const got = await claimRetry(sb, { entryId: meeting, ids: [sent.id] });
+    expect([got.map((r) => r.id), (await rows()).map((x) => x.status)]).toEqual([[sent.id], ['retried']]);
+  });
+
+  it('SendAgain_IgnoresASentEmailThatWasDelivered', async () => {
+    const q = await queueEmails(sb, { entryId: meeting, actorPersonId: actor, emails: [plan('delivered@example.com', [scoutA])] });
+    const { d } = deps();
+    await sendNextEmail(sb, { entryId: meeting, batchId: q.ok ? q.batchId : '' }, d);
+    const [sent] = await rows();
+    await sb.from('meeting_emails').update({ delivery_status: 'delivered' }).eq('id', sent.id);
+    expect(await claimRetry(sb, { entryId: meeting, ids: [sent.id] })).toEqual([]);
+  });
 });
 
 describe('suggestions', () => {

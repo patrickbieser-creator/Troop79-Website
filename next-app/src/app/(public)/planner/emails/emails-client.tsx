@@ -9,7 +9,7 @@
  *   - The inline confirmation: every recipient as a pill, "one at a time", what answers do, Send N now / Cancel.
  *   - The list (rank-coloured name, what it's about, who it goes to, a status pill) beside a sticky preview (To with a
  *     tick per recipient, the subject, the body, the answer buttons, Edit this email) and the person's History.
- *   - The Sent log: one line per email, with Send again for one that failed or didn't report back.
+ *   - The Sent log: one line per email, with Send again for one that failed, didn't report back, or bounced.
  * Nothing sends without a Send press (no schedule: Q5). Emails go out one at a time while the page is open; a send cut
  * short shows "N emails didn't finish sending · Send them now". "How this works" states every limit.
  */
@@ -683,7 +683,7 @@ export function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: bool
                       <span className={`${s.status} ${s[`tone-${r.tone}`]}`} title={r.title}>
                         {r.label}
                       </span>
-                      {l.status === 'failed' || l.status === 'unknown' ? (
+                      {l.status === 'failed' || l.status === 'unknown' || (l.status === 'sent' && l.delivery === 'bounced') ? (
                         <button type="button" className={s.againBtn} disabled={busy} onClick={() => onSendAgain([l.id])} aria-label={`Send again to ${l.toName}`}>
                           Send again
                         </button>

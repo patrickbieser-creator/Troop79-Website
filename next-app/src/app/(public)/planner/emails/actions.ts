@@ -68,7 +68,7 @@ export async function emailsSendNextAction(input: { entryId: number; batchId: st
   }
 }
 
-/** "Send again" for failed or unknown emails: each claimed once ('retried'), then re-decided like a new Send
+/** "Send again" for failed, unknown or bounced emails: each claimed once ('retried'), then re-decided like a new Send
  *  (recipients, address, plan: qa-lead E3 #3) and sent the same way. */
 export async function emailsRequeueAction(input: { entryId: number; ids: number[] }): Promise<QueueActionResult> {
   if (!Array.isArray(input?.ids) || !input.ids.every((n) => Number.isInteger(n)) || input.ids.length > 300) return { ok: false, error: 'Malformed request' };

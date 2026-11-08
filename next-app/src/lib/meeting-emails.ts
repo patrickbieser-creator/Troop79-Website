@@ -215,7 +215,14 @@ export async function unfinishedSends(sb: SupabaseClient, entryId: number, now: 
 export async function claimRetry(sb: SupabaseClient, input: { entryId: number; ids: readonly number[] }): Promise<EmailRow[]> {
   const ids = [...new Set(input.ids.filter((n) => Number.isInteger(n)))];
   if (!ids.length) return [];
-  const { data, error } = await sb.from('meeting_emails').update({ status: 'retried' }).eq('calendar_entry_id', input.entryId).in('id', ids).in('status', ['failed', 'unknown']).select('*');
+  // Failed or unknown sends, and sent emails that bounced afterwards (Resend's webhook; Patrick, 2026-11-08).
+  const { data, error } = await sb
+    .from('meeting_emails')
+    .update({ status: 'retried' })
+    .eq('calendar_entry_id', input.entryId)
+    .in('id', ids)
+    .or('status.in.(failed,unknown),and(status.eq.sent,delivery_status.eq.bounced)')
+    .select('*');
   if (error) throw new Error('Couldn’t pick those emails. Try again.');
   return (data ?? []) as EmailRow[];
 }

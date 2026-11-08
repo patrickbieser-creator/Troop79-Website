@@ -78,6 +78,18 @@ describe('SentLog', () => {
     expect([first, rows().length, screen.getByText('101–130 of 130') != null]).toEqual([100, 30, true]);
   });
 
+  it('ABouncedEmail_CanBeSentAgain', () => {
+    const again = vi.fn();
+    render(<SentLog log={[line(8, { status: 'sent', delivery: 'bounced' })]} busy={false} onSendAgain={again} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Send again to Parent 8' }));
+    expect(again).toHaveBeenCalledWith([8]);
+  });
+
+  it('ADeliveredEmail_HasNoSendAgain', () => {
+    render(<SentLog log={[line(9, { status: 'sent', delivery: 'delivered' })]} busy={false} onSendAgain={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /Send again/ })).toBeNull();
+  });
+
   it('AFailedEmail_CanBeSentAgain', () => {
     const again = vi.fn();
     render(<SentLog log={[line(7, { status: 'failed', failure: 'mailbox full', delivery: null, deliveredAt: null })]} busy={false} onSendAgain={again} />);
