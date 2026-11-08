@@ -46,6 +46,16 @@ single-badge nights will follow, with any number of stations (usually 3–4, som
 12. **No goal on any station:** "No time goal yet", never blocking. **Helpers** are a hint only. **Checklist columns**
     stay in station order. **On a phone** the rotation grid stacks one block per group.
 
+13. **Stations and other groups on one night** (Patrick, 2026-11-08): a station night can also carry ordinary Planner
+    III groups (for example Citizenship in the Community) and Scoutmaster Conferences. The planner says explicitly
+    who is in the rotation and who is in a group. The draft puts non-holders in the rotation and holders on today's
+    placement, and hand moves override both.
+14. **Double assignment is allowed, flagged, never enforced.** A scout can be in a rotation group (or a regular
+    group) AND something optional (a conference, a second group). The screen calls it out quietly ("Also in: …", "2
+    double-assigned"), never as an error and never blocking. Patrick manages it by hand. This needs an "also"
+    assignment that doesn't replace the scout's one primary role (today `meeting_scout_roles` holds one row per scout
+    per meeting).
+
 ## Draft algorithm (pure, computed on every read like `lib/focus-plan.ts`)
 
 - **Badge:** taken from the stations' focus items (`climbing-*`). All stations must belong to one badge. Rank-skill
