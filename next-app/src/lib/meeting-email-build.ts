@@ -31,6 +31,12 @@ export interface ScoutPlanSent {
   /** What the group is called ('Scout group', 'Scout Group 2'); absent on plans sent before split groups. */
   groupTitle?: string | null;
   helpTitle?: string | null;
+  /** Station rotations: each round's station as the family reads it ('Climbing MB - Safety with Mr. R'), in order. */
+  route?: string[];
+  /** The stations' topic keys in round order: a reordering is a plan change, a named teacher isn't. */
+  routeKeys?: string[];
+  /** "Also" assignments by title ('Scoutmaster conference with Mr. S'). */
+  also?: string[];
 }
 
 /** By person id (a JSON object key). */
@@ -48,7 +54,9 @@ export function planSentOf(week: Pick<FamilyWeek, 'scouts'>): PlanSent {
       items: s.items.map((i) => ({ key: i.key, code: i.code, label: i.label, on: i.on })),
       helpName: s.helpGroup?.name ?? null,
       groupTitle: s.group?.title ?? null,
-      helpTitle: s.helpGroup?.title ?? null
+      helpTitle: s.helpGroup?.title ?? null,
+      ...(s.route ? { route: s.route.map((r) => (r.teachers.length ? `${r.title} with ${r.teachers.join(' and ')}` : r.title)), routeKeys: s.route.map((r) => r.key) } : {}),
+      ...(s.alsoIn?.length ? { also: s.alsoIn } : {})
     };
   }
   return out;
@@ -59,7 +67,7 @@ export function planSentOf(week: Pick<FamilyWeek, 'scouts'>): PlanSent {
 export function planChanged(sent: ScoutPlanSent | undefined, now: ScoutPlanSent | undefined): boolean {
   if (!sent || !now) return false;
   const keys = (p: ScoutPlanSent) => p.items.map((i) => i.key).sort().join('|');
-  return sent.group !== now.group || keys(sent) !== keys(now);
+  return sent.group !== now.group || keys(sent) !== keys(now) || (sent.routeKeys ?? []).join('|') !== (now.routeKeys ?? []).join('|');
 }
 
 export interface EmailButton {
@@ -76,9 +84,11 @@ export function planButtons(scouts: readonly ScoutPlanSent[]): EmailButton[] {
       { label: 'Not this week', answer: 'out' }
     ];
   }
+  // A station night (decision 7): no unticking; a family asks for something else and a planner decides.
+  const stations = scouts.length > 0 && scouts.every((s) => s.kind === 'stations');
   return [
     { label: 'Yes, coming', answer: 'ok' },
-    { label: 'Pick something else', answer: 'change' },
+    { label: stations ? 'Ask for something else' : 'Pick something else', answer: 'change' },
     { label: 'Not this week', answer: 'out' }
   ];
 }
@@ -89,7 +99,16 @@ const libraryLine = (badge: string, name: string) => `Already started it? Look u
 
 /** One scout's lines under the email's wording. A merit badge is named, never listed requirement by requirement. */
 export function scoutBlock(s: ScoutPlanSent): string {
+  const block = planBlock(s);
+  return s.also?.length ? `${block}\nAlso: ${s.also.join(', ')}` : block;
+}
+
+function planBlock(s: ScoutPlanSent): string {
   const head = `**${s.name}**`;
+  if (s.kind === 'stations') {
+    const route = (s.route ?? []).map((r, i) => `${i + 1}. ${r}`);
+    return [`${head}: ${s.groupTitle ?? 'Stations'}, one round at each station`, ...route, ...(s.groupName ? [libraryLine(s.groupName, s.name)] : [])].join('\n');
+  }
   if (s.kind === 'rank' && s.group && isBadgeGroupKey(s.group)) {
     const teacher = s.teachers.length ? ` with ${s.teachers.join(' and ')}` : '';
     return [`${head}: ${s.groupTitle ? theGroup(s.groupTitle) : `the ${s.groupName} merit badge`}${teacher}`, ...(s.groupName ? [libraryLine(s.groupName, s.name)] : [])].join('\n');

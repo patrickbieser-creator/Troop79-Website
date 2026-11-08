@@ -31,7 +31,7 @@ import { sanitizeRpcError } from '@/lib/meeting-board-supply';
 
 /** 'rank': a scout with planned rank work. 'done': a counted scout tonight has nothing left for. 'mb': the Merit badge
  *  group (First Class and up). */
-export type FamilyScoutKind = 'rank' | 'done' | 'mb';
+export type FamilyScoutKind = 'rank' | 'done' | 'mb' | 'stations';
 
 export interface FamilyItem {
   key: string;
@@ -76,6 +76,18 @@ export interface FamilyScout {
   suggestions: FamilyOption[];
   /** "Suggest something not on the list": the scout's own pick list. */
   requestable: (Pick<PickRow, 'key' | 'label' | 'codeLabel'> & { min: number })[];
+  /** Station rotations (kind 'stations'): each round's station, in order. */
+  route?: StationStop[];
+  /** "Also" assignments on top of the plan, by title (never enforced). */
+  alsoIn?: string[];
+}
+
+export interface StationStop {
+  key: string;
+  title: string;
+  minutes: number | null;
+  /** As families see them ('Mr. R'). */
+  teachers: string[];
 }
 
 export interface FamilyWeek {
@@ -86,6 +98,29 @@ export interface FamilyWeek {
 }
 
 type Catalog = AdvancementCatalog;
+
+/**
+ * Station rotations step 5: a scout in a rotation group's plan as the family reads it: 'Group 2 · Stations' and the
+ * stations in the order the group visits them, each with its teachers. Null when they aren't rotating.
+ */
+export function stationPlanOf(tw: Pick<ThisWeek, 'rotation' | 'doubles'>, personId: number): { group: NonNullable<FamilyScout['group']>; route: StationStop[]; alsoIn: string[] } | null {
+  const r = tw.rotation;
+  if (!r?.on || r.problem) return null;
+  const gi = r.groups.findIndex((g) => g.members.some((m) => m.personId === personId));
+  if (gi < 0) return null;
+  const g = r.groups[gi];
+  const route = r.rounds.map((round) => r.stations[round[gi]]).map((st) => ({
+    key: st.key,
+    title: st.title,
+    minutes: st.goalMinutes,
+    teachers: st.teachers.map((t) => t.formal ?? t.name)
+  }));
+  return {
+    group: { key: `rot:${g.number}`, name: r.badgeName ?? '', title: `${g.name} · Stations`, teachers: [] },
+    route,
+    alsoIn: tw.doubles?.find((d) => d.personId === personId)?.also ?? []
+  };
+}
 
 /** A helper's group: the first rank group still short of a teacher, else the first rank group. */
 function helpGroupOf(tw: ThisWeek): TwGroup | null {
@@ -183,7 +218,9 @@ export async function loadFamilyWeek(
   const scouts: FamilyScout[] = [];
   for (const { scout, board } of boards) {
     const row = rows.get(scout.personId);
-    const kind = kindOf(row);
+    // Station rotations: a scout in a rotation group follows the stations; no unticking (decision 7).
+    const sp = stationPlanOf(tw, scout.personId);
+    const kind: FamilyScoutKind = sp ? 'stations' : kindOf(row);
     const firstName = firstNameOf(scout.name);
     const intent = board.view.intent;
     const off = answers.exclusions.get(scout.personId) ?? new Set<string>();
@@ -198,7 +235,7 @@ export async function loadFamilyWeek(
               .filter((x) => x.kind === 'badge' && (x.key === g?.key || off.has(x.key)))
               .map((x) => ({ key: x.key, code: 'Merit badge', label: `${x.name} merit badge`, on: x.key === g?.key, min: MB_CLASS_MIN }))
           : [];
-    const also = alsoFor(kind, row, tw, firstName, help, catalog).filter((o) => !items.some((i) => i.key === o.key));
+    const also = sp ? [] : alsoFor(kind, row, tw, firstName, help, catalog).filter((o) => !items.some((i) => i.key === o.key));
     const pl = board.pickList;
     const next = pl.groups.find((x) => x.next)?.rows ?? [];
     const requestable = [...next, ...pl.working, ...pl.badges].map((r) => ({
@@ -223,13 +260,15 @@ export async function loadFamilyWeek(
       kind,
       intent,
       choice,
-      group: g ? groupView(g) : null,
+      group: sp ? sp.group : g ? groupView(g) : null,
       items,
       helping,
       helpGroup: kind === 'mb' && help ? groupView(help) : null,
       also,
       suggestions,
-      requestable
+      requestable,
+      ...(sp ? { route: sp.route } : {}),
+      alsoIn: sp?.alsoIn ?? tw.doubles.find((d) => d.personId === scout.personId)?.also ?? []
     });
   }
   return { entryId: meeting.entryId, date: meeting.date, focus: tw.focus.map((f) => f.name), scouts };

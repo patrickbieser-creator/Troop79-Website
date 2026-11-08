@@ -29,6 +29,14 @@ const asAnswer = (c: FamilyChoice | null): Answer | null => (c == null ? null : 
 
 function choicesFor(s: FamilyScout): { k: Answer; label: string; sub: string }[] {
   const first = s.firstName;
+  // A station night (decision 7): no unticking; the family asks and a planner decides.
+  if (s.kind === 'stations') {
+    return [
+      { k: 'ok', label: 'This plan looks good', sub: `We’ll plan on ${first} in ${s.group?.title.replace(' · Stations', '') ?? 'a group'}, one round at each station` },
+      { k: 'change', label: 'Ask for something else', sub: 'Tell the planners what you’d like instead. A leader will decide.' },
+      { k: 'out', label: 'Can’t make it this week', sub: `We’ll take ${first} off Sunday’s plan` }
+    ];
+  }
   return [
     {
       k: 'ok',
@@ -310,6 +318,22 @@ function ScoutCard({
             ))}
           </ul>
         ) : null}
+        {scout.route?.length && choice !== 'out' ? (
+          <ol className={styles.planList} aria-label={`${first}’s stations, in order`}>
+            {scout.route.map((r, i) => (
+              <li key={r.key} className={styles.planItem}>
+                <span aria-hidden="true" className={styles.tick}>
+                  {i + 1}
+                </span>
+                <span className={styles.itemText}>
+                  <span>{r.title}</span>
+                  <span className={styles.code}>{[`Round ${i + 1}`, r.minutes ? `${r.minutes} min` : null, r.teachers.length ? `with ${r.teachers.join(' and ')}` : null].filter(Boolean).join(' · ')}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {scout.alsoIn?.length && choice !== 'out' ? <p className={styles.code}>Also: {scout.alsoIn.join(', ')}</p> : null}
         {scout.kind === 'done' && !asked.length && choice !== 'out' ? (
           <p className={styles.doneNote}>Nice work: {first} has finished every requirement on offer this week. A leader can pick something good, or you can request something.</p>
         ) : null}

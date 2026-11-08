@@ -238,7 +238,9 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
     const about =
       kind === 'reminder'
         ? 'Coming Sunday? · no answer yet'
-        : fam?.kind === 'rank'
+        : fam?.kind === 'stations'
+          ? `${fam.group?.title} · ${(fam.route ?? []).map((r) => r.title).join(' → ')}`
+          : fam?.kind === 'rank'
           ? `${fam.group?.title} · ${fam.items.filter((i) => i.on).map((i) => i.code).join(', ')}`
           : fam?.kind === 'mb'
             ? fam.group

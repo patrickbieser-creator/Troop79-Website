@@ -270,3 +270,35 @@ describe('save feedback', () => {
     expect(screen.queryByText('✓ Saved. Nothing else to do.')).toBeNull();
   });
 });
+
+// Station rotations step 5: a scout in a rotation group on the family card.
+describe('a station night card', () => {
+  const ava = scout({
+    firstName: 'Ava',
+    kind: 'stations',
+    items: [],
+    group: { key: 'rot:2', name: 'Climbing', title: 'Group 2 · Stations', teachers: [] },
+    route: [
+      { key: 'fg:2', title: 'Climbing MB - Terms', minutes: 20, teachers: ['Mr. R'] },
+      { key: 'fg:3', title: 'Climbing MB - Ropes & Knots', minutes: 20, teachers: [] },
+      { key: 'fg:1', title: 'Climbing MB - Safety', minutes: 20, teachers: [] }
+    ],
+    alsoIn: ['Scoutmaster conference']
+  });
+
+  it('Card_ListsTheStationsInOrder', () => {
+    render(<FamilyWeekView week={week([ava])} write={writer()} />);
+    const list = screen.getByRole('list', { name: 'Ava’s stations, in order' });
+    expect(list.textContent).toMatch(/Climbing MB - Terms.*Round 1 · 20 min · with Mr\. R.*Climbing MB - Ropes & Knots.*Climbing MB - Safety/);
+  });
+
+  it('Card_SaysWhatElseTheyreIn', () => {
+    render(<FamilyWeekView week={week([ava])} write={writer()} />);
+    expect(screen.getByText('Also: Scoutmaster conference')).toBeTruthy();
+  });
+
+  it('Card_OffersAskForSomethingElse_NotUntick', () => {
+    render(<FamilyWeekView week={week([ava])} write={writer()} />);
+    expect([screen.getByRole('radio', { name: /Ask for something else/ }), screen.queryByRole('radio', { name: /Change my plan/ })]).toEqual([expect.anything(), null]);
+  });
+});

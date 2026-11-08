@@ -111,3 +111,55 @@ describe('the family’s own changes', () => {
     expect(scoutBlock({ ...lily, items: [{ ...lily.items[0], on: false }, lily.items[1]] })).not.toContain('6a');
   });
 });
+
+// Station rotations step 5 (Plans/Planner-Station-Rotations.md): a scout in a rotation group, and "also" lines.
+describe('a station night', () => {
+  const ava: ScoutPlanSent = {
+    name: 'Ava',
+    kind: 'stations',
+    group: 'rot:2',
+    groupName: 'Climbing',
+    groupTitle: 'Group 2 · Stations',
+    teachers: [],
+    items: [],
+    helpName: null,
+    route: ['Climbing MB - Terms with Mr. R', 'Climbing MB - Ropes & Knots', 'Climbing MB - Safety with Ms. M']
+  };
+
+  it('StationScout_EmailNamesTheGroupAndTheRoute', () => {
+    expect(scoutBlock(ava).split('\n').slice(0, 4)).toEqual([
+      '**Ava**: Group 2 · Stations, one round at each station',
+      '1. Climbing MB - Terms with Mr. R',
+      '2. Climbing MB - Ropes & Knots',
+      '3. Climbing MB - Safety with Ms. M'
+    ]);
+  });
+
+  it('StationScout_EmailPointsAtTheLibraryForTheBadge', () => {
+    expect(scoutBlock(ava)).toMatch(/Look up Climbing in the Troop Library/);
+  });
+
+  it('AlsoLine_FollowsThePlan', () => {
+    expect(scoutBlock({ ...ava, also: ['Scoutmaster conference with Mr. S'] }).split('\n').pop()).toBe('Also: Scoutmaster conference with Mr. S');
+  });
+
+  it('AlsoLine_OnARankScoutToo', () => {
+    expect(scoutBlock({ ...lily, also: ['Citizenship in The Community merit badge'] }).split('\n').pop()).toBe('Also: Citizenship in The Community merit badge');
+  });
+
+  it('StationHousehold_AsksForSomethingElse', () => {
+    expect(planButtons([ava]).map((b) => [b.label, b.answer])).toEqual([
+      ['Yes, coming', 'ok'],
+      ['Ask for something else', 'change'],
+      ['Not this week', 'out']
+    ]);
+  });
+
+  it('PlanChanged_WhenTheGroupMoves', () => {
+    expect(planChanged(ava, { ...ava, group: 'rot:3' })).toBe(true);
+  });
+
+  it('PlanChanged_NotWhenOnlyATeacherIsNamed', () => {
+    expect(planChanged(ava, { ...ava, route: ['Climbing MB - Terms with Mr. R', 'Climbing MB - Ropes & Knots with Mrs. K', 'Climbing MB - Safety with Ms. M'] })).toBe(false);
+  });
+});
