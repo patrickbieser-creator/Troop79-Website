@@ -93,6 +93,8 @@ export interface LogLine {
   failure: string | null;
   sentAt: string | null;
   delivery: string | null;
+  /** Why it bounced, as Resend said (Patrick, 2026-11-08). */
+  bounceReason?: string | null;
   deliveredAt: string | null;
   openedAt: string | null;
   /** What they've answered: 'Coming', 'Plan looks good ✓', 'Not this week', 'No answer yet'. */
@@ -132,6 +134,8 @@ interface LogDb {
   queued_at: string;
   sent_at: string | null;
   delivery_status: string | null;
+  /** Resend's reason for a bounce (lib/resend-webhook bounceReasonOf). */
+  bounce_reason?: string | null;
   delivered_at: string | null;
   opened_at: string | null;
   queued_by_person_id: number | null;
@@ -362,6 +366,7 @@ export async function loadEmailScreen(sb: SupabaseClient, meeting: Pick<BoardMee
           failure: l.failure,
           sentAt: l.sent_at,
           delivery: l.delivery_status,
+          bounceReason: l.bounce_reason ?? null,
           deliveredAt: l.delivered_at,
           openedAt: l.opened_at,
           answer: answer.word,

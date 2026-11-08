@@ -72,11 +72,18 @@ function status(r: ScreenRow): { label: string; tone: Tone; k: 'new' | 'sent' | 
   return { label: `Sent ${r.sentAt ? fmtDateTime(r.sentAt) : ''} · not opened`, tone: 'ok', k: 'sent', opened: false };
 }
 
-function logResult(l: LogLine): { label: string; tone: Tone } {
+/** A bounce reason, short: the receiving server's words without Resend's prefix ('Permanent · General: smtp; …'). */
+function shortReason(reason: string): string {
+  const words = reason.replace(/^(Permanent|Transient|Undetermined)[^:]*:\s*/i, '').replace(/^smtp;\s*/i, '');
+  return words.length > 90 ? `${words.slice(0, 89)}…` : words;
+}
+
+function logResult(l: LogLine): { label: string; tone: Tone; title?: string } {
   if (l.status === 'queued' || l.status === 'sending') return { label: 'Queued', tone: 'info' };
   if (l.status === 'failed') return { label: `Failed · ${l.failure ?? ''}`, tone: 'bad' };
   if (l.status === 'unknown') return { label: 'Unknown · check before sending again', tone: 'bad' };
   if (l.status === 'retried') return { label: 'Sent again', tone: 'muted' };
+  if (l.delivery === 'bounced' && l.bounceReason) return { label: `Failed · bounced: ${shortReason(l.bounceReason)}`, tone: 'bad', title: l.bounceReason };
   if (l.delivery === 'bounced' || l.delivery === 'complained') return { label: `Failed · ${l.delivery === 'bounced' ? 'address bounced' : 'marked as spam'}`, tone: 'bad' };
   const landed = l.delivery === 'delivered' ? `Delivered ${fmtClock(l.deliveredAt ?? l.sentAt)}` : `Sent ${fmtClock(l.sentAt)}`;
   if (!l.openedAt) return { label: `${landed} · not opened`, tone: 'info' };
@@ -673,7 +680,9 @@ export function SentLog({ log, busy, onSendAgain }: { log: LogLine[]; busy: bool
                     </td>
                     <td>{l.email}</td>
                     <td>
-                      <span className={`${s.status} ${s[`tone-${r.tone}`]}`}>{r.label}</span>
+                      <span className={`${s.status} ${s[`tone-${r.tone}`]}`} title={r.title}>
+                        {r.label}
+                      </span>
                       {l.status === 'failed' || l.status === 'unknown' ? (
                         <button type="button" className={s.againBtn} disabled={busy} onClick={() => onSendAgain([l.id])} aria-label={`Send again to ${l.toName}`}>
                           Send again

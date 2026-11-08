@@ -85,3 +85,23 @@ describe('SentLog', () => {
     expect(again).toHaveBeenCalledWith([7]);
   });
 });
+
+// Why it bounced (Patrick, 2026-11-08): the Resend reason on the line, in full on hover.
+describe('a bounce with a reason', () => {
+  const why = "Permanent · General: smtp; 550 5.7.1 Message rejected: Message lacks SPF/DKIM/DMARC Auth Records (AS9031519)";
+
+  it('Bounced_ShowsWhy', () => {
+    render(<SentLog log={[line(1, { delivery: 'bounced', bounceReason: why })]} busy={false} onSendAgain={vi.fn()} />);
+    expect(screen.getByText(/Failed · bounced: .*lacks SPF\/DKIM\/DMARC/)).toBeTruthy();
+  });
+
+  it('Bounced_FullReasonOnHover', () => {
+    render(<SentLog log={[line(1, { delivery: 'bounced', bounceReason: why })]} busy={false} onSendAgain={vi.fn()} />);
+    expect(screen.getByTitle(why)).toBeTruthy();
+  });
+
+  it('Bounced_WithoutAReason_ReadsAsBefore', () => {
+    render(<SentLog log={[line(1, { delivery: 'bounced' })]} busy={false} onSendAgain={vi.fn()} />);
+    expect(screen.getByText('Failed · address bounced')).toBeTruthy();
+  });
+});

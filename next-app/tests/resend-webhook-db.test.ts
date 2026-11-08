@@ -12,7 +12,7 @@ const sb = adminClient();
 const RUN = randomUUID().slice(0, 8);
 let meeting = 0;
 
-type Row = { id: number; resend_id: string | null; delivery_status: string | null; delivered_at: string | null; opened_at: string | null };
+type Row = { id: number; resend_id: string | null; delivery_status: string | null; delivered_at: string | null; opened_at: string | null; bounce_reason: string | null };
 
 async function email(resendId: string | null): Promise<number> {
   const { data, error } = await sb
@@ -24,7 +24,7 @@ async function email(resendId: string | null): Promise<number> {
   return data!.id as number;
 }
 async function row(id: number): Promise<Row> {
-  const { data } = await sb.from('meeting_emails').select('id, resend_id, delivery_status, delivered_at, opened_at').eq('id', id).single();
+  const { data } = await sb.from('meeting_emails').select('id, resend_id, delivery_status, delivered_at, opened_at, bounce_reason').eq('id', id).single();
   return data as Row;
 }
 const ev = (type: string, resendId: string, at: string, tags?: EventTags): ResendEmailEvent => ({
@@ -62,6 +62,28 @@ describe('applyResendEvent', () => {
     await applyResendEvent(sb, ev('email.delivered', rid('b'), '2087-03-01T15:00:00.000Z'));
     await applyResendEvent(sb, ev('email.bounced', rid('b'), '2087-03-01T15:05:00.000Z'));
     expect((await row(id)).delivery_status).toBe('bounced');
+  });
+
+  it('Bounced_SavesTheReason', async () => {
+    const id = await email(rid('br'));
+    const e = ev('email.bounced', rid('br'), '2087-03-01T15:05:00.000Z');
+    e.data!.bounce = { type: 'Permanent', subType: 'General', message: "550 5.7.1 Unfortunately, messages from [1.2.3.4] weren't sent. (S3150)" };
+    await applyResendEvent(sb, e);
+    expect((await row(id)).bounce_reason).toBe("Permanent · General: 550 5.7.1 Unfortunately, messages from [1.2.3.4] weren't sent. (S3150)");
+  });
+
+  it('Bounced_WithoutDetails_SavesNoReason', async () => {
+    const id = await email(rid('bn'));
+    await applyResendEvent(sb, ev('email.bounced', rid('bn'), '2087-03-01T15:05:00.000Z'));
+    expect((await row(id)).bounce_reason).toBeNull();
+  });
+
+  it('Bounced_LongReason_IsCut', async () => {
+    const id = await email(rid('bl'));
+    const e = ev('email.bounced', rid('bl'), '2087-03-01T15:05:00.000Z');
+    e.data!.bounce = { type: 'Permanent', message: 'x'.repeat(900) };
+    await applyResendEvent(sb, e);
+    expect((await row(id)).bounce_reason!.length).toBe(500);
   });
 
   it('Delivered_NeverOverwritesABounce', async () => {

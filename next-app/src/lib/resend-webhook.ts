@@ -13,6 +13,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * 2. Everything only moves forward: delivered never overwrites a bounce, a bounce overwrites delivered (a late bounce
  *    is the truth), and opened_at keeps the earliest time.
  * 3. A click counts as an open: a click proves the email was read, and opens are missed when images are blocked.
+ * 5. A bounce keeps Resend's reason (data.bounce) as "<type> · <subType>: <message>", cut to 500 characters, so the
+ *    Sent log can say why (Patrick, 2026-11-08: Outlook/Hotmail bounces with no reason on our side).
  * 4. Events for other email (sign-in codes, wreath receipts) match no row and are ignored, answered 200 so Resend
  *    doesn't retry them.
  */
@@ -21,7 +23,7 @@ export type EventTags = Record<string, string> | { name: string; value: string }
 export interface ResendEmailEvent {
   type: string;
   created_at: string;
-  data?: { email_id?: string; tags?: EventTags };
+  data?: { email_id?: string; tags?: EventTags; bounce?: { type?: string; subType?: string; message?: string } };
 }
 
 export type EventOutcome = 'updated' | 'unchanged' | 'no-match' | 'ignored';
@@ -66,11 +68,20 @@ export async function applyResendEvent(sb: SupabaseClient, event: ResendEmailEve
   if (event.type === 'email.delivered') {
     q = sb.from('meeting_emails').update({ delivery_status: 'delivered', delivered_at: at }).eq('id', row.id).is('delivery_status', null);
   } else if (event.type === 'email.bounced') {
-    q = sb.from('meeting_emails').update({ delivery_status: 'bounced' }).eq('id', row.id).or('delivery_status.is.null,delivery_status.eq.delivered');
+    q = sb.from('meeting_emails').update({ delivery_status: 'bounced', bounce_reason: bounceReasonOf(event) }).eq('id', row.id).or('delivery_status.is.null,delivery_status.eq.delivered');
   } else {
     q = sb.from('meeting_emails').update({ opened_at: at }).eq('id', row.id).or(`opened_at.is.null,opened_at.gt."${at}"`);
   }
   const { data, error } = await q.select('id');
   if (error) throw new Error(error.message);
   return data?.length || row.learn ? 'updated' : 'unchanged';
+}
+
+/** Resend's bounce details as one line: "Permanent · General: 550 5.7.1 …", or null when the event carries none. */
+export function bounceReasonOf(event: ResendEmailEvent): string | null {
+  const b = event.data?.bounce;
+  const message = b?.message?.replace(/\s+/g, ' ').trim();
+  const kind = [b?.type, b?.subType].filter((x) => x && x.trim()).join(' · ');
+  const text = [kind, message].filter(Boolean).join(': ');
+  return text ? text.slice(0, 500) : null;
 }
