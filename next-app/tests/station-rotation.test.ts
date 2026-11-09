@@ -179,6 +179,19 @@ describe('checklist', () => {
     expect(r.stations[0].cells).toEqual(['climbing-1a', 'climbing-1b', 'climbing-2']);
   });
 
+  it('Checklist_CellsFollowCatalogOrder_WhenSortOrderIsPerSibling', () => {
+    // The real catalog numbers sort_order among siblings (1a=0, 1b=1, 2=1, 1c=2, 3=2), so a flat sort interleaves.
+    let id = 500;
+    const row = (code: string, sort_order: number, parent: CatalogMeritBadgeRequirement | null = null): CatalogMeritBadgeRequirement => ({
+      id: id++, mb_id: 'climbing', parent_id: parent?.id ?? null, code, label: code, complete_rule: 'all', complete_n: null, sort_order, class_codes: []
+    });
+    const r1 = row('1', 0);
+    const reqs = [r1, row('1a', 0, r1), row('1b', 1, r1), row('1c', 2, r1), row('2', 1), row('3', 2)];
+    const station = { topicKey: 'fg:27', name: 'Safety', goalMinutes: 25, itemKeys: ['climbing-1', 'climbing-2', 'climbing-3'] };
+    const r = buildStationRotation({ ranks: RANKS, mbReqs: reqs, badgeId: 'climbing', stations: [station], scouts: [scout(null)], progress: new Map() });
+    expect(r.stations[0].cells).toEqual(['climbing-1a', 'climbing-1b', 'climbing-1c', 'climbing-2', 'climbing-3']);
+  });
+
   it('Checklist_SignedOffLeafIsDone', () => {
     const s = scout(null);
     const r = rotate([s], { done: { [s.scoutId]: done(['climbing-1a']) } });

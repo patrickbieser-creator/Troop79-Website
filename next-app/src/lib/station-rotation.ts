@@ -15,6 +15,7 @@
  */
 import type { CatalogMeritBadgeRequirement, CatalogRank } from '@/lib/advancement-catalog';
 import type { FocusProgress, FocusScout, ScoutRole } from '@/lib/focus-plan';
+import { buildReqTree, type ReqNode } from '@/lib/mb-helpers';
 
 /** The ranks that seed a traveling group, in order. Holders of First Class and above fold into the last one. */
 export const ROTATION_RANKS: readonly string[] = ['scout', 'tenderfoot', 'second-class', 'first-class'];
@@ -111,7 +112,13 @@ export function buildStationRotation(input: StationInput): StationRotation {
   const prefix = `${badge}-`;
 
   // Station cells: the leaves under each item, in catalog order.
-  const reqs = input.mbReqs.filter((q) => q.mb_id === badge).sort((a, b) => a.sort_order - b.sort_order);
+  // sort_order counts among siblings only, so catalog order is a depth-first walk of the tree, not a flat sort.
+  const reqs: CatalogMeritBadgeRequirement[] = [];
+  const walk = (n: ReqNode<CatalogMeritBadgeRequirement>) => {
+    reqs.push(n);
+    n.children.forEach(walk);
+  };
+  buildReqTree(input.mbReqs.filter((q) => q.mb_id === badge)).forEach(walk);
   const byId = new Map(reqs.map((q) => [q.id, q]));
   const hasChild = new Set(reqs.map((q) => q.parent_id).filter((id): id is number => id !== null));
   const lineage = (q: CatalogMeritBadgeRequirement): string[] => {
