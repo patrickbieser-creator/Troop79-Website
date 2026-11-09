@@ -6,6 +6,9 @@ import type { NextConfig } from "next";
 const bunnyHostname = process.env.BUNNY_PULL_ZONE_HOSTNAME;
 
 const nextConfig: NextConfig = {
+  // The meeting-plan PDF (/planner/print): react-pdf ships ESM-only subpackages (@react-pdf/hyphenate exports only an
+  // "import" condition), so Node loads it natively instead of the bundler.
+  serverExternalPackages: ['@react-pdf/renderer'],
   images: {
     remotePatterns: bunnyHostname
       ? [{ protocol: 'https', hostname: bunnyHostname }]

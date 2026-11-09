@@ -90,6 +90,23 @@ export async function loadUpcomingMeetings(sb: SupabaseClient, limit: number, to
   return ((data ?? []) as unknown as EntryRow[]).map(toMeeting);
 }
 
+/** Published meetings dated BEFORE `today`, newest first (the planner's past-meeting view). Closed ones are included;
+ *  the caller filters on `closed`, as with loadUpcomingMeetings. */
+export async function loadPastMeetingRows(sb: SupabaseClient, today: string, labels: readonly string[], limit: number): Promise<BoardMeeting[]> {
+  if (!labels.length) return [];
+  const { data, error } = await sb
+    .from('calendar_entries')
+    .select(ENTRY_COLS)
+    .in('category', [...labels])
+    .eq('status', 'published')
+    .lt('entry_date', today)
+    .order('entry_date', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as EntryRow[]).map(toMeeting);
+}
+
 export async function loadMeetingById(sb: SupabaseClient, entryId: number): Promise<BoardMeeting | null> {
   const { data, error } = await sb.from('calendar_entries').select(ENTRY_COLS).eq('id', entryId).maybeSingle();
   if (error) throw new Error(error.message);

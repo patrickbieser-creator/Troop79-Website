@@ -88,7 +88,9 @@ export function ThisWeekView({
   isToday,
   live,
   meetingDate,
-  savedPlans
+  savedPlans,
+  past = null,
+  earlierHref = null
 }: {
   entryId: number;
   dayLabel: string;
@@ -105,14 +107,18 @@ export function ThisWeekView({
   meetingDate: string;
   /** Saved meeting plans: seed holders only. */
   savedPlans: readonly SavedPlan[];
+  /** A past meeting, view only (2026-11-09): `weeks` is the past strip; older/newer open the page beyond it. */
+  past?: { olderHref: string | null; newerHref: string | null } | null;
+  /** This week's link to the latest past meeting. */
+  earlierHref?: string | null;
 }) {
-  const [mode, setMode] = useState<'plan' | 'live'>(isToday ? 'live' : 'plan');
+  const [mode, setMode] = useState<'plan' | 'live'>(isToday && !past ? 'live' : 'plan');
   const focusName = [...view.focus.map((f) => f.name), ...view.badges.filter((b) => b.direct).map((b) => b.name)].join(' + ') || 'No focus yet';
   return (
     <>
       <header className={s.wrap}>
         <div>
-          <p className={s.muted}>Meeting Planner · This week</p>
+          <p className={s.muted}>{past ? 'Meeting Planner · Past meeting · view only' : 'Meeting Planner · This week'}</p>
           <div className={s.row}>
             <h1 className={s.cardTitle}>
               {dayLabel} · {focusName}
@@ -121,28 +127,56 @@ export function ThisWeekView({
           </div>
           <p className={s.cardSub}>{title}</p>
           <div className={s.headRow}>
-            <div className={s.seg} role="radiogroup" aria-label="View">
-              {(['plan', 'live'] as const).map((m) => (
-                <button key={m} type="button" role="radio" aria-checked={mode === m} className={s.segBtn} onClick={() => setMode(m)}>
-                  {m === 'plan' ? 'Plan' : 'Live at the meeting'}
-                </button>
-              ))}
-            </div>
+            {past ? null : (
+              <div className={s.seg} role="radiogroup" aria-label="View">
+                {(['plan', 'live'] as const).map((m) => (
+                  <button key={m} type="button" role="radio" aria-checked={mode === m} className={s.segBtn} onClick={() => setMode(m)}>
+                    {m === 'plan' ? 'Plan' : 'Live at the meeting'}
+                  </button>
+                ))}
+              </div>
+            )}
             <Link href="/planner/calendar" className={s.week}>
               Theme calendar
             </Link>
-            <span className={s.weeksLabel}>Coming weeks</span>
+            <a href={`/planner/print/${entryId}`} className={s.week} target="_blank" rel="noopener">
+              Print PDF
+            </a>
+            {past ? (
+              <Link href="/planner" className={s.week}>
+                Back to this week
+              </Link>
+            ) : earlierHref ? (
+              <Link href={earlierHref} className={s.week}>
+                ← Earlier weeks
+              </Link>
+            ) : null}
+            <span className={s.weeksLabel}>{past ? 'Past weeks' : 'Coming weeks'}</span>
             <ul className={s.weeks}>
+              {past?.olderHref ? (
+                <li>
+                  <Link href={past.olderHref} className={s.week}>
+                    ← Older
+                  </Link>
+                </li>
+              ) : null}
               {weeks.map((w) => (
                 <li key={w.entryId}>
                   <Link href={`/planner?meeting=${w.entryId}`} className={w.current ? s.weekOn : s.week} aria-current={w.current ? 'page' : undefined}>
                     <span className={s.weekDate}>{w.dayLabel}</span>
-                    {w.planned ? null : ' · Not planned yet'}
+                    {w.planned ? null : past ? ' · No plan' : ' · Not planned yet'}
                   </Link>
                 </li>
               ))}
+              {past?.newerHref ? (
+                <li>
+                  <Link href={past.newerHref} className={s.week}>
+                    Newer →
+                  </Link>
+                </li>
+              ) : null}
             </ul>
-            <PlannerPoller entryId={entryId} stamp={stamp} />
+            {past ? null : <PlannerPoller entryId={entryId} stamp={stamp} />}
           </div>
         </div>
       </header>

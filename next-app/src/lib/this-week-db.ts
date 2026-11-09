@@ -13,23 +13,32 @@ import { boardScoutsOf, type PlannerLists } from '@/lib/people-lists';
 import type { FocusProgress, ScoutRole } from '@/lib/focus-plan';
 import type { ThisWeekInput } from '@/lib/this-week';
 import { loadGroupSplits } from '@/lib/group-splits-db';
+import { rankAsOf } from '@/lib/past-meeting';
+import { loadRankAwards } from '@/lib/past-meeting-db';
 import type { ScoutAnswer, ScoutSnap, TeacherAnswer, TeacherSnap } from '@/lib/plan-states';
 
 /** Each scout's rank and merit badge requirement leaves on the ledger, and the badges they have earned (paginated: the
  *  ledger is far past 1000 rows). An earned badge counts as done even when its requirements were never logged one by
  *  one (most badges earned before the troop's requirement-level ledger). */
-export async function loadLeafCodes(sb: SupabaseClient, scoutIds: readonly string[]): Promise<Map<string, FocusProgress>> {
+export async function loadLeafCodes(sb: SupabaseClient, scoutIds: readonly string[], before?: string): Promise<Map<string, FocusProgress>> {
   const out = new Map<string, { rankCodes: Set<string>; mbCodes: Set<string>; awardedMbs: Set<string> }>(
     scoutIds.map((id) => [id, { rankCodes: new Set(), mbCodes: new Set(), awardedMbs: new Set() }])
   );
   if (!scoutIds.length) return out;
+  // `before` ('YYYY-MM-DD'): advancement as of that day's start (a past meeting, the printed plan). mb_progress has no
+  // date, so earned badges come from their award rows instead.
   const [rows, awarded] = await Promise.all([
-    fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) =>
-      sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).in('scout_id', [...scoutIds]).order('id').range(from, to)
-    ),
-    fetchAllRows<{ scout_id: string; mb_id: string }>((from, to) =>
-      sb.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).in('scout_id', [...scoutIds]).order('scout_id').order('mb_id').range(from, to)
-    )
+    fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) => {
+      const q = sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).in('scout_id', [...scoutIds]);
+      return (before ? q.lt('date', before) : q).order('id').range(from, to);
+    }),
+    before
+      ? fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
+          sb.from('ledger_active').select('scout_id, code').eq('kind', 'merit_badge_award').like('code', 'MB:%').lt('date', before).in('scout_id', [...scoutIds]).order('id').range(from, to)
+        ).then((rs) => rs.map((r) => ({ scout_id: r.scout_id, mb_id: r.code.slice(3) })))
+      : fetchAllRows<{ scout_id: string; mb_id: string }>((from, to) =>
+          sb.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).in('scout_id', [...scoutIds]).order('scout_id').order('mb_id').range(from, to)
+        )
   ]);
   for (const r of rows) {
     const p = out.get(r.scout_id);
@@ -196,13 +205,21 @@ export async function loadThisWeekData(
   sb: SupabaseClient,
   meeting: Pick<BoardMeeting, 'entryId' | 'date'>,
   lists: Pick<PlannerLists, 'pool'>,
-  given?: AdvancementCatalog
+  given?: AdvancementCatalog,
+  /** `asOfMeeting`: ranks and advancement as they stood when the meeting began (ledger rows dated before it), for a
+   *  past meeting and the printed plan; the live screen leaves it off. */
+  opts: { asOfMeeting?: boolean } = {}
 ): Promise<ThisWeekData> {
   const catalog = given ?? (await loadAdvancementCatalog());
-  const scoutsIn = boardScoutsOf(lists);
+  const before = opts.asOfMeeting ? meeting.date : undefined;
+  let scoutsIn = boardScoutsOf(lists);
+  if (before) {
+    const held = rankAsOf(await loadRankAwards(sb, scoutsIn.map((s) => s.scoutId)), before, catalog.ranks);
+    scoutsIn = scoutsIn.map((s) => ({ ...s, currentRank: held.get(s.scoutId) ?? null }));
+  }
   const [scouts, progress, teachers, intents, supply, focus, roles, nightBadges, stamp, answers, intentNotes, splits, teacherAnswers, teacherAsks, scoutConfirm, rotation, step4] = await Promise.all([
     loadBoardState(sb, meeting, catalog, scoutsIn),
-    loadLeafCodes(sb, scoutsIn.map((s) => s.scoutId)),
+    loadLeafCodes(sb, scoutsIn.map((s) => s.scoutId), before),
     loadTeacherPeople(sb, 'all', meeting.date, catalog, { pool: lists.pool }),
     loadIntents(sb, meeting.entryId),
     loadSupplyRows(sb, [meeting.entryId]),
