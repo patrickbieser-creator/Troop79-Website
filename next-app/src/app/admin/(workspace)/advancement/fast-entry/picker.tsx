@@ -100,6 +100,9 @@ export function RequirementPicker({
   const [activeTab, setActiveTab] = useState<TabId>(catalog.ranks[0]?.id ?? tabs[0]);
   const [activeMbId, setActiveMbId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // The badge search, kept while a badge is open: inside a badge the box filters its requirements, so opening one
+  // starts empty (a leftover "cli" hid Climbing 1c and 2) and Back brings the badge search back.
+  const [badgeSearch, setBadgeSearch] = useState('');
   const [, startTransition] = useTransition();
 
   const selectionKeys = useMemo(
@@ -269,7 +272,12 @@ export function RequirementPicker({
             mbs={catalog.mbs}
             search={search}
             completion={completion}
-            onPick={(id) => (onOpenMb ? onOpenMb(id) : setActiveMbId(id))}
+            onPick={(id) => {
+              if (onOpenMb) return onOpenMb(id);
+              setBadgeSearch(search);
+              setSearch('');
+              setActiveMbId(id);
+            }}
           />
         )}
 
@@ -283,7 +291,10 @@ export function RequirementPicker({
             onLeafClick={handleLeafClick}
             selections={selections}
             onSelectionsChange={onSelectionsChange}
-            onBack={() => setActiveMbId(null)}
+            onBack={() => {
+              setActiveMbId(null);
+              setSearch(badgeSearch);
+            }}
           />
         )}
 
