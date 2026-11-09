@@ -1,125 +1,156 @@
 import Link from 'next/link';
 import { publicScoutName } from '@/lib/scout-name';
-import { optionalityLabel, type ReqNode } from '@/lib/mb-helpers';
-import { rankLabel, type MbScoutLike, type MbScoutSlot, type MbGridGroups } from '@/lib/mb-scout-progress';
+import { rankLabel, type MbScoutLike } from '@/lib/mb-scout-progress';
+import type { CellState, GridRow, ProgressGrid } from '@/lib/mb-progress-grid';
 import s from './mb-tracker.module.css';
 
 /**
- * The scout × requirement grid, moved here from the retired
- * /merit-badges/[mbId] (2026-08-22).
+ * The Scout progress grid, Concept A2 (Plans/MB-Scout-Progress-Grid.md, 2026-11-08): a bracket over each choice,
+ * one column per leaf requirement, done / still to do / not needed cells, a Progress column, and earned scouts
+ * below a divider. Replaced the "Req N" header row and the AWARD star column.
  *
- * PRESENTATIONAL ONLY — props in, markup out. Every decision it used to make
- * inline now lives in lib/mb-scout-progress.ts, which is tested; what is left
- * here is a table.
+ * PRESENTATIONAL ONLY — every decision (rules, cell states, sort, counselor-only rows) lives in
+ * lib/mb-progress-grid.ts, which is tested; what is left here is a table.
  *
- * SCOUT NAMES are `publicScoutName()` — first name + last initial. That
- * treatment moves with the grid and is not ours to relax: this page is public
- * and is advertised in the sitemap. Patrick confirmed the display on
- * 2026-08-22; the FORM of it is what keeps it defensible.
+ * SCOUT NAMES are `publicScoutName()` — first name + last initial. This page is public and in the sitemap.
  *
- * Rows link to /scouts/[id]. The retired grid linked to /advancement/{id},
- * which is not a route — those were 404s on the live site, so this is a bug
- * fix riding along with the move, not a change of destination.
- *
- * A DELIBERATELY SEPARATE RENDERER from the admin grid at
- * /admin/advancement/mb-progress/[mbId], which looks similar and is not: every
- * admin cell is a link into Fast Entry for one-click sign-off, it shows full
- * display names, and it lives on admin tokens. Same numbers, different job —
- * the shared part is the fold, and that is already shared.
+ * A DELIBERATELY SEPARATE RENDERER from the admin grid at /admin/advancement/mb-progress/[mbId] (Fast Entry links,
+ * full names, admin tokens).
  */
-export function MbScoutGrid({
-  scouts,
-  byScout,
-  leaves,
-  groups
-}: {
-  scouts: MbScoutLike[];
-  byScout: ReadonlyMap<string, MbScoutSlot>;
-  leaves: ReqNode[];
-  groups: MbGridGroups;
-}) {
+
+const STATE_WORDS: Record<CellState, string> = { done: 'done', open: 'still to do', notNeeded: 'not needed' };
+
+export function MbScoutGrid({ grid, highlightId }: { grid: ProgressGrid<MbScoutLike>; highlightId: string | null }) {
+  const cols = grid.columns.length;
+  const rows = [...grid.inProgress, ...grid.earned];
+  const firstEarned = grid.inProgress.length > 0 ? grid.earned[0]?.scout.id : undefined;
   return (
-    <div className={s.gridScroller}>
-      <table className={s.grid}>
-        <thead>
-          <tr>
-            <th rowSpan={2} className={s.scoutHead}>
-              Scout
-            </th>
-            <th className={s.awardHead} title="Full merit badge earned">
-              AWARD
-            </th>
-            {groups.groups.map((g) => (
-              <th
-                key={g.topCode}
-                colSpan={g.spans}
-                title={`Req ${g.topCode} — ${g.topNode.label}`}
-                className={s.groupHead}
-              >
-                Req {g.topCode}
-                {optionalityLabel(g.topNode) && (
-                  <span className={s.groupRule}>{optionalityLabel(g.topNode)}</span>
-                )}
+    <div className={s.gridCard}>
+      <ul className={s.legend} aria-label="Key">
+        <li>
+          <span className={s.boxDone} aria-hidden="true">
+            ✓
+          </span>
+          Done
+        </li>
+        <li>
+          <span className={s.boxOpen} aria-hidden="true" />
+          Still to do
+        </li>
+        <li>
+          <span className={s.dash} aria-hidden="true">
+            –
+          </span>
+          Not needed, another option done
+        </li>
+      </ul>
+      <div className={s.gridScroller}>
+        <table className={s.grid}>
+          <thead>
+            <tr>
+              <th rowSpan={2} scope="col" className={s.scoutHead}>
+                Scout
               </th>
-            ))}
-          </tr>
-          <tr>
-            {/* Award's row-2 band — same padding/font as .leafHead so its
-                combined height with the row above matches the Req-group
-                columns exactly, instead of a rowSpan={2} cell leaving
-                mismatched blank space against the gold fill. */}
-            <th className={s.awardSubHead} aria-hidden="true" />
-            {leaves.map((l) => (
-              <th
-                key={l.code}
-                title={`${l.code} — ${l.label}`}
-                className={
-                  groups.groupStartCodes.has(l.code) ? `${s.leafHead} ${s.groupStart}` : s.leafHead
-                }
-              >
-                {l.code}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {scouts.map((sc) => {
-            const slot = byScout.get(sc.id);
-            if (!slot) return null;
-            const name = publicScoutName(sc);
-            const rank = rankLabel(sc.current_rank);
-            return (
-              <tr key={sc.id}>
-                <td className={s.scoutCell}>
-                  <Link href={`/scouts/${sc.id}`}>{name}</Link>
-                  {rank && <span className={s.rankPill}>{rank}</span>}
+              {grid.brackets.map((b) => (
+                <td key={b.code} colSpan={b.span} className={`${s.bracketCell} ${s.groupStart}`} aria-hidden="true">
+                  {b.label && (
+                    <>
+                      <span className={s.bracketLabel}>{b.label}</span>
+                      <span className={s.bracketLine} />
+                    </>
+                  )}
                 </td>
-                <td
-                  title={`${name} — ${slot.awarded ? 'badge earned' : 'not yet awarded'}`}
-                  className={slot.awarded ? `${s.awardCell} ${s.awardCellDone}` : s.awardCell}
+              ))}
+              <th rowSpan={2} scope="col" className={s.progressHead}>
+                Progress
+              </th>
+            </tr>
+            <tr>
+              {grid.columns.map((c) => (
+                <th
+                  key={c.code}
+                  scope="col"
+                  aria-label={c.ariaName}
+                  title={`${c.code} — ${c.label}`}
+                  className={c.groupStart ? `${s.codeHead} ${s.groupStart}` : s.codeHead}
                 >
-                  {slot.awarded ? '★' : '☆'}
-                </td>
-                {leaves.map((l) => {
-                  const done = slot.codes.has(l.code);
-                  const cls = [
-                    s.cell,
-                    done ? s.cellDone : null,
-                    groups.groupStartCodes.has(l.code) ? s.groupStart : null
-                  ]
-                    .filter(Boolean)
-                    .join(' ');
-                  return (
-                    <td key={l.code} title={`${name} — ${l.code} — ${l.label}`} className={cls}>
-                      {done ? '■' : '□'}
-                    </td>
-                  );
-                })}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  {c.code}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <ScoutRow
+                key={r.scout.id}
+                row={r}
+                grid={grid}
+                cols={cols}
+                divider={r.scout.id === firstEarned}
+                highlighted={r.scout.id === highlightId}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+function ScoutRow({
+  row,
+  grid,
+  cols,
+  divider,
+  highlighted
+}: {
+  row: GridRow<MbScoutLike>;
+  grid: ProgressGrid<MbScoutLike>;
+  cols: number;
+  divider: boolean;
+  highlighted: boolean;
+}) {
+  const name = publicScoutName(row.scout);
+  const rank = rankLabel(row.scout.current_rank);
+  const cls = [s.row, divider ? s.dividerRow : null, highlighted ? s.highlightRow : null].filter(Boolean).join(' ');
+  return (
+    <tr className={cls} data-divider={divider ? 'true' : undefined} aria-current={highlighted ? 'true' : undefined}>
+      <th scope="row" className={s.scoutCell}>
+        <Link href={`/scouts/${row.scout.id}`}>{name}</Link>
+        {rank && <span className={s.rank}>{rank}</span>}
+      </th>
+      {row.earned && !row.requirementsRecorded ? (
+        <td colSpan={Math.max(cols, 1)} className={s.completeCell}>
+          <span className={s.completeBar}>All requirements complete</span>
+        </td>
+      ) : (
+        grid.columns.map((c, i) => {
+          const state = row.cells[i];
+          return (
+            <td key={c.code} className={c.groupStart ? `${s.cell} ${s.groupStart}` : s.cell}>
+              <span
+                role="img"
+                aria-label={`${c.code} ${STATE_WORDS[state]}`}
+                className={state === 'done' ? s.boxDone : state === 'open' ? s.boxOpen : s.dash}
+              >
+                {state === 'done' ? '✓' : state === 'notNeeded' ? '–' : null}
+              </span>
+            </td>
+          );
+        })
+      )}
+      <td className={s.progressCell}>
+        {row.earned ? (
+          <span className={s.earnedPill}>Earned</span>
+        ) : (
+          <span className={s.progress}>
+            <span className={s.progressText}>
+              {row.met} of {row.total}
+            </span>
+            <progress className={s.progressBar} value={row.met} max={row.total} aria-hidden="true" />
+          </span>
+        )}
+      </td>
+    </tr>
   );
 }

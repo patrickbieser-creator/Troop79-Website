@@ -91,178 +91,269 @@
   margin-top: 6px;
 }
 
-/* ── Progress grid ── */
+/* ── Progress grid (Concept A2, Plans/MB-Scout-Progress-Grid.md, 2026-11-08) ──
+   A warm-white card; the table scrolls sideways INSIDE it (Scout column sticky), the page never does. Boxes match
+   the meeting planner's checklist family: same radius, bold ✓; open boxes are --text-meta outlined, as the planner's
+   are, for WCAG 2.2's 3:1 non-text contrast (--border-mid is ~1.8:1 on white). */
+
+.gridCard {
+  background: var(--warm-white);
+  border: 1px solid var(--border-light);
+  box-shadow: var(--shadow-card);
+  padding: var(--sp-3) var(--sp-4) var(--sp-4);
+  font-family: var(--font-ui);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-xs);
+  color: var(--text-meta);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 
 .gridScroller {
-  overflow: auto;
-  max-height: 70vh;
-  border: 1px solid var(--border-light);
-  background: var(--warm-white);
-  box-shadow: var(--shadow-card);
+  overflow-x: auto;
 }
 
 .grid {
   border-collapse: separate;
   border-spacing: 0;
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
   width: max-content;
-}
-
-.scoutHead {
-  position: sticky;
-  left: 0;
-  top: 0;
-  background: var(--cream);
-  z-index: 4;
-  min-width: 200px;
-  padding: var(--sp-2) 10px;
-  border-right: 1px solid var(--border-mid);
-  border-bottom: 1px solid var(--navy);
-  text-align: left;
   font-size: var(--fs-xs);
-  color: var(--text-meta);
 }
 
-.groupHead {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  background: var(--cream);
-  color: var(--navy);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 10px var(--sp-2);
-  text-align: center;
-  border-bottom: 1px solid var(--navy);
-  border-right: 1px solid var(--border-light);
-}
-
-.groupRule {
-  display: inline-block;
-  margin-left: var(--sp-2);
-  font-family: var(--font-ui);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  color: var(--bark);
-  background: var(--status-warning-bg);
-  padding: 2px var(--sp-2);
-  border-radius: var(--rad-pill);
-  vertical-align: 1px;
-}
-
-.leafHead {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  min-width: 46px;
-  padding: var(--sp-2) var(--sp-1);
-  text-align: center;
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  background: var(--newsprint);
-  color: var(--navy);
-  border-left: 1px solid var(--border-light);
-  border-right: 1px solid var(--border-light);
-}
-
-/* First column of each requirement group gets the heavy navy separator. */
-.groupStart { border-left: 1px solid var(--navy); }
-
-/* AWARD column — sticky beside the Scout column. The two golds are the ONLY
-   raw hex in this stylesheet, deliberately: the earned-badge celebration
-   gold has no public token (closest, --khaki, reads muddy). If a third use
-   appears, mint an --award-gold token in globals.css instead of copying. */
-.awardHead {
-  position: sticky;
-  top: 0;
-  left: 200px;
-  z-index: 4;
-  min-width: 60px;
-  padding: 10px var(--sp-2);
-  background: var(--status-warning-bg);
-  color: var(--bark);
-  text-align: center;
-  font-size: var(--fs-xs);
-  font-weight: 800;
-  border-right: 1px solid var(--bark);
-  border-bottom: 1px solid var(--navy);
-}
-.awardSubHead {
-  position: sticky;
-  top: 0;
-  left: 200px;
-  z-index: 4;
-  min-width: 60px;
-  padding: var(--sp-2) var(--sp-1);
-  background: var(--status-warning-bg);
-  border-right: 1px solid var(--bark);
-}
-
+.scoutHead,
 .scoutCell {
   position: sticky;
   left: 0;
-  background: var(--warm-white);
   z-index: 2;
-  padding: 6px 10px;
-  min-width: 200px;
-  border-right: 1px solid var(--border-mid);
-  border-bottom: 1px solid var(--border-light);
-  font-family: var(--font-body);
-  font-size: var(--fs-sm);
+  /* Sticky cells need an opaque background, or scrolled-under cells show through. */
+  background: var(--warm-white);
+  width: 210px;
+  min-width: 210px;
+  max-width: 210px;
+  text-align: left;
 }
-.scoutCell a { color: var(--text-head); font-weight: 600; }
-
-.rankPill {
-  font-family: var(--font-ui);
+.scoutHead {
+  vertical-align: bottom;
+  padding: 0 var(--sp-2) 6px 0;
   font-size: var(--fs-xs);
-  color: var(--text-meta);
-  padding: 1px 6px;
-  background: var(--newsprint);
-  border-radius: var(--rad-pill);
-  margin-left: var(--sp-2);
   font-weight: 700;
+  color: var(--text-meta);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* Row 1: one block per parent requirement; a choice gets its words over a 5px bracket. */
+.bracketCell {
+  vertical-align: bottom;
+  padding: 0 3px;
+  text-align: center;
+}
+.bracketLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bark);
+  padding-bottom: 2px;
+}
+.bracketLine {
+  display: block;
+  height: 5px;
+  border: 1px solid var(--khaki);
+  border-bottom: 0;
+}
+
+/* Row 2: the codes. */
+.codeHead {
+  min-width: 26px;
+  padding: 4px 3px 6px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--navy);
+  border-bottom: 1px solid var(--rule);
+}
+
+/* The 12px gap before each parent requirement's first code. */
+.groupStart {
+  padding-left: 12px;
+}
+
+.progressHead {
+  vertical-align: bottom;
+  min-width: 150px;
+  padding: 0 0 6px 20px;
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  border-bottom: 1px solid var(--rule);
+}
+
+.row > * {
+  height: 36px;
+  border-bottom: 1px solid var(--rule);
+}
+/* Earned scouts start below a heavier line. */
+.dividerRow > * {
+  border-top: 1px solid var(--border-mid);
+}
+/* The superuser's "view as" scout. */
+.highlightRow > * {
+  background: var(--status-info-bg);
+}
+
+.scoutCell {
+  padding: 4px var(--sp-2) 4px 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.scoutCell a {
+  color: var(--text-head);
+  text-decoration: none;
+}
+.scoutCell a:hover {
+  text-decoration: underline;
+}
+.rank {
+  margin-left: var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-meta);
 }
 
 .cell {
-  width: 46px;
+  min-width: 26px;
+  padding: 0 3px;
   text-align: center;
-  font-size: 18px;
-  line-height: 1;
-  font-weight: 700;
-  padding: 6px var(--sp-2);
-  color: var(--border-mid);
-  background: transparent;
-  border-left: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--border-light);
-}
-.cellDone {
-  color: var(--forest);
-  background: var(--status-success-bg);
+  vertical-align: middle;
 }
 
-.awardCell {
-  position: sticky;
-  left: 200px;
-  z-index: 2;
-  width: 60px;
-  text-align: center;
-  font-size: 18px;
-  line-height: 1;
+.boxOpen,
+.boxDone,
+.dash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  vertical-align: middle;
   font-weight: 700;
-  padding: 6px var(--sp-2);
-  color: var(--bark);
-  /* Sticky cells need an opaque background — "transparent" would let
-     scrolled-under requirement cells show through. */
-  background: var(--warm-white);
-  border-right: 1px solid var(--bark);
-  border-bottom: 1px solid var(--border-light);
+  line-height: 1;
 }
-.awardCellDone {
-  color: #5a3a00; /* deliberate: dark ink on the celebration gold (see .awardHead note) */
-  background: #f5d76a; /* deliberate: celebration gold, no token exists */
+.boxOpen {
+  border: 1px solid var(--text-meta);
+  border-radius: 3px;
+  background: var(--warm-white);
+}
+.boxDone {
+  border: 1px solid var(--forest);
+  border-radius: 3px;
+  background: var(--forest);
+  color: var(--warm-white);
+  font-size: var(--fs-xs);
+}
+.dash {
+  color: var(--border-mid);
+  font-size: var(--fs-sm);
+}
+
+/* An award with no requirement detail: one bar across the requirement columns. */
+.completeCell {
+  padding: 0 0 0 12px;
+  vertical-align: middle;
+}
+.completeBar {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 var(--sp-2);
+  border-radius: 3px;
+  background: var(--status-success-bg);
+  color: var(--forest);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.progressCell {
+  padding-left: 20px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.progress {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.progressText {
+  width: 44px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-head);
+}
+.progressBar {
+  appearance: none;
+  width: 60px;
+  height: 5px;
+  border: 0;
+  border-radius: var(--rad-pill);
+  background: var(--border-light);
+  color: var(--forest);
+  overflow: hidden;
+}
+.progressBar::-webkit-progress-bar {
+  background: var(--border-light);
+}
+.progressBar::-webkit-progress-value {
+  background: var(--forest);
+}
+.progressBar::-moz-progress-bar {
+  background: var(--forest);
+}
+.earnedPill {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: var(--rad-pill);
+  background: var(--forest);
+  color: var(--warm-white);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .gridCard {
+    padding: var(--sp-3);
+  }
+  .legend {
+    justify-content: flex-start;
+  }
+  .scoutHead,
+  .scoutCell {
+    width: 132px;
+    min-width: 132px;
+    max-width: 132px;
+  }
+  .rank {
+    display: none;
+  }
 }
 
 /* ── Scout switcher slot ──

@@ -62,13 +62,8 @@ import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { MeritBadge, MeritBadgeRequirement, Scout } from '@/lib/supabase/types';
 import { SCOUT_CORE_COLS } from '@/lib/scout-row';
 import { buildReqTree, flattenLeaves, bsaPageUrl, workbookUrl } from '@/lib/mb-helpers';
-import {
-  foldLedger,
-  gridGroups,
-  mbStats,
-  startedScouts,
-  type MbLedgerRow
-} from '@/lib/mb-scout-progress';
+import { foldLedger, mbStats, startedScouts, type MbLedgerRow } from '@/lib/mb-scout-progress';
+import { buildProgressGrid } from '@/lib/mb-progress-grid';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
 import { canClaimProof } from '@/lib/library';
@@ -189,7 +184,7 @@ export default async function LibraryMbPage({
   // the same `scouts … eq('active', true)` filter as activeScouts above — its
   // length IS that count, so the second query was dropped (perf item 18).
   const stats = mbStats(started, byScout, activeScouts.length);
-  const groups = gridGroups(reqTree, leaves);
+  const progressGrid = buildProgressGrid(reqTree, started, byScout);
 
   let totalCount = resources.wholeBadge.length;
   for (const list of resources.byLeafCode.values()) totalCount += list.length;
@@ -282,7 +277,7 @@ export default async function LibraryMbPage({
         {started.length === 0 ? (
           <EmptyState>No scouts have started this merit badge yet.</EmptyState>
         ) : (
-          <MbScoutGrid scouts={started} byScout={byScout} leaves={leaves} groups={groups} />
+          <MbScoutGrid grid={progressGrid} highlightId={selectedScoutId} />
         )}
 
         {/* Directly under the grid, above the Requirements divider (Patrick,

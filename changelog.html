@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>November 8, 2026</strong> &nbsp;&middot;&nbsp; v1.262.1</p>
+      <p>Last updated: <strong>November 8, 2026</strong> &nbsp;&middot;&nbsp; v1.263.0</p>
     </div>
   </div>
 
@@ -497,12 +497,23 @@ py -m http.server 8000</pre>
       </div>
     </div>
 
-    <!-- RELEASE v1.262.1 -->
+    <!-- RELEASE v1.263.0 -->
     <div class="release">
       <div class="release-header">
-        <span class="release-version">v1.262.1</span>
+        <span class="release-version">v1.263.0</span>
         <span class="release-date">November 8, 2026</span>
-        <span class="release-label"><span class="badge badge-fix">Fix</span></span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Merit badge pages: a clearer Scout progress grid</p>
+        <ul class="change-list">
+          <li><span>The grid shows each choice over its columns (&ldquo;any 1&rdquo;, &ldquo;any 2&rdquo;, &ldquo;all&rdquo;, &ldquo;9a, 9c + any 2 of 9b&rdquo;) instead of a &ldquo;Req 1, Req 2&rdquo; header row.</span></li>
+          <li><span>Each box is done (green with a check), still to do (empty), or a dash when another option already covers it.</span></li>
+          <li><span>A <strong>Progress</strong> column (&ldquo;4 of 9&rdquo; and a bar, or an <strong>Earned</strong> pill) replaces the AWARD star column.</span></li>
+          <li><span>Scouts with the most done come first. Earned scouts sit below a line. A badge signed off by a counselor with no details shows one &ldquo;All requirements complete&rdquo; bar.</span></li>
+          <li><span>When you view the page as one of your scouts, that scout&rsquo;s row is highlighted.</span></li>
+          <li><span>On a phone the grid scrolls sideways inside its card, with scout names kept in view; the page itself doesn&rsquo;t.</span></li>
+        </ul>
       </div>
       <div class="change-group">
         <p class="change-group-title">Meeting Planner: station checklists</p>

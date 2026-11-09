@@ -45,20 +45,12 @@ const publicTsx = publicFiles.filter((f) => f.endsWith('.tsx') || f.endsWith('.t
 
 describe('Design-system census (public)', () => {
   it('PublicCss_ContainsOnlySanctionedHex_PerPhaseDCloseout', () => {
-    // The 7 deliberates, each carrying a comment at its site: the printed
-    // Clipboard's pencil grid (#999/#aaa/#efeae0), the Scout-rank and
-    // tagYouth categorical colors (#7a7068/#f5eeda), and the merit-badge
-    // celebration gold pair (#f5d76a/#5a3a00 — mint --award-gold on a 3rd
-    // use). globals.css is the token sheet itself and is exempt.
-    const SANCTIONED = new Set([
-      '#999999',
-      '#aaaaaa',
-      '#efeae0',
-      '#7a7068',
-      '#f5eeda',
-      '#f5d76a',
-      '#5a3a00'
-    ]);
+    // The 5 deliberates, each carrying a comment at its site: the printed
+    // Clipboard's pencil grid (#999/#aaa/#efeae0) and the Scout-rank and
+    // tagYouth categorical colors (#7a7068/#f5eeda). The merit-badge
+    // celebration gold pair left with the AWARD column (Concept A2,
+    // 2026-11-08). globals.css is the token sheet itself and is exempt.
+    const SANCTIONED = new Set(['#999999', '#aaaaaa', '#efeae0', '#7a7068', '#f5eeda']);
     const violations: string[] = [];
     for (const f of publicCss) {
       if (rel(f) === 'globals.css') continue;
