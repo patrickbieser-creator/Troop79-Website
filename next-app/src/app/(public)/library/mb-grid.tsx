@@ -41,6 +41,8 @@ export interface MbTile {
   resources: number;
   /** Active scouts who have earned it. */
   earned: number;
+  /** Active scouts working on it, not yet earned. */
+  inProgress: number;
   /** The viewing scout's own award date, when a scout is being viewed. */
   awardDate: string | null;
   href: string;
@@ -144,6 +146,11 @@ export function MbGrid({ tiles }: { tiles: MbTile[] }) {
               >
                 {n === 0 ? '—' : n}
               </span>
+              {mode === 'progress' && tile.inProgress > 0 && (
+                <span className={styles.mbWorking} title={`${tile.inProgress} scout${tile.inProgress === 1 ? '' : 's'} working on it`}>
+                  +{tile.inProgress} working
+                </span>
+              )}
             </Link>
           );
         })}

@@ -54,7 +54,10 @@ const nextConfig: NextConfig = {
       // links land there (it asks visitors to sign in). /meetings, the
       // previous target, no longer exists. Not permanent, in case a public
       // plan page ever comes back.
-      { source: '/meeting-plan', destination: '/planner', permanent: false }
+      { source: '/meeting-plan', destination: '/planner', permanent: false },
+      // Admin MB Progress retired 2026-11-09: the Library's merit badge pages carry everything it showed.
+      { source: '/admin/advancement/mb-progress', destination: '/library?mb=progress', permanent: false },
+      { source: '/admin/advancement/mb-progress/:mbId', destination: '/library/mb/:mbId', permanent: false }
     ];
   },
   experimental: {

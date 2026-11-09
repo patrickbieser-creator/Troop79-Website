@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { publicScoutName } from '@/lib/scout-name';
+import { troopScoutName } from '@/lib/scout-name';
 import { rankLabel, type MbScoutLike } from '@/lib/mb-scout-progress';
 import type { CellState, GridRow, ProgressGrid } from '@/lib/mb-progress-grid';
 import s from './mb-tracker.module.css';
@@ -12,15 +12,24 @@ import s from './mb-tracker.module.css';
  * PRESENTATIONAL ONLY — every decision (rules, cell states, sort, counselor-only rows) lives in
  * lib/mb-progress-grid.ts, which is tested; what is left here is a table.
  *
- * SCOUT NAMES are `publicScoutName()` — first name + last initial. This page is public and in the sitemap.
+ * SCOUT NAMES are `troopScoutName()` — first name + last initial for a visitor (this page is public and in the
+ * sitemap), the full name for a signed-in troop member (`fullNames`, Patrick 2026-11-09).
  *
- * A DELIBERATELY SEPARATE RENDERER from the admin grid at /admin/advancement/mb-progress/[mbId] (Fast Entry links,
- * full names, admin tokens).
+ * The admin MB Progress grid it once sat beside was retired 2026-11-09; this is the only scout grid for a badge.
  */
 
 const STATE_WORDS: Record<CellState, string> = { done: 'done', open: 'still to do', notNeeded: 'not needed' };
 
-export function MbScoutGrid({ grid, highlightId }: { grid: ProgressGrid<MbScoutLike>; highlightId: string | null }) {
+export function MbScoutGrid({
+  grid,
+  highlightId,
+  fullNames = false
+}: {
+  grid: ProgressGrid<MbScoutLike>;
+  highlightId: string | null;
+  /** A signed-in troop member: show last names. */
+  fullNames?: boolean;
+}) {
   const cols = grid.columns.length;
   const rows = [...grid.inProgress, ...grid.earned];
   const firstEarned = grid.inProgress.length > 0 ? grid.earned[0]?.scout.id : undefined;
@@ -88,6 +97,7 @@ export function MbScoutGrid({ grid, highlightId }: { grid: ProgressGrid<MbScoutL
                 cols={cols}
                 divider={r.scout.id === firstEarned}
                 highlighted={r.scout.id === highlightId}
+                fullNames={fullNames}
               />
             ))}
           </tbody>
@@ -102,15 +112,17 @@ function ScoutRow({
   grid,
   cols,
   divider,
-  highlighted
+  highlighted,
+  fullNames
 }: {
   row: GridRow<MbScoutLike>;
   grid: ProgressGrid<MbScoutLike>;
   cols: number;
   divider: boolean;
   highlighted: boolean;
+  fullNames: boolean;
 }) {
-  const name = publicScoutName(row.scout);
+  const name = troopScoutName(row.scout, fullNames);
   const rank = rankLabel(row.scout.current_rank);
   const cls = [s.row, divider ? s.dividerRow : null, highlighted ? s.highlightRow : null].filter(Boolean).join(' ');
   return (

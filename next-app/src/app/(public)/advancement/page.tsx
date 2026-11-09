@@ -14,7 +14,8 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import type { Scout, ScoutSummaryRow, Rank } from '@/lib/supabase/types';
 import { SCOUT_CORE_COLS } from '@/lib/scout-row';
-import { publicScoutName } from '@/lib/scout-name';
+import { troopScoutName } from '@/lib/scout-name';
+import { gateAudience } from '@/lib/family-access';
 import styles from './advancement.module.css';
 import { RosterTable, type RosterRow } from './roster-table';
 import { PageHeader } from '@/app/_components/page-header';
@@ -66,7 +67,9 @@ async function loadData(): Promise<AdvancementData | null> {
 }
 
 export default async function AdvancementPage() {
-  const data = await loadData();
+  const [data, audience] = await Promise.all([loadData(), gateAudience()]);
+  // Any troop sign-in sees last names (Patrick, 2026-11-09); a visitor sees "First L.".
+  const signedIn = audience !== null;
 
   return (
     <>
@@ -97,7 +100,7 @@ export default async function AdvancementPage() {
             <SectionDivider label="Advancement Report" />
             <WeeklyReportCta />
             <SectionDivider label="Troop Roster" />
-            <Roster data={data} />
+            <Roster data={data} signedIn={signedIn} />
             <LeaderCta />
           </>
         )}
@@ -139,7 +142,7 @@ function Stat({ value, label }: { value: number; label: string }) {
   );
 }
 
-function buildRosterRows(data: AdvancementData): RosterRow[] {
+function buildRosterRows(data: AdvancementData, signedIn: boolean): RosterRow[] {
   const rankIndex = new Map<string, { sort: number; label: string }>();
   data.ranks.forEach((r) =>
     rankIndex.set(r.id, { sort: r.sort_order, label: r.display_name })
@@ -150,7 +153,7 @@ function buildRosterRows(data: AdvancementData): RosterRow[] {
     return {
       id: s.id,
       displayName: s.display_name,
-      publicName: publicScoutName(s),
+      publicName: troopScoutName(s, signedIn),
       patrol: s.patrol,
       currentRank: s.current_rank,
       currentRankLabel: rank?.label ?? '—',
@@ -166,8 +169,8 @@ function buildRosterRows(data: AdvancementData): RosterRow[] {
   });
 }
 
-function Roster({ data }: { data: AdvancementData }) {
-  const rows = buildRosterRows(data);
+function Roster({ data, signedIn }: { data: AdvancementData; signedIn: boolean }) {
+  const rows = buildRosterRows(data, signedIn);
   const patrols = Array.from(
     new Set(rows.map((r) => r.patrol).filter((p): p is string => Boolean(p)))
   ).sort();

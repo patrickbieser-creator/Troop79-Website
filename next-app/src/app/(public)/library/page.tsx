@@ -11,7 +11,7 @@
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fetchAllRows } from '@/lib/supabase/paginate';
-import { earnedByBadge } from '@/lib/mb-scout-progress';
+import { earnedByBadge, inProgressByBadge } from '@/lib/mb-scout-progress';
 import type { MeritBadge, Rank } from '@/lib/supabase/types';
 import {
   loadTopics,
@@ -59,6 +59,8 @@ interface HomeData {
   /** mbId -> active scouts who have earned it. Feeds the grid's Progress
    *  mode; the read moved here off the retired /merit-badges catalog. */
   earnedByMb: Map<string, number>;
+  /** mbId -> active scouts working on it, not yet earned (Patrick, 2026-11-09). */
+  inProgressByMb: Map<string, number>;
   /** Personalization (Patrick, 2026-08-07) — null unless resolveLibraryViewer()
    *  resolved a scout to show. rankProgress is keyed by the SAME rankReqKey
    *  composite used everywhere else; mbAwards is keyed by bare mbId. */
@@ -70,7 +72,7 @@ interface HomeData {
 
 async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
   const supabase = createAdminClient();
-  const [ranksRes, reqsRes, mbsRes, topics, counts, awardedRows, activeRes] = await Promise.all([
+  const [ranksRes, reqsRes, mbsRes, topics, counts, progressRows, activeRes] = await Promise.all([
     supabase.from('ranks').select('*').order('sort_order'),
     supabase
       .from('rank_requirements')
@@ -84,8 +86,8 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
        unbounded past the ~1000-row PostgREST cap as more scouts start more
        badges — it is already at 528 rows. This is the SAME read the retired
        /merit-badges catalog ran, moved rather than added. */
-    fetchAllRows<{ mb_id: string; scout_id: string }>((from, to) =>
-      supabase.from('mb_progress').select('mb_id, scout_id').eq('awarded', true).order('mb_id').order('scout_id').range(from, to)
+    fetchAllRows<{ mb_id: string; scout_id: string; awarded: boolean }>((from, to) =>
+      supabase.from('mb_progress').select('mb_id, scout_id, awarded').order('mb_id').order('scout_id').range(from, to)
     ),
     /* Active scout ids — the grid counts ACTIVE scouts only, so its numbers
        agree with the badge page one click away. Without this the grid said
@@ -95,7 +97,11 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
   ]);
 
   const activeIds = new Set(((activeRes.data ?? []) as { id: string }[]).map((r) => r.id));
-  const earnedByMb = earnedByBadge(awardedRows, activeIds);
+  const earnedByMb = earnedByBadge(
+    progressRows.filter((r) => r.awarded),
+    activeIds
+  );
+  const inProgressByMb = inProgressByBadge(progressRows, activeIds);
 
   const reqsByRank = new Map<string, TopReq[]>();
   for (const r of (reqsRes.data ?? []) as { rank_id: string; code: string; label: string }[]) {
@@ -120,6 +126,7 @@ async function loadHome(viewer: LibraryViewer): Promise<HomeData> {
     topics,
     counts,
     earnedByMb,
+    inProgressByMb,
     progress,
     viewScoutId: viewer.kind === 'scout' ? viewer.scoutId : undefined
   };
@@ -342,6 +349,7 @@ function MbGridSection({ data }: { data: HomeData }) {
       eagle: mb.eagle,
       resources,
       earned: data.earnedByMb.get(mb.id) ?? 0,
+      inProgress: data.inProgressByMb.get(mb.id) ?? 0,
       awardDate: data.progress?.mbAwards.get(mb.id) ?? null,
       href: withViewScout(`/library/mb/${mb.id}`, data.viewScoutId)
     };

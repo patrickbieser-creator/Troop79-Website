@@ -10,6 +10,7 @@ import {
   isMbGridMode,
   mbGridCaption,
   earnedByBadge,
+  inProgressByBadge,
   type MbLedgerRow,
   type MbScoutLike
 } from '../src/lib/mb-scout-progress';
@@ -251,5 +252,29 @@ describe('mb grid — earned counts must agree with the badge page (pure)', () =
 
   it('EarnedByBadge_ReturnsAnEmptyMap_ForNoRows', () => {
     expect(earnedByBadge([], new Set(['a'])).size).toBe(0);
+  });
+});
+
+/** The badge list's Progress view also says how many are working on each badge — the one count the retired admin
+ *  MB Progress catalog had that the public site didn't (Patrick, 2026-11-09). */
+describe('mb grid — in-progress counts (pure)', () => {
+  const rows = [
+    { mb_id: 'archery', scout_id: 'a', awarded: false },
+    { mb_id: 'archery', scout_id: 'b', awarded: true },
+    { mb_id: 'archery', scout_id: 'gone', awarded: false },
+    { mb_id: 'cooking', scout_id: 'a', awarded: false }
+  ];
+  const active = new Set(['a', 'b']);
+
+  it('InProgressByBadge_CountsActiveScoutsNotYetAwarded', () => {
+    expect(inProgressByBadge(rows, active).get('archery')).toBe(1);
+  });
+
+  it('InProgressByBadge_OmitsABadgeNobodyIsWorkingOn', () => {
+    expect(inProgressByBadge([{ mb_id: 'chess', scout_id: 'b', awarded: true }], active).get('chess')).toBeUndefined();
+  });
+
+  it('ProgressCaption_MentionsScoutsWorkingOnIt', () => {
+    expect(mbGridCaption('progress')).toMatch(/working on/i);
   });
 });

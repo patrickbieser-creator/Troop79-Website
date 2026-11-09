@@ -193,6 +193,8 @@
 .eagleDot { font-size: 10px; color: var(--bark); font-weight: 700; }
 .mbCount { font-size: 11px; font-weight: 700; color: var(--forest); }
 .mbCountZero { color: var(--border-mid); font-weight: 400; }
+/* Progress mode: scouts working on the badge, beside the earned count (2026-11-09). */
+.mbWorking { font-size: 11px; color: var(--text-meta); white-space: nowrap; }
 
 /* ── Scout progress personalization (Family Identity viewer) ──
    Khaki/bark accent (existing earth-tone tokens) deliberately distinct from

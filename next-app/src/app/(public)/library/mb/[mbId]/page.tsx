@@ -64,6 +64,7 @@ import { SCOUT_CORE_COLS } from '@/lib/scout-row';
 import { buildReqTree, flattenLeaves, bsaPageUrl, workbookUrl } from '@/lib/mb-helpers';
 import { foldLedger, mbStats, startedScouts, type MbLedgerRow } from '@/lib/mb-scout-progress';
 import { buildProgressGrid } from '@/lib/mb-progress-grid';
+import { loadMbCounselors } from '@/lib/mb-counselors';
 import { ArticleBody } from '@/lib/article-body/ArticleBody';
 import { gateAudience } from '@/lib/family-access';
 import { canClaimProof } from '@/lib/library';
@@ -134,6 +135,8 @@ export default async function LibraryMbPage({
   // depends on WHICH scout the viewer resolves to, so it chains off this
   // promise rather than serialising the whole page behind it.
   const viewerP = resolveLibraryViewer(supabase, viewScout);
+  // Any troop sign-in sees last names and the badge's counselors (Patrick, 2026-11-09); a visitor sees neither.
+  const signedIn = (await gateAudience()) !== null;
 
   const [
     mb,
@@ -143,7 +146,8 @@ export default async function LibraryMbPage({
     ledgerRows,
     { data: scoutRows },
     viewer,
-    pendingByLeaf
+    pendingByLeaf,
+    counselors
   ] = await Promise.all([
     loadMeritBadge(mbId),
     supabase.from('merit_badge_requirements').select('*').eq('mb_id', mbId),
@@ -167,7 +171,8 @@ export default async function LibraryMbPage({
     // household). A 'none' / 'proxy-available' viewer has no scout → no query.
     viewerP.then((v) =>
       loadMbPendingSubmissions(createAdminClient(), mbId, v.kind === 'scout' ? [v.scoutId] : [])
-    )
+    ),
+    signedIn ? loadMbCounselors(supabase, mbId) : Promise.resolve([] as string[])
   ]);
   if (!mb) notFound();
 
@@ -273,11 +278,17 @@ export default async function LibraryMbPage({
           <Stat label="Active Scouts" n={stats.totalActive} tone={s.statNavy} />
         </div>
 
+        {counselors.length > 0 && (
+          <p className={s.counselors}>
+            <span className={s.counselorsLabel}>Counselors</span> {counselors.join(' · ')}
+          </p>
+        )}
+
         <SectionDivider label="Scout Progress" />
         {started.length === 0 ? (
           <EmptyState>No scouts have started this merit badge yet.</EmptyState>
         ) : (
-          <MbScoutGrid grid={progressGrid} highlightId={selectedScoutId} />
+          <MbScoutGrid grid={progressGrid} highlightId={selectedScoutId} fullNames={signedIn} />
         )}
 
         {/* Directly under the grid, above the Requirements divider (Patrick,

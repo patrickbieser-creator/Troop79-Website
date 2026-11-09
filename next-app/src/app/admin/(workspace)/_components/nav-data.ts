@@ -128,14 +128,9 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/records',
         description: 'Council submissions and awards to hand out',
         capability: 'advancement.write'
-      },
-      {
-        label: 'MB Progress',
-        href: '/admin/advancement/mb-progress',
-        matchPath: '/admin/advancement/mb-progress',
-        description: 'Partial merit badges and their counselors',
-        capability: 'advancement.write'
       }
+      // MB Progress retired 2026-11-09 (Patrick): the Library's merit badge pages show the same counts, grid and
+      // counselors (to signed-in members); its old URLs redirect there (next.config.ts).
       // "Roll Call & Agendas" retired 2026-08-24 (Patrick): the Calendar list
       // carries every entry's agenda / signup / roll-call state as letter pills
       // that open the layer's screen. The Roll Call SHEET keeps its own route

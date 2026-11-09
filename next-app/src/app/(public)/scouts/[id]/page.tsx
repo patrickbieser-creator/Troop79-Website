@@ -26,7 +26,8 @@ import {
   type ReqNode
 } from '@/lib/mb-helpers';
 import type { LedgerEntry, MeritBadgeRequirement } from '@/lib/supabase/types';
-import { publicScoutName } from '@/lib/scout-name';
+import { troopScoutName } from '@/lib/scout-name';
+import { gateAudience } from '@/lib/family-access';
 import { PrintButton } from './print-button';
 import { centralToday } from '@/lib/dates';
 import { fmtDate } from '@/lib/format-date';
@@ -40,7 +41,8 @@ export async function generateMetadata({
   const { id } = await params;
   const detail = await loadScoutDetail(id);
   if (!detail) return { title: 'Scout not found — Scout Troop 79' };
-  return { title: `${publicScoutName(detail.scout)} — Advancement — Scout Troop 79` };
+  const signedIn = (await gateAudience()) !== null;
+  return { title: `${troopScoutName(detail.scout, signedIn)} — Advancement — Scout Troop 79` };
 }
 
 export default async function ScoutClipboardPage({
@@ -49,8 +51,10 @@ export default async function ScoutClipboardPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await loadScoutDetail(id);
+  const [detail, audience] = await Promise.all([loadScoutDetail(id), gateAudience()]);
   if (!detail) notFound();
+  // Any troop sign-in sees the last name (Patrick, 2026-11-09); a visitor sees "First L.".
+  const name = troopScoutName(detail.scout, audience !== null);
 
   return (
     <div id="scout-clipboard-page">
@@ -59,7 +63,7 @@ export default async function ScoutClipboardPage({
           space for it (confirmed with the user, matches the pre-refactor
           print reference). */}
       <div className={styles.printHide}>
-        <ScoutHeader detail={detail} />
+        <ScoutHeader detail={detail} name={name} />
       </div>
       <main className={styles.main}>
         <div className={styles.printHide}>
@@ -67,7 +71,7 @@ export default async function ScoutClipboardPage({
           <SectionDivider label="Rank Progression" />
           <RankTimeline detail={detail} />
         </div>
-        <Clipboard detail={detail} />
+        <Clipboard detail={detail} name={name} />
         {/* Screen-only — print gets this content redistributed into the
             fixed two-page layout inside Clipboard (Nights of Camping +
             Leadership under Second Class, Service under First Class, Merit
@@ -95,7 +99,7 @@ export default async function ScoutClipboardPage({
   );
 }
 
-function ScoutHeader({ detail }: { detail: ScoutDetail }) {
+function ScoutHeader({ detail, name }: { detail: ScoutDetail; name: string }) {
   const { scout } = detail;
   const rankLabel =
     detail.ranks.find((r) => r.id === scout.current_rank)?.display_name ?? '—';
@@ -127,7 +131,7 @@ function ScoutHeader({ detail }: { detail: ScoutDetail }) {
     <div className={styles.scoutHeader}>
       <div>
         <div className={styles.scoutId}>Scout Clipboard</div>
-        <div className={styles.scoutNameBig}>{publicScoutName(scout)}</div>
+        <div className={styles.scoutNameBig}>{name}</div>
         <div className={styles.scoutMeta}>
           {metaParts.map((node, i) => (
             <span key={i}>
@@ -311,7 +315,7 @@ function buildMbRankBuckets(
   return buckets;
 }
 
-function Clipboard({ detail }: { detail: ScoutDetail }) {
+function Clipboard({ detail, name }: { detail: ScoutDetail; name: string }) {
   // Index the scout's earned rank entries by `${rank}-${reqCode}` so the
   // catalog rows can look up date/leader. Two ledger kinds feed this map:
   //   - rank_requirement: code is already `<rank>-<reqCode>` (e.g. "tenderfoot-2c")
@@ -410,7 +414,7 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
           shorter columns. */}
       <div className={`${styles.clipboard} ${styles.printHide}`}>
         <div className={styles.clipboardHeader}>
-          <span className={styles.chName}>{publicScoutName(detail.scout)}</span>
+          <span className={styles.chName}>{name}</span>
           <span className={styles.chDate}>{todayShort}</span>
         </div>
         <div className={styles.rankColumns}>
@@ -433,7 +437,7 @@ function Clipboard({ detail }: { detail: ScoutDetail }) {
           (confirmed with the user, 2026-07-13). */}
       <div className={styles.printOnly}>
         <div className={styles.printPageHeader}>
-          <span className={styles.chName}>{publicScoutName(detail.scout)}</span>
+          <span className={styles.chName}>{name}</span>
           <span className={styles.chDate}>{todayShort}</span>
         </div>
         <div className={styles.printCols}>

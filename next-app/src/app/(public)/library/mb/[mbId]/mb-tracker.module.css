@@ -91,6 +91,20 @@
   margin-top: 6px;
 }
 
+/* Registered counselors, signed-in members only (moved from the retired admin MB Progress page, 2026-11-09). */
+.counselors {
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+  margin: 0 0 22px;
+}
+.counselorsLabel {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--text-meta);
+  margin-right: var(--sp-2);
+}
+
 /* ── Progress grid (Concept A2, Plans/MB-Scout-Progress-Grid.md, 2026-11-08) ──
    A warm-white card; the table scrolls sideways INSIDE it (Scout column sticky), the page never does. Boxes match
    the meeting planner's checklist family: same radius, bold ✓; open boxes are --text-meta outlined, as the planner's

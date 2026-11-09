@@ -6,7 +6,7 @@
  * `scouts.current_rank` is trigger-maintained purely from `rank_award` rows
  * (see `recompute_scout_current_rank` / `ledger_rank_award_refresh` in
  * 20260528000100_demographics_parents_counselors.sql) and every troop-wide
- * stat elsewhere (Dashboard, MB Progress, roster, Clipboard) is a live view
+ * stat elsewhere (Dashboard, the Library badge pages, roster, Clipboard) is a live view
  * over the ledger — so filling in a gap here needs no separate "reconcile
  * rank progression" step. The BoR already made current_rank correct; this
  * only backfills the historical completeness record.

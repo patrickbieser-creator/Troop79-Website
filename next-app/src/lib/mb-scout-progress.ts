@@ -208,7 +208,7 @@ export function isMbGridMode(v: string | null | undefined): v is MbGridMode {
  *  grid always says which noun is on screen. */
 export function mbGridCaption(mode: MbGridMode): string {
   return mode === 'progress'
-    ? 'Showing how many scouts have earned each badge.'
+    ? 'Showing how many scouts have earned each badge, and how many are working on it.'
     : 'Showing how many resources are shelved for each badge.';
 }
 
@@ -234,6 +234,22 @@ export function earnedByBadge(
   const counts = new Map<string, number>();
   for (const row of awardedRows) {
     if (!activeScoutIds.has(row.scout_id)) continue;
+    counts.set(row.mb_id, (counts.get(row.mb_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * mbId → how many ACTIVE scouts have started it but not earned it, for the grid's Progress mode (the count the retired
+ * admin MB Progress catalog showed; Patrick, 2026-11-09). Same active-only rule as earnedByBadge.
+ */
+export function inProgressByBadge(
+  rows: { mb_id: string; scout_id: string; awarded: boolean }[],
+  activeScoutIds: ReadonlySet<string>
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    if (row.awarded || !activeScoutIds.has(row.scout_id)) continue;
     counts.set(row.mb_id, (counts.get(row.mb_id) ?? 0) + 1);
   }
   return counts;

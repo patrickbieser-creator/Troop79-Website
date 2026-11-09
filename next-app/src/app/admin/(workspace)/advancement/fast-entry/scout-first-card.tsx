@@ -51,7 +51,7 @@ export function ScoutFirstCard({ scouts, leaders, catalog }: Props) {
   const [openMbId, setOpenMbId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Prefill from URL: ?scout=A01&mb=cooking&req=2a (from MB Progress cells) or
+  // Prefill from URL: ?scout=A01&mb=cooking&req=2a or
   // ?scout=A01&mb=cooking&req=AWARD (from the badge-earned cell). Drops these
   // params after applying so a refresh doesn't re-apply on an already-saved
   // entry.

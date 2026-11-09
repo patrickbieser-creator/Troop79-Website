@@ -95,3 +95,16 @@ describe('MbScoutGrid', () => {
     expect(rowFor('Ben R').getAttribute('aria-current')).toBeNull();
   });
 });
+
+/** Signed-in troop members see last names (Patrick, 2026-11-09). */
+describe('MbScoutGrid names', () => {
+  it('Names_AreFirstAndInitial_ForAVisitor', () => {
+    show();
+    expect(screen.getByRole('link', { name: 'Ann L.' })).toBeTruthy();
+  });
+
+  it('Names_AreFull_ForASignedInMember', () => {
+    render(<MbScoutGrid grid={grid} highlightId={null} fullNames />);
+    expect(screen.getByRole('link', { name: 'Ann Lee' })).toBeTruthy();
+  });
+});
