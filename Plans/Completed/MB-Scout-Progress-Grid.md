@@ -1,6 +1,7 @@
 # Scout progress grid (Concept A2): build plan
 
 Nov 8, 2026 · Patrick Bieser
+**Status:** SHIPPED v1.263.0 (2026-11-08, 0950c2cb). Browser eyes-on (last two steps) carried to BACKLOG.
 
 ## Goal and scope
 
