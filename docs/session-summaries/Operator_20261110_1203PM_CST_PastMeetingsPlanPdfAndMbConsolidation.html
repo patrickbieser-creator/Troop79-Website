@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Past meetings, plan PDF, merit badges in one place — Session 76</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Past meetings, the plan as a PDF, and one place for merit badges</h1>
+        <p class="subtitle">Session 76. The Meeting Planner can look back at past weeks and print any plan as a PDF that doubles as the advancement cross-check. Merging two people now keeps their money together. The admin MB Progress screen is retired in favour of the Library, and signed-in families see scouts' last names.</p>
+        <div class="meta">
+            <span>&#128197; November 9&ndash;10, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.263.0 &rarr; v1.264.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Release (v1.264.0), 4 commits</div></div>
+            <div class="stat"><div class="number">1</div><div class="label">Migration (first on the 2027 scheme)</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Decisions (D-480&ndash;D-484)</div></div>
+            <div class="stat"><div class="number">8159</div><div class="label">Tests, all passing</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader can open last week's plan exactly as it stood that night, print any plan as a checklist to tick off as sign-offs are recorded, and find everything about a merit badge in one place in the Library.
+        </div>
+        <h3>Meeting Planner: past meetings and the plan PDF</h3>
+        <ul>
+            <li>"&larr; Earlier weeks" opens past meetings, view only, with each scout's rank and progress as of that night, plus a "What happened" card: roll call, sign-offs dated that day, ranks and badges earned.</li>
+            <li>"Print PDF" on any meeting, past or coming: groups and teachers, a box per planned requirement, station grids, conferences and boards, who can't come. Always as of the start of the meeting.</li>
+            <li>qa-lead review: two reads that could stop at 1000 rows fixed, closed meetings refused, plus small hardening.</li>
+        </ul>
+        <h3>People and money</h3>
+        <ul>
+            <li>Merging a duplicate or promoting a Webelos guest now moves payments, scout account credits, reimbursements and wreath records to the surviving person.</li>
+            <li>Maya Sankpal-Tatera's $108.81 scout account, stranded by an earlier merge, is back on her record.</li>
+            <li>Three Webelos parents were added as members; no new classification was needed.</li>
+        </ul>
+        <h3>Merit badges</h3>
+        <ul>
+            <li>Fast Entry: opening a badge from a search no longer hides requirements that don't match the search.</li>
+            <li>Admin MB Progress retired. Its two extras moved to the Library: "+N working" on the badge list and the counselors on each badge page (signed-in only). Old links redirect.</li>
+            <li>Signed-in members see full names on the Advancement roster, the Clipboard and the badge grids; visitors still see "First L.".</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-480</td><td>merge_people moves money rows; two sellers in one wreath sale block the merge.</td></tr>
+                <tr><td>D-481</td><td>A past meeting is shown as of that night, view only; "What happened" matches sign-offs by date.</td></tr>
+                <tr><td>D-482</td><td>The meeting plan prints as a server-rendered PDF (@react-pdf/renderer 4.9.0), always as of the start of the meeting.</td></tr>
+                <tr><td>D-483</td><td>Merit badges live only in the Library; admin MB Progress retired; counselors shown to signed-in members.</td></tr>
+                <tr><td>D-484</td><td>Signed-in troop members see scouts' last names on public pages.</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick: signed in on production, try Earlier weeks, Print PDF, a badge page and the Progress view.</li>
+            <li>Patrick: counselors public or signed-in only; full names in Menu Monster credits too?</li>
+            <li>Scope a <code>next</code> upgrade (npm audit critical, pre-existing).</li>
+            <li>merge_people: move the non-money "who did it" columns as well.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>Area</th><th>Files</th></tr></thead>
+            <tbody>
+                <tr><td>Database</td><td>migrations/20270101100000_merge_people_moves_money.sql</td></tr>
+                <tr><td>Planner</td><td>planner/page.tsx, this-week-client.tsx, past-happened.tsx, print/[entryId]/route.ts + plan-pdf.tsx; lib/past-meeting(-db).ts, meeting-print.ts, this-week-db.ts, meeting-board.ts</td></tr>
+                <tr><td>Merit badges</td><td>library/page.tsx, mb-grid.tsx, mb/[mbId]/page.tsx + mb-scout-grid.tsx; lib/mb-counselors.ts, mb-scout-progress.ts; admin mb-progress (deleted); fast-entry/picker.tsx</td></tr>
+                <tr><td>Names</td><td>lib/scout-name.ts, advancement/page.tsx, scouts/[id]/page.tsx</td></tr>
+                <tr><td>Config</td><td>next.config.ts (serverExternalPackages, redirects), package.json</td></tr>
+                <tr><td>Tests</td><td>merge-people-money, past-meeting(-db), meeting-print, planner-past-header, fast-entry-picker-mb-search, mb-counselors (new); scout-name, mb-scout-progress, mb-scout-grid, admin-hub, section-nav</td></tr>
+                <tr><td>Docs</td><td>changelog.html</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
