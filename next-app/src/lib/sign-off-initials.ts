@@ -14,7 +14,10 @@ export function initialsShapeProblem(code: string): string | null {
 }
 
 /**
- * First and last initial, upper-cased, plus 2, 3… if taken (ignoring case).
+ * First and last initial ("KP"). If taken (ignoring case), three letters the
+ * way the troop already writes them: a second letter of the last name ("MBa",
+ * Mike Babby) or of the first name ("KrP", Kristin Paltzer). Only then a
+ * number ("KP2").
  * Falls back to `fallback` (e.g. the scout id) when the name has no letters.
  */
 export function suggestInitials(
@@ -23,11 +26,19 @@ export function suggestInitials(
   taken: Iterable<string>,
   fallback = ''
 ): string {
-  const letter = (s: string | null | undefined) => (s ?? '').match(/[A-Za-z]/)?.[0] ?? '';
-  const base = (letter(first) + letter(last)).toUpperCase() || fallback.toUpperCase();
+  const letters = (v: string | null | undefined) => (v ?? '').replace(/[^A-Za-z]/g, '');
+  const f = letters(first);
+  const l = letters(last);
+  const base = (f.slice(0, 1) + l.slice(0, 1)).toUpperCase() || fallback.toUpperCase();
   const used = new Set([...taken].map((c) => c.toLowerCase()));
-  let candidate = base;
-  for (let n = 2; used.has(candidate.toLowerCase()); n++) candidate = `${base}${n}`;
+  const free = (c: string) => c.length > 0 && !used.has(c.toLowerCase());
+  const three = [
+    l.length > 1 ? base + l[1].toLowerCase() : '',
+    f.length > 1 && l ? f[0].toUpperCase() + f[1].toLowerCase() + l[0].toUpperCase() : ''
+  ];
+  for (const c of [base, ...three]) if (free(c)) return c;
+  let candidate = `${base}2`;
+  for (let n = 3; !free(candidate); n++) candidate = `${base}${n}`;
   return candidate;
 }
 

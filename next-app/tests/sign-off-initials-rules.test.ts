@@ -6,8 +6,16 @@ describe('sign-off initials rules', () => {
     expect(suggestInitials('Kara', 'Pitt-D’Andrea', ['PB'])).toBe('KP');
   });
 
-  it('SuggestInitials_AddsANumberIfTaken_IgnoringCase', () => {
-    expect(suggestInitials('Kara', 'Pitt', ['kp', 'KP2'])).toBe('KP3');
+  it('SuggestInitials_TriesASecondLetterOfTheLastName_WhenTaken', () => {
+    expect(suggestInitials('Kara', 'Pitt', ['kp'])).toBe('KPi');
+  });
+
+  it('SuggestInitials_ThenASecondLetterOfTheFirstName', () => {
+    expect(suggestInitials('Kara', 'Pitt', ['KP', 'KPi'])).toBe('KaP');
+  });
+
+  it('SuggestInitials_AddsANumber_OnlyWhenThreeLettersAreTaken_IgnoringCase', () => {
+    expect(suggestInitials('Kara', 'Pitt', ['kp', 'kpi', 'KAP', 'KP2'])).toBe('KP3');
   });
 
   it('SuggestInitials_FallsBack_WhenTheNameHasNoLetters', () => {
