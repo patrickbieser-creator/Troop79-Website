@@ -233,6 +233,8 @@
   width: 100%;
   padding: var(--admin-space-2) var(--admin-space-3);
   font: inherit;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-900);
   background: var(--admin-field-bg);
   border: 1px solid var(--admin-gray-300);
   border-radius: var(--admin-radius-sm);
