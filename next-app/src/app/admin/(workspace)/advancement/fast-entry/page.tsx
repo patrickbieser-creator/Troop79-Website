@@ -12,6 +12,7 @@
  * rank_requirements) and seeds the Client cards.
  */
 
+import { loadSignOffChoices } from '@/lib/sign-off-pickers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import { requireCapability } from '@/lib/require-capability';
@@ -73,7 +74,7 @@ async function loadFastEntry(): Promise<{
       .select('id, display_name, current_rank, is_webelos')
       .or('active.eq.true,is_webelos.eq.true')
       .order('display_name'),
-    supabase.from('leaders').select('code, name').order('code'),
+    loadSignOffChoices(supabase), // retired codes leave the picker
     // Ranks, rank/MB requirement trees and merit badges come from the cached catalog (they only change when a
     // leader saves Lookups) instead of 4 fresh reads - one of them a paginated ~1.7k-row table - per page load.
     loadAdvancementCatalog(),
@@ -96,7 +97,7 @@ async function loadFastEntry(): Promise<{
       is_webelos: boolean;
     }[]
   ).map(({ is_webelos, ...sc }) => (is_webelos ? { ...sc, display_name: `${sc.display_name} (Webelos)` } : sc));
-  const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
+  const leaders = leadersRes;
   // Same orders the direct reads used: ranks by sort_order (already), requirements by parent then sort_order
   // (buildTree sorts siblings), badges by name.
   const ranks = catalogData.ranks;

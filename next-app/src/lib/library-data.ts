@@ -731,7 +731,8 @@ export async function loadActiveScoutsList(
  */
 async function signerCode(supabase: SupabaseClient, reviewer: string, personId: number | null): Promise<string> {
   if (personId == null) return reviewer;
-  const { data } = await supabase.from('leaders').select('code').eq('person_id', personId).order('code').limit(1).maybeSingle();
+  // Their active code only: retired initials leave the Signed Off By lists (Plans/Sign-Off-Initials.md).
+  const { data } = await supabase.from('leaders').select('code').eq('person_id', personId).is('retired_at', null).maybeSingle();
   const code = (data as { code: string | null } | null)?.code?.trim();
   if (code) return code;
   const initials = initialsFor(reviewer);

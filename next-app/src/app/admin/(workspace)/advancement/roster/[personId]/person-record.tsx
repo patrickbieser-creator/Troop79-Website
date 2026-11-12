@@ -53,6 +53,7 @@ import { HistoryFact } from './history-card';
 import { HistorySection } from './history-section';
 import { HistoryDialog, type HistoryView } from './history-dialog';
 import { SendSignInLink, type SendLinkResult } from './send-sign-in-link';
+import { InitialsBlock } from './initials-block';
 import { FamilyAddedNotice, PendingBanner } from './pending-banner';
 import { currentValuesFor, type SectionKey } from './pending-map';
 import {
@@ -385,7 +386,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
             from={from}
             active={status.active}
             scout={scout}
-            leader={record.leader}
+            leader={record.initials ? { code: record.initials.code } : null}
             emailCount={emails.length}
             relationshipCount={relationships.length}
             roleCount={roles.length}
@@ -476,6 +477,15 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
                 </div>
               )}
             </div>
+          </SideCard>
+
+          <SideCard title="Sign-off initials">
+            <InitialsBlock
+              personId={record.personId}
+              name={name}
+              initials={record.initials}
+              suggestion={record.initialsSuggestion}
+            />
           </SideCard>
 
           <SideCard title="Where they appear">

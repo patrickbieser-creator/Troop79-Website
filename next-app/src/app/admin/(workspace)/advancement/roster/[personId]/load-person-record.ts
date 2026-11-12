@@ -13,6 +13,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { centralToday } from '@/lib/dates';
+import { suggestInitials } from '@/lib/sign-off-initials';
 import { getPersonDetail, getPersonEmails } from '../person-actions';
 import { getPersonHistorySummary } from './get-person-history';
 
@@ -76,16 +77,23 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
     getPersonDetail(personId),
     getPersonEmails(personId),
     supabase.from('scouts').select(SCOUT_RECORD_COLS).eq('person_id', personId).maybeSingle(),
-    supabase.from('people').select('gender, is_test').eq('id', personId).maybeSingle(),
+    supabase.from('people').select('gender, is_test, first_name, last_name').eq('id', personId).maybeSingle(),
     supabase.from('households').select('id, label').is('system_key', null).order('label'),
-    supabase.from('leaders').select('code, can_login').eq('person_id', personId).limit(1).maybeSingle()
+    // At most one row per person: active, or retired (an archived reuse row has moved to archived_person_id).
+    supabase.from('leaders').select('code, can_login, retired_at').eq('person_id', personId).maybeSingle()
   ]);
   const scout = (scoutRes.data as ScoutRecordRow | null) ?? null;
-  const genderRow = genderRes.data as { gender: string | null; is_test: boolean } | null;
+  const genderRow = genderRes.data as {
+    gender: string | null;
+    is_test: boolean;
+    first_name: string | null;
+    last_name: string | null;
+  } | null;
   const gender = genderRow?.gender ?? null;
   const isTest = genderRow?.is_test ?? false;
-  const leaderRow = leaderRes.data as { code: string; can_login: boolean } | null;
-  const leader = leaderRow ? { code: leaderRow.code, canLogin: leaderRow.can_login } : null;
+  const leaderRow = leaderRes.data as { code: string; can_login: boolean; retired_at: string | null } | null;
+  const leader = leaderRow && !leaderRow.retired_at ? { code: leaderRow.code, canLogin: leaderRow.can_login } : null;
+  const { initials, initialsSuggestion } = await loadInitials(supabase, leaderRow, genderRow);
   const households = ((householdsRes.data ?? []) as { id: number; label: string }[]).map((h) => ({
     id: h.id,
     label: h.label
@@ -118,6 +126,8 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       gender,
       isTest,
       leader,
+      initials,
+      initialsSuggestion,
       rankLabel,
       household,
       households,
@@ -132,6 +142,25 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
 }
 
 type Db = ReturnType<typeof createAdminClient>;
+
+/** The person's sign-off initials and how many entries they sign, or a suggestion when they have none. */
+async function loadInitials(
+  supabase: Db,
+  row: { code: string; retired_at: string | null } | null,
+  name: { first_name: string | null; last_name: string | null } | null
+): Promise<Pick<PersonRecord, 'initials' | 'initialsSuggestion'>> {
+  if (row) {
+    const { count } = await supabase
+      .from('ledger_entries')
+      .select('id', { count: 'exact', head: true })
+      .eq('by', row.code)
+      .is('deleted_at', null);
+    return { initials: { code: row.code, retiredAt: row.retired_at, entries: count ?? 0 }, initialsSuggestion: '' };
+  }
+  const { data } = await supabase.from('leaders').select('code');
+  const taken = ((data ?? []) as { code: string }[]).map((r) => r.code);
+  return { initials: null, initialsSuggestion: suggestInitials(name?.first_name, name?.last_name, taken) };
+}
 
 async function loadRankLabel(supabase: Db, rankId: string | null): Promise<string | null> {
   if (!rankId) return null;

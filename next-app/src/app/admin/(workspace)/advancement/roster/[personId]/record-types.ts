@@ -163,6 +163,10 @@ export interface PersonRecord {
    *  "can sign in", which is derived from the addresses). Also one of the
    *  records deletePerson refuses to orphan. */
   leader: { code: string; canLogin: boolean } | null;
+  /** Sign-off initials (Plans/Sign-Off-Initials.md): the person's active code, or their retired one (retiredAt set),
+   *  with the number of ledger entries signed with it; null = none. `suggestion` pre-fills Add. */
+  initials: { code: string; retiredAt: string | null; entries: number } | null;
+  initialsSuggestion: string;
   rankLabel: string | null;
   household: { id: number; label: string; members: HouseholdMember[] } | null;
   /** Every household, for the Family section's draft picker. */

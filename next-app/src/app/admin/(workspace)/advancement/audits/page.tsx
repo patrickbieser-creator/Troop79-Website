@@ -8,6 +8,7 @@
  * persisted; every check recomputes fresh on every page load.
  */
 
+import { loadSignOffChoices } from '@/lib/sign-off-pickers';
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAuditInput } from './audit-input';
@@ -72,14 +73,14 @@ export default async function AuditsPage() {
   const supabase = createAdminClient();
   const [input, leadersRes] = await Promise.all([
     loadAuditInput(supabase),
-    supabase.from('leaders').select('code, name').order('code')
+    loadSignOffChoices(supabase) // retired codes leave the picker
   ]);
   const [findingsByCheck, duplicateGroups, reconciliation] = await Promise.all([
     Promise.all(CHECKS.map((c) => c.run(input))),
     duplicateRecords.run(input),
     attendanceReconciliation.run(input)
   ]);
-  const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
+  const leaders = leadersRes;
 
   return (
     <>

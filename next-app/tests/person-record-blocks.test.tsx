@@ -115,6 +115,8 @@ function adultRecord(over: Partial<PersonRecordData> = {}): PersonRecordData {
     scout: null,
     gender: null,
     leader: null,
+    initials: null,
+    initialsSuggestion: '',
     rankLabel: null,
     household: { id: 1, label: 'Whitlock', members: [] },
     households: [
@@ -167,6 +169,8 @@ function scoutRecord(over: Partial<PersonRecordData> = {}): PersonRecordData {
     },
     gender: 'M',
     leader: null,
+    initials: null,
+    initialsSuggestion: '',
     rankLabel: 'First Class',
     household: { id: 1, label: 'Whitlock', members: [] },
     households: [{ id: 1, label: 'Whitlock' }],

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { bulkUpdateLedgerEntries } from './actions';
 import type { LedgerEntry } from '@/lib/supabase/types';
+import type { LedgerLeader } from './ledger-table';
 import { DatePickerField } from '../../_components/date-picker-field';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { Notice } from '../../_components/notice';
@@ -30,7 +31,7 @@ const FIELDS: FieldDef[] = [
 interface Props {
   rows: Row[];
   scouts: { id: string; display_name: string }[];
-  leaders: { code: string; name: string }[];
+  leaders: LedgerLeader[];
   onClose: () => void;
   onSaved: (updated: number) => void;
 }
@@ -260,7 +261,7 @@ function FieldInput({
   value: string;
   onChange: (v: string) => void;
   scouts: { id: string; display_name: string }[];
-  leaders: { code: string; name: string }[];
+  leaders: LedgerLeader[];
 }) {
   if (field.type === 'date') {
     return <DatePickerField value={value} onChange={onChange} />;
@@ -290,11 +291,14 @@ function FieldInput({
         onChange={(e) => onChange(e.target.value)}
       >
         <option value="">— Leader (blank) —</option>
-        {leaders.map((l) => (
-          <option key={l.code} value={l.code}>
-            {l.code} — {l.name}
-          </option>
-        ))}
+        {leaders
+          .filter((l) => !l.retired || l.code === value)
+          .map((l) => (
+            <option key={l.code} value={l.code}>
+              {l.code} — {l.name}
+              {l.retired ? ' (retired)' : ''}
+            </option>
+          ))}
         {value && !known && <option value={value}>{value} (custom)</option>}
       </select>
     );

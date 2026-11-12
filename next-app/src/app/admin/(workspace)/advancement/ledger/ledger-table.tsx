@@ -23,6 +23,13 @@ interface SearchParams {
   page?: string;
 }
 
+/** A sign-off code for the ledger: every code names its entries; a retired one is offered only as a row's current value. */
+export interface LedgerLeader {
+  code: string;
+  name: string;
+  retired?: boolean;
+}
+
 export interface LedgerRowVM extends LedgerEntry {
   scoutName: string;
   shortLabel: string;
@@ -70,7 +77,7 @@ function urlWith(base: SearchParams, overrides: Partial<SearchParams>): string {
 interface Props {
   rows: LedgerRowVM[];
   scouts: { id: string; display_name: string }[];
-  leaders: { code: string; name: string }[];
+  leaders: LedgerLeader[];
   sp: SearchParams;
   sort: SortKey;
   dir: 'asc' | 'desc';

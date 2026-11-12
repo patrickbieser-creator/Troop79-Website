@@ -22,6 +22,7 @@ import { saveTeachingSkills, undoTeachingSkillChange, markTeachingSkillChangeRev
 import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
 import { normalizeClassCodes } from '@/lib/requirement-class';
 import { expireMeetingCategories, expirePeopleLists } from '@/lib/people-lists';
+import { suggestInitials } from '@/lib/sign-off-initials';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -1066,33 +1067,36 @@ export async function promoteScoutToAdult(formData: FormData): Promise<Result> {
     .eq('id', scoutId);
   if (updErr) return { ok: false, error: updErr.message };
 
-  // 2. Ensure a linked leaders row so their initials exist as an adult.
+  // 2. Ensure a linked leaders row so their initials exist as an adult: their own code if they have one (a retired
+  //    one comes back), else a new one from their name. Through the initials RPCs (Plans/Sign-Off-Initials.md) so the
+  //    lock and the uniqueness rules are the person record's; a refusal (SQLSTATE T7901) is a sentence, anything
+  //    else is logged and reported generically.
   const { data: linked } = await supabase
     .from('leaders')
-    .select('code')
+    .select('code, retired_at')
     .eq('person_id', scout.person_id)
     .maybeSingle();
   let leaderCode = linked?.code as string | undefined;
+  const initialsFailed = (err: { code?: string; message: string }) => {
+    if (err.code === 'T7901') return { ok: false, error: err.message };
+    console.error('promote: initials RPC failed:', err.code ?? 'unknown');
+    return { ok: false, error: 'Couldn’t set up their sign-off initials. Try again.' };
+  };
+  if (leaderCode && linked?.retired_at) {
+    const { error } = await supabase.rpc('set_leader_initials_retired', { p_person_id: scout.person_id, p_retired: false });
+    if (error) return initialsFailed(error);
+  }
 
   if (!leaderCode) {
-    const base = (
-      (scout.first_name?.[0] ?? '') + (scout.last_name?.[0] ?? '')
-    ).toUpperCase() || scoutId.toUpperCase();
     const { data: existing } = await supabase.from('leaders').select('code');
-    const taken = new Set((existing ?? []).map((r) => r.code as string));
-    let candidate = base;
-    for (let n = 2; taken.has(candidate); n++) candidate = `${base}${n}`;
-    leaderCode = candidate;
-    // name is set here, not left to the people_sync_leader_name trigger —
-    // that trigger only fires on a later UPDATE of people.display_name, not
-    // on this INSERT, so a fresh row needs its initial value written.
-    const { error: insErr } = await supabase.from('leaders').insert({
-      code: candidate,
-      name: scout.display_name,
-      is_person: true,
-      person_id: scout.person_id
+    const candidate = suggestInitials(scout.first_name, scout.last_name, (existing ?? []).map((r) => r.code as string));
+    const { error } = await supabase.rpc('add_leader_initials', {
+      p_person_id: scout.person_id,
+      p_code: candidate,
+      p_can_login: true
     });
-    if (insErr) return { ok: false, error: insErr.message };
+    if (error) return initialsFailed(error);
+    leaderCode = candidate;
   }
 
   // History (Person Editor Rethink, Phase 4): keyed on the scout row like

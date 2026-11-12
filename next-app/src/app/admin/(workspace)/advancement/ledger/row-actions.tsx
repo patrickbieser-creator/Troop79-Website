@@ -8,6 +8,7 @@ import {
   updateLedgerEntry
 } from './actions';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
+import type { LedgerLeader } from './ledger-table';
 import { initialsFor } from '@/lib/initials';
 import { fmtDate } from '@/lib/format-date';
 import { DatePickerField } from '../../_components/date-picker-field';
@@ -20,7 +21,7 @@ import styles from './ledger.module.css';
 interface Props {
   row: LedgerEntry & { scoutName?: string };
   scouts: { id: string; display_name: string }[];
-  leaders: { code: string; name: string }[];
+  leaders: LedgerLeader[];
 }
 
 const KIND_OPTIONS: { value: LedgerKind; label: string }[] = [
@@ -146,7 +147,7 @@ function EditForm({
 }: {
   row: LedgerEntry;
   scouts: { id: string; display_name: string }[];
-  leaders: { code: string; name: string }[];
+  leaders: LedgerLeader[];
   onCancel: () => void;
   onSaved: () => void;
 }) {
@@ -262,11 +263,14 @@ function EditForm({
             className={styles.editInput}
           >
             <option value="">— Leader —</option>
-            {leaders.map((l) => (
-              <option key={l.code} value={l.code}>
-                {l.code} — {l.name}
-              </option>
-            ))}
+            {leaders
+              .filter((l) => !l.retired || l.code === by)
+              .map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.code} — {l.name}
+                  {l.retired ? ' (retired)' : ''}
+                </option>
+              ))}
             {/* Preserve a value that's not in the catalog (e.g. "Camp", "Clinic"). */}
             {by && !leaders.some((l) => l.code === by) && (
               <option value={by}>{by} (custom)</option>

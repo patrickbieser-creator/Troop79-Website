@@ -20,7 +20,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import type { LedgerEntry, LedgerKind, Scout } from '@/lib/supabase/types';
 import { LedgerToolbar } from './ledger-toolbar';
-import { LedgerTable } from './ledger-table';
+import { LedgerTable, type LedgerLeader } from './ledger-table';
 import { PageTitle } from '../../_components/page-title';
 import { buttonClass } from '../../../_components/button';
 import styles from './ledger.module.css';
@@ -83,10 +83,13 @@ async function loadLedger(parsed: ReturnType<typeof parseSearch>) {
   // their own query each navigation (Plans/Performance-Review-2026-08-27.md #16).
   const [scoutsRes, leadersRes, catalog] = await Promise.all([
     supabase.from('scouts').select('id, display_name').order('display_name'),
-    supabase.from('leaders').select('code, name').order('code'),
+    supabase.from('leaders').select('code, name, retired_at').order('code'),
     loadAdvancementCatalog()
   ]);
-  const leaderList = (leadersRes.data ?? []) as { code: string; name: string }[];
+  // Every code, so a retired one still names its old entries; `retired` keeps it out of the Signed Off By pickers.
+  const leaderList: LedgerLeader[] = ((leadersRes.data ?? []) as { code: string; name: string; retired_at: string | null }[]).map(
+    (l) => ({ code: l.code, name: l.name, retired: l.retired_at != null })
+  );
   const scoutList = (scoutsRes.data ?? []) as Pick<Scout, 'id' | 'display_name'>[];
   const scoutMap = new Map<string, string>();
   for (const s of scoutList) scoutMap.set(s.id, s.display_name);
