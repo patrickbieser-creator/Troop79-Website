@@ -1,6 +1,6 @@
 # Sign-Off Initials on the Person Record
 
-**Status:** Parked
+**Status:** SHIPPED v1.265.0 (2026-11-12, cf8fb138; suggestion 8b9e156f)
 **Parked:** 2026-10-26
 **Priority:** Medium
 

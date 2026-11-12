@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 78 — Webelos, Initials, Money Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Webelos on the roster, sign-off initials, and a new event Money screen</h1>
+        <p class="subtitle">Session 78. Webelos became real roster records with their own troop IDs, and the seven visiting families were converted. Leaders can now manage sign-off initials from a person's record. The event Money tab was rebuilt as a ledger with a panel for each person. Name suffixes, guest pricing, and a merge bug that had stranded Kara's finance access were also fixed.</p>
+        <div class="meta">
+            <span>&#128197; November 12, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.265.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">9</div><div class="label">Feature and fix commits, all live</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Production database changes</div></div>
+            <div class="stat"><div class="number">7</div><div class="label">Webelos now on the roster (F01&ndash;F07)</div></div>
+            <div class="stat"><div class="number">8,337</div><div class="label">Tests passing (was 8,159)</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> the seven Webelos are on the roster and signed up for Sunday's Climbing night at the scout price. Any person can be given sign-off initials without a database edit. Leaders run an event's money from one ledger with a panel per person, and every payment, amount change and void now records who made it and why.
+        </div>
+        <h3>People</h3>
+        <ul>
+            <li><strong>Name suffixes:</strong> Jr., Sr. and III show after the last name everywhere (&ldquo;Gabe Helkowski Sr.&rdquo;). Webelos parent names were corrected from Patrick's list.</li>
+            <li><strong>Sign-off initials:</strong> leaders add, rename, retire and restore them on a person's record. Renaming updates every advancement entry signed with the old initials. Retired initials can go to someone new after five years. The suggestion tries three letters (KPi, then KaP) before a number. Kara added hers: KPD.</li>
+            <li><strong>Merges:</strong> merging a duplicate now moves their permissions to the person kept. Kara's finance access had been left on her old duplicate record; it was moved, and no other record had the same problem. A merge where both people had initials no longer fails.</li>
+        </ul>
+        <h3>Webelos</h3>
+        <ul>
+            <li>A Webelos tab on the Roster, troop IDs in the next cohort (F01&hellip;), sign-up as &ldquo;Webelos&rdquo; at the scout price, and advancement tracked but kept out of reports and Clipboards until they cross over.</li>
+            <li><strong>Cross over&hellip;</strong> makes them an active scout with the same ID and saves their BSA ID. Advancement they earned as a Webelos keeps its dates. <strong>Undo crossover</strong> reverses a mistake.</li>
+            <li>The seven visiting Webelos were converted. Logan's, Kellan's and Hank's guest sign-ups and payments moved onto their new records.</li>
+        </ul>
+        <h3>Event money</h3>
+        <ul>
+            <li>Guests now carry a price and count toward the household total. Before this, Webelos guests showed as owing $0.</li>
+            <li>The Money tab is now a summary band, a read-only ledger with totals, and a panel for each person. In the panel a leader sets what the person owes (the tier, a custom amount with a reason, or Not paying), records part payments on any past date, refunds, credits an overpayment, and sees the person's history with initials and void reasons. Patrick: &ldquo;the screen looks good.&rdquo;</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-485</td><td>Name suffixes are a people column, built into the displayed name</td></tr>
+                <tr><td>D-486</td><td>Webelos are roster scouts kept inactive, so existing screens leave them out automatically; reports read a ledger that excludes them</td></tr>
+                <tr><td>D-487</td><td>Sign-off initials: one per person, renaming updates every ledger entry, reuse allowed after five years</td></tr>
+                <tr><td>D-488</td><td>A database trigger completes each merge: permissions follow the person kept, and two sets of initials can't block it</td></tr>
+                <tr><td>D-489</td><td>Event Money is a ledger plus a person panel; Not going and Not paying are shown separately</td></tr>
+                <tr><td>D-490</td><td>Database refusals meant for the screen use their own error code; any other error shows a generic message</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick uses the Money tab over the next few days and reports any problems. BSA IDs for the seven Webelos, when he has them.</li>
+            <li>Webelos follow-ups: let a parent act for their Webelos on the Meeting Board, a way to mark a Webelos as having left, and an EmailOctopus tag.</li>
+            <li>Still open: the <code>next</code> upgrade, merge_people's remaining columns, and requirement classes steps 6&ndash;7.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>supabase/migrations/20270101110000&ndash;150000</td><td>Suffix, Webelos, sign-off initials, merge follow-ups, and the money ledger tables</td></tr>
+                <tr><td>admin rosters/[id]/money/*</td><td>Money tab rebuilt as six components plus a stylesheet</td></tr>
+                <tr><td>admin roster/[personId]/*</td><td>Crossover card, sign-off initials card, Suffix field</td></tr>
+                <tr><td>finance/actions.ts, lib/event-money.ts</td><td>Amount-change writer, payment dates, void reason, history signed with initials</td></tr>
+                <tr><td>events/[id] sign-up forms, lib/guest-payload.ts</td><td>Guest prices; Webelos in the household pulldown</td></tr>
+                <tr><td>~20 report and pool readers</td><td>Reports read the ledger without Webelos; youth pools include Webelos</td></tr>
+                <tr><td>tests (14 new files)</td><td>8,159 &rarr; 8,337 tests</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
