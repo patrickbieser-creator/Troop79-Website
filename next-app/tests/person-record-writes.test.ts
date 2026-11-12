@@ -233,6 +233,48 @@ describe('Phase 2 section writes — one section, one action, field-level audit 
     expect(res.error).toMatch(/First and last name are required/);
   });
 
+  it('UpdatePersonDemographics_SavesASuffix_AndTheNameShowsIt', async () => {
+    const fd = new FormData();
+    fd.set('suffix', ' Sr. ');
+    const res = await updatePersonDemographics(adultId, fd);
+    expect(res).toEqual({ ok: true });
+    const { data } = await admin.from('people').select('suffix, display_name').eq('id', adultId).single();
+    expect(data).toEqual({ suffix: 'Sr.', display_name: 'ZZWrite Adult Sr.' });
+  });
+
+  it('UpdatePersonDemographics_RefusesASuffixLongerThanTenCharacters', async () => {
+    const fd = new FormData();
+    fd.set('suffix', 'the Third Esq');
+    const res = await updatePersonDemographics(adultId, fd);
+    expect(res.error).toMatch(/at most 10 characters/);
+  });
+
+  it('UpdateScoutIdentity_SavesASuffix_AndTheScoutsMirrorFollows', async () => {
+    const res = await updateScoutIdentity(SCOUT_ID, {
+      first_name: 'ZZWritten',
+      last_name: 'Scout',
+      suffix: 'Jr.',
+      patrol: 'ZZ Owls',
+      bsa_member_id: '999000111'
+    });
+    expect(res).toEqual({ ok: true });
+    const { data } = await admin.from('scouts').select('display_name').eq('id', SCOUT_ID).single();
+    expect(data?.display_name).toBe('ZZWritten Scout Jr.');
+  });
+
+  it('UpdateScoutIdentity_WithoutASuffixKey_KeepsTheStoredSuffix', async () => {
+    await admin.from('people').update({ suffix: 'III' }).eq('id', scoutPersonId);
+    const res = await updateScoutIdentity(SCOUT_ID, {
+      first_name: 'ZZWritten',
+      last_name: 'Scout',
+      patrol: 'ZZ Owls',
+      bsa_member_id: '999000111'
+    });
+    expect(res).toEqual({ ok: true });
+    const { data } = await admin.from('people').select('suffix').eq('id', scoutPersonId).single();
+    expect(data?.suffix).toBe('III');
+  });
+
   it('SetPersonIsTest_WritesTheFlag_AndAuditsIt', async () => {
     const res = await setPersonIsTest(adultId, true);
     const { data } = await admin.from('people').select('is_test').eq('id', adultId).single();

@@ -95,6 +95,7 @@ export const FIELD_LABEL: Record<EditableScoutField, string> = {
 export const EDITABLE_PERSON_FIELDS = [
   'first_name',
   'last_name',
+  'suffix',
   'nickname',
   'birthdate',
   'primary_email',
@@ -143,6 +144,7 @@ export const LEADER_PERSON_FIELDS = [
 export const PERSON_FIELD_LABEL: Record<EditablePersonField, string> = {
   first_name: 'First Name',
   last_name: 'Last Name',
+  suffix: 'Suffix',
   nickname: 'Nickname',
   birthdate: 'Birthdate',
   primary_email: 'Email',

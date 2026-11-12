@@ -6,7 +6,7 @@ import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { fmtDate } from '@/lib/format-date';
-import { writePersonDemographics, type PersonDemographicsFields } from '@/lib/write-person-demographics';
+import { SUFFIX_MAX, writePersonDemographics, type PersonDemographicsFields } from '@/lib/write-person-demographics';
 import { LEADER_PERSON_FIELDS, type FieldValue } from '@/lib/change-requests';
 import { requestChallengeForPerson, TOKEN_TTL_MINUTES } from '@/lib/identity-challenge';
 import {
@@ -621,6 +621,7 @@ export async function getPersonDetail(personId: number): Promise<PersonDetail> {
  * FIELD NAMES only (D-257).
  */
 const PERSON_TEXT_KEYS = [
+  'suffix',
   'nickname',
   'birthdate',
   'primary_phone',
@@ -638,6 +639,8 @@ const PERSON_TEXT_KEYS = [
 const PERSON_DETAIL_LABEL: Record<string, string> = {
   first_name: 'First name',
   last_name: 'Last name',
+  suffix: 'Suffix',
+  nickname: 'Nickname',
   birthdate: 'Birthdate',
   gender: 'Gender',
   primary_email: 'Email',
@@ -677,7 +680,7 @@ export async function updatePersonDemographics(personId: number, formData: FormD
     }
     patch.first_name = firstName;
     patch.last_name = lastName;
-    // display_name is derived by the people_derive_display_name trigger (nickname-or-first + last).
+    // display_name is derived by the people_derive_display_name trigger (nickname-or-first + last + suffix).
     patch.display_name = `${firstName} ${lastName}`;
   }
   if (formData.has('gender')) {
@@ -687,6 +690,9 @@ export async function updatePersonDemographics(personId: number, formData: FormD
   }
   for (const key of PERSON_TEXT_KEYS) {
     if (formData.has(key)) patch[key] = text(key);
+  }
+  if (patch.suffix && patch.suffix.length > SUFFIX_MAX) {
+    return { ok: false, error: `A suffix is at most ${SUFFIX_MAX} characters (Jr., Sr., III).` };
   }
 
   const supabase = createAdminClient();

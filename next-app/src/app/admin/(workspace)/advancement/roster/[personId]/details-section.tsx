@@ -3,7 +3,7 @@
 /**
  * Details section (Phase 2). Two shapes, one shell:
  *
- *   Adult — first/last name (required), birthdate, BSA member ID, YPT
+ *   Adult — first/last name (required), suffix, nickname, birthdate, BSA member ID, YPT
  *           completed, health form, things we should know. One action:
  *           updatePersonDemographics, sent ONLY these keys.
  *   Scout — birthdate, gender, school, grade, swim class, junior-leader
@@ -36,6 +36,7 @@ import styles from './person-record.module.css';
 export interface AdultDetailsDraft extends Record<string, string> {
   first_name: string;
   last_name: string;
+  suffix: string;
   nickname: string;
   birthdate: string;
   bsa_member_id: string;
@@ -133,6 +134,7 @@ export function AdultDetailsSection({
         <ReadRows>
           <ReadRow label="First name">{v.first_name}</ReadRow>
           <ReadRow label="Last name">{v.last_name}</ReadRow>
+          <ReadRow label="Suffix">{v.suffix}</ReadRow>
           <ReadRow label="Nickname">{v.nickname}</ReadRow>
           <ReadRow label="Birthdate">
             <Birthdate value={v.birthdate} today={today} />
@@ -170,6 +172,16 @@ export function AdultDetailsSection({
                 disabled={form.busy}
                 aria-invalid={d.last_name.trim() ? undefined : true}
                 onChange={(e) => form.setField('last_name', e.target.value)}
+              />
+            </Field>
+            <Field label="Suffix">
+              <input
+                type="text"
+                value={d.suffix}
+                disabled={form.busy}
+                maxLength={10}
+                placeholder="e.g. Jr., Sr., III"
+                onChange={(e) => form.setField('suffix', e.target.value)}
               />
             </Field>
             <Field label="Nickname">

@@ -48,6 +48,7 @@ interface PersonFieldRow {
   display_name: string;
   first_name: string | null;
   last_name: string | null;
+  suffix: string | null;
   nickname: string | null;
   birthdate: string | null;
   primary_email: string | null;
@@ -129,6 +130,7 @@ export default async function ProfilePage({
           relationship: relationshipByPerson.get(r.id) ?? null,
           first_name: r.first_name,
           last_name: r.last_name,
+          suffix: r.suffix,
           nickname: r.nickname,
           birthdate: r.birthdate,
           primary_email: r.primary_email,
@@ -276,6 +278,7 @@ export default async function ProfilePage({
         relationship: relationshipByPerson.get(r.id) ?? null,
         first_name: r.first_name,
         last_name: r.last_name,
+        suffix: r.suffix,
         nickname: r.nickname,
         birthdate: r.birthdate,
         primary_email: r.primary_email,

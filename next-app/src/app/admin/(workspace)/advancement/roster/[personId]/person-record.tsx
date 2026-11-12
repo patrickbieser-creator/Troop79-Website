@@ -276,6 +276,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
                 saved={{
                   first_name: str(f.first_name),
                   last_name: str(f.last_name),
+                  suffix: str(f.suffix),
                   nickname: str(f.nickname),
                   bsa_member_id: str(f.bsa_member_id),
                   patrol: scout.patrol ?? ''
@@ -307,6 +308,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
               saved={{
                 first_name: str(f.first_name),
                 last_name: str(f.last_name),
+                suffix: str(f.suffix),
                 nickname: str(f.nickname),
                 birthdate: str(f.birthdate),
                 bsa_member_id: str(f.bsa_member_id),

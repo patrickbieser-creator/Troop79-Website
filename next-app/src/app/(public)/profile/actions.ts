@@ -20,6 +20,7 @@ import { sendEmail, renderEmail, troopEmail } from '@/lib/email';
 import { addPersonEmail, setPrimaryEmail, removePersonEmail, type PersonEmailLabel } from '@/lib/person-emails';
 import { loadScoutRows } from '@/lib/scout-row';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { SUFFIX_MAX } from '@/lib/write-person-demographics';
 
 const PROFILE_PATH = '/profile';
 
@@ -258,6 +259,14 @@ export async function submitPersonChangeRequestAction(formData: FormData): Promi
     : undefined;
   if (!adult) {
     redirect(`${PROFILE_PATH}?err=${encodeURIComponent('That person is not in your household.')}`);
+  }
+  // people_suffix_length would refuse it at approval time; say so now, while the family is here.
+  if (String(formData.get('suffix') ?? '').trim().length > SUFFIX_MAX) {
+    redirect(
+      `${PROFILE_PATH}?member=${encodeURIComponent(memberParam('adult', String(personId)))}&err=${encodeURIComponent(
+        `A suffix is at most ${SUFFIX_MAX} characters (Jr., Sr., III).`
+      )}`
+    );
   }
 
   await queueChangeRequest({

@@ -70,6 +70,7 @@ describe('HouseholdReadOnly', () => {
         personId: 7,
         displayName: 'Pat S',
         nickname: null,
+        suffix: null,
         relationship: 'Dad',
         first_name: 'Pat',
         last_name: 'S',

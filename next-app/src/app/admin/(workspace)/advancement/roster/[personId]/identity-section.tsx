@@ -2,7 +2,7 @@
 
 /**
  * Identity section (scouts only, Phase 2): internal id (read-only), first
- * and last name (required), BSA member ID, patrol, and the derived rank.
+ * and last name (required), suffix, nickname, BSA member ID, patrol, and the derived rank.
  * Save → updateScoutIdentity, which writes the scouts row AND the linked
  * person's name/BSA id — one action, only this section's fields.
  */
@@ -24,6 +24,7 @@ import styles from './person-record.module.css';
 export interface IdentityDraft extends Record<string, string> {
   first_name: string;
   last_name: string;
+  suffix: string;
   nickname: string;
   bsa_member_id: string;
   patrol: string;
@@ -73,6 +74,7 @@ export function IdentitySection({
           </ReadRow>
           <ReadRow label="First name">{v.first_name}</ReadRow>
           <ReadRow label="Last name">{v.last_name}</ReadRow>
+          <ReadRow label="Suffix">{v.suffix}</ReadRow>
           <ReadRow label="Nickname">{v.nickname}</ReadRow>
           <ReadRow label="BSA member ID">{v.bsa_member_id ? <span className={styles.mono}>{v.bsa_member_id}</span> : null}</ReadRow>
           <ReadRow label="Patrol">{v.patrol}</ReadRow>
@@ -103,6 +105,16 @@ export function IdentitySection({
                 disabled={form.busy}
                 aria-invalid={d.last_name.trim() ? undefined : true}
                 onChange={(e) => form.setField('last_name', e.target.value)}
+              />
+            </Field>
+            <Field label="Suffix">
+              <input
+                type="text"
+                value={d.suffix}
+                disabled={form.busy}
+                maxLength={10}
+                placeholder="e.g. Jr., Sr., III"
+                onChange={(e) => form.setField('suffix', e.target.value)}
               />
             </Field>
             <Field label="Nickname">

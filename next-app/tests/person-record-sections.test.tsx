@@ -122,6 +122,7 @@ describe('Person record sections — read → Edit → Save/Cancel, one at a tim
       'health_form_date',
       'last_name',
       'nickname',
+      'suffix',
       'things_we_should_know',
       'ypt_completed'
     ]);
@@ -129,6 +130,17 @@ describe('Person record sections — read → Edit → Save/Cancel, one at a tim
     await within(details).findByText('Saved just now');
     expect(within(details).getByText('Dee')).toBeTruthy();
     expect(within(details).queryByRole('textbox')).toBeNull();
+  });
+
+  it('Leader_AddsASuffix_InDetails_SendsIt', async () => {
+    const user = userEvent.setup();
+    render(<PersonRecord record={adultRecord()} from="adult" />);
+    const details = section('Details');
+    await user.click(within(details).getByRole('button', { name: 'Edit' }));
+    await user.type(within(details).getByLabelText('Suffix'), 'Sr.');
+    await user.click(within(details).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updatePersonDemographics).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(updatePersonDemographics).mock.calls[0][1].get('suffix')).toBe('Sr.');
   });
 
   it('Leader_CancelsSectionEdit_RestoresLastSavedValues_NotPageLoadValues', async () => {

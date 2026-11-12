@@ -17,9 +17,13 @@ import { expirePeopleLists } from '@/lib/people-lists';
  * this function does not re-normalise, so two editors with different
  * normalisation rules can't silently disagree on what "empty" means.
  */
+/** people.suffix ("Jr.", "Sr.", "III") is at most this long — the people_suffix_length CHECK. */
+export const SUFFIX_MAX = 10;
+
 export interface PersonDemographicsFields {
   first_name?: string | null;
   last_name?: string | null;
+  suffix?: string | null;
   nickname?: string | null;
   display_name?: string | null;
   primary_email?: string | null;

@@ -3,7 +3,7 @@
 import { revalidatePath, updateTag } from 'next/cache';
 import { requireCapability } from '@/lib/require-capability';
 import { createAdminClient } from '@/lib/supabase/server';
-import { writePersonDemographics } from '@/lib/write-person-demographics';
+import { SUFFIX_MAX, writePersonDemographics } from '@/lib/write-person-demographics';
 import { recordAudit, type AuditDetail } from '@/lib/audit';
 import { auditLedgerBulk } from '@/lib/ledger-audit';
 import { gradeFromGradYear, gradeLabel, SWIM_CLASS_LABEL } from '@/lib/demographics';
@@ -111,6 +111,8 @@ export interface ScoutIdentityInput {
   last_name: string;
   /** What the scout goes by; blank = none. Optional so older callers keep working. */
   nickname?: string;
+  /** "Jr.", "Sr.", "III"; blank = none. Absent = leave the stored suffix alone. */
+  suffix?: string;
   patrol: string;
   bsa_member_id: string;
 }
@@ -450,6 +452,11 @@ export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityI
   const patrol = input.patrol.trim() || null;
   const bsaMemberId = input.bsa_member_id.trim() || null;
   const nickname = input.nickname?.trim() || null;
+  const suffixSent = input.suffix !== undefined;
+  const suffix = input.suffix?.trim() || null;
+  if (suffix && suffix.length > SUFFIX_MAX) {
+    return { ok: false, error: `A suffix is at most ${SUFFIX_MAX} characters (Jr., Sr., III).` };
+  }
 
   const supabase = createAdminClient();
   const { data: existing, error: fetchErr } = await supabase
@@ -465,14 +472,17 @@ export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityI
   }
   const { data: personRow } = await supabase
     .from('people')
-    .select('bsa_member_id, nickname')
+    .select('bsa_member_id, nickname, suffix')
     .eq('id', was.person_id)
     .maybeSingle();
-  const wasBsa = (personRow as { bsa_member_id: string | null } | null)?.bsa_member_id ?? null;
-  const wasNickname = (personRow as { nickname: string | null } | null)?.nickname ?? null;
+  const wasPerson = personRow as { bsa_member_id: string | null; nickname: string | null; suffix: string | null } | null;
+  const wasBsa = wasPerson?.bsa_member_id ?? null;
+  const wasNickname = wasPerson?.nickname ?? null;
+  const wasSuffix = wasPerson?.suffix ?? null;
+  const nextSuffix = suffixSent ? suffix : wasSuffix;
 
-  // Matches what the people trigger derives (nickname-or-first + last); the scouts mirror follows people anyway.
-  const displayName = `${nickname ?? firstName} ${lastName}`;
+  // Matches what the people trigger derives (nickname-or-first + last + suffix); the scouts mirror follows people anyway.
+  const displayName = [nickname ?? firstName, lastName, nextSuffix].filter(Boolean).join(' ');
   const { error } = await supabase
     .from('scouts')
     .update({ first_name: firstName, last_name: lastName, display_name: displayName, patrol })
@@ -483,6 +493,7 @@ export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityI
     first_name: firstName,
     last_name: lastName,
     nickname,
+    ...(suffixSent ? { suffix } : {}),
     display_name: displayName,
     bsa_member_id: bsaMemberId
   });
@@ -495,6 +506,7 @@ export async function updateScoutIdentity(scoutId: string, input: ScoutIdentityI
   if (was.first_name !== firstName) details.push({ field: 'First name', from: was.first_name, to: firstName });
   if (was.last_name !== lastName) details.push({ field: 'Last name', from: was.last_name, to: lastName });
   if ((was.patrol ?? null) !== patrol) details.push({ field: 'Patrol', from: blank(was.patrol), to: blank(patrol) });
+  if (wasSuffix !== nextSuffix) details.push({ field: 'Suffix', from: blank(wasSuffix), to: blank(nextSuffix) });
   if (wasNickname !== nickname) details.push({ field: 'Nickname', from: blank(wasNickname), to: blank(nickname) });
   if (wasBsa !== bsaMemberId) details.push({ field: 'BSA member ID', from: blank(wasBsa), to: blank(bsaMemberId) });
 

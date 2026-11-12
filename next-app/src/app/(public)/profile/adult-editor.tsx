@@ -18,6 +18,7 @@ export interface AdultProfileFields {
   relationship: string | null;
   first_name: string | null;
   last_name: string | null;
+  suffix: string | null;
   nickname: string | null;
   birthdate: string | null;
   primary_email: string | null;
@@ -124,6 +125,23 @@ export default function AdultEditor({
               className={styles.editInput}
               value={values.last_name ?? ''}
               onChange={(e) => onChange('last_name', e.target.value)}
+            />
+          )}
+        </EditField>
+        <EditField
+          label="Suffix"
+          name="suffix"
+          queued={queued}
+          previous={displayValue(adult.suffix)}
+        >
+          {(a) => (
+            <input
+              {...a}
+              className={styles.editInput}
+              maxLength={10}
+              placeholder="e.g. Jr., Sr., III"
+              value={values.suffix ?? ''}
+              onChange={(e) => onChange('suffix', e.target.value)}
             />
           )}
         </EditField>
