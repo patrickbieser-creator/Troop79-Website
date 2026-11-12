@@ -85,7 +85,8 @@ const TierPicker = memo(function TierPicker({
   tierId,
   days,
   onTierSelect,
-  onDaysChange
+  onDaysChange,
+  label
 }: {
   personKey: string;
   opts: EventPrice[];
@@ -95,6 +96,8 @@ const TierPicker = memo(function TierPicker({
   days: number;
   onTierSelect: (key: string, priceId: number) => void;
   onDaysChange: (key: string, value: number) => void;
+  /** Accessible name for the pulldown when "Price" alone is ambiguous (a guest row). */
+  label?: string;
 }) {
   const dayId = useId();
   if (opts.length === 0) return null;
@@ -108,6 +111,7 @@ const TierPicker = memo(function TierPicker({
           </label>
           <SelectInput
             id={`${dayId}-price`}
+            aria-label={label}
             className={styles.quietPick}
             value={tierId ?? ''}
             onChange={(e) => e.target.value && onTierSelect(personKey, Number(e.target.value))}
@@ -821,7 +825,9 @@ export default function PersonFirstForm({
         phone: householdGuests.find((g) => g.personId === e.person_id)?.phone ?? '',
         // A saved guest marked 'no' comes back toggled to Can't make it — the
         // same thing a member's row does.
-        attending: e.status === 'yes' || e.status === 'waitlist'
+        attending: e.status === 'yes' || e.status === 'waitlist',
+        priceId: e.price_id,
+        days: e.days
       }))
   );
   // "Saving changes…" overlay from the moment the form submits (save-feedback.tsx).
@@ -875,6 +881,33 @@ export default function PersonFirstForm({
   );
   const scoutAutoTier = useMemo(() => pickAutoTier(scoutTiers), [scoutTiers]);
   const adultAutoTier = useMemo(() => pickAutoTier(adultTiers), [adultTiers]);
+
+  // A named guest is priced like a member of their kind (Patrick, 2026-11-12: Webelos guests came
+  // through at $0): youth classes take the scout tiers, an adult guest the adult tiers. A single tier
+  // is implied; otherwise the guest's own pick stands while it is still offered to their class.
+  const guestTiersFor = useCallback(
+    (cls: GuestRowValue['cls']) =>
+      cls === 'adult_guest' ? { tiers: adultTiers, auto: adultAutoTier } : { tiers: scoutTiers, auto: scoutAutoTier },
+    [adultTiers, adultAutoTier, scoutTiers, scoutAutoTier]
+  );
+  const pricedGuestRows = useMemo(
+    () =>
+      guestRows.map((g) => {
+        const { tiers, auto } = guestTiersFor(g.cls);
+        const chosen = auto ?? tiers.find((t) => t.id === g.priceId) ?? null;
+        return { ...g, priceId: chosen?.id ?? null, days: chosen?.per === 'day' ? (g.days ?? 1) : null };
+      }),
+    [guestRows, guestTiersFor]
+  );
+  const handleGuestTier = useCallback(
+    (key: string, priceId: number) =>
+      setGuestRows((rows) => rows.map((r, i) => (`g:${i}` === key ? { ...r, priceId } : r))),
+    []
+  );
+  const handleGuestDays = useCallback(
+    (key: string, n: number) => setGuestRows((rows) => rows.map((r, i) => (`g:${i}` === key ? { ...r, days: n } : r))),
+    []
+  );
   const scoutQuestions = useMemo(
     () => questions.filter((q) => q.applies_to === 'both' || q.applies_to === 'scouts'),
     [questions]
@@ -967,8 +1000,25 @@ export default function PersonFirstForm({
         math: t.per === 'day' ? `${money(t.amount)} × ${d} days` : null
       });
     }
+    // Named guests count too — they ride with an attending member, so only while someone attends.
+    const someoneAttends =
+      scouts.some((s) => scoutChoice[s.id] === 'yes') || adults.some((a) => adultChoice[a.key] === 'full');
+    if (signup.guest_mode === 'named' && someoneAttends) {
+      pricedGuestRows.forEach((g, i) => {
+        if (!g.attending || g.priceId == null) return;
+        const t = prices.find((p) => p.id === g.priceId);
+        if (!t) return;
+        const d = t.per === 'day' ? (g.days ?? 1) : 1;
+        out.push({
+          name: g.name.trim() || `Guest ${i + 1}`,
+          label: t.label,
+          amount: t.amount * d,
+          math: t.per === 'day' ? `${money(t.amount)} × ${d} days` : null
+        });
+      });
+    }
     return out;
-  }, [scoutChoice, adultChoice, tier, days, scouts, adults, prices, scoutAutoTier, adultAutoTier]);
+  }, [scoutChoice, adultChoice, tier, days, scouts, adults, prices, scoutAutoTier, adultAutoTier, signup.guest_mode, pricedGuestRows]);
 
   const total = lines.reduce((n, l) => n + l.amount, 0);
 
@@ -1260,10 +1310,26 @@ export default function PersonFirstForm({
       )}
       {signup.guest_mode === 'named' && guestHostKey(entries) && (
         <GuestRowsEditor
-          guests={guestRows}
+          guests={pricedGuestRows}
           onChange={setGuestRows}
           prompt={signup.guest_prompt}
           previousGuests={householdGuests}
+          renderPrice={(g, i) => {
+            const { tiers, auto } = guestTiersFor(g.cls);
+            return (
+              <TierPicker
+                personKey={`g:${i}`}
+                opts={tiers}
+                auto={auto}
+                active={prices.find((p) => p.id === g.priceId) ?? null}
+                tierId={g.priceId}
+                days={g.days ?? 1}
+                onTierSelect={handleGuestTier}
+                onDaysChange={handleGuestDays}
+                label={`Price for guest ${i + 1}`}
+              />
+            );
+          }}
         />
       )}
       {signup.guest_mode === 'count' && guestHostKey(entries) && (

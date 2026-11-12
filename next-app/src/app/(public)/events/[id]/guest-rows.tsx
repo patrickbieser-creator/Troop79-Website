@@ -30,7 +30,7 @@
  * entry 'no'); the count rides on the host entry in the `entries` field.
  */
 
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Stepper } from '@/app/_components/stepper';
 import { GUEST_CLASSES, PARTICIPANT_CLASS_LABEL, type GuestClass } from '@/lib/participant-class';
 import type { HouseholdGuest } from '@/lib/guest-payload';
@@ -48,6 +48,11 @@ export interface GuestRowValue {
   /** The Attending / Can't make it toggle — same meaning as a member's.
    *  false ⇒ not sent; their saved entry (if any) becomes 'no'. */
   attending: boolean;
+  /** The guest's price tier, like a member's (2026-11-12). The form that owns
+   *  the prices resolves it; null = none chosen (or the event is free). */
+  priceId: number | null;
+  /** Days attending, for a per-day tier. */
+  days: number | null;
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -56,7 +61,8 @@ export function GuestRowsEditor({
   guests,
   onChange,
   prompt,
-  previousGuests = []
+  previousGuests = [],
+  renderPrice
 }: {
   guests: GuestRowValue[];
   onChange: (next: GuestRowValue[]) => void;
@@ -64,13 +70,16 @@ export function GuestRowsEditor({
   prompt?: string | null;
   /** The household's guests on record — offered as one-click picks. */
   previousGuests?: HouseholdGuest[];
+  /** The price picker for one attending guest, from the form that knows the
+   *  event's prices. Absent = guests are not priced on this form. */
+  renderPrice?: (guest: GuestRowValue, index: number) => ReactNode;
 }) {
   const update = (i: number, patch: Partial<GuestRowValue>) =>
     onChange(guests.map((g, idx) => (idx === i ? { ...g, ...patch } : g)));
   const remove = (i: number) => onChange(guests.filter((_, idx) => idx !== i));
-  const add = () => onChange([...guests, { personId: null, name: '', cls: 'youth_guest', phone: '', attending: true }]);
+  const add = () => onChange([...guests, { personId: null, name: '', cls: 'youth_guest', phone: '', attending: true, priceId: null, days: null }]);
   const addAgain = (p: HouseholdGuest) =>
-    onChange([...guests, { personId: p.personId, name: p.name, cls: p.cls, phone: p.phone ?? '', attending: true }]);
+    onChange([...guests, { personId: p.personId, name: p.name, cls: p.cls, phone: p.phone ?? '', attending: true, priceId: null, days: null }]);
 
   const pickedIds = new Set(guests.map((g) => g.personId).filter((v): v is number => v != null));
   const unpicked = previousGuests.filter((p) => !pickedIds.has(p.personId));
@@ -188,6 +197,7 @@ export function GuestRowsEditor({
                 Remove
               </button>
             </div>
+            {g.attending && renderPrice?.(g, i)}
             {match && (
               <p className={styles.guestMatch}>
                 Looks like {match.name}, who you&rsquo;ve brought before.{' '}

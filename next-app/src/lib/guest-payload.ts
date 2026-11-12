@@ -17,6 +17,11 @@ export interface GuestRow {
   cls: GuestClass;
   /** Optional, adult guests only (carpools). Dropped for youth classes. */
   phone: string | null;
+  /** The guest's price tier (event_prices.id), like a member's; the RPC checks it is offered to the
+   *  guest's kind (youth classes = scouts, adult guest = adults). null = no price chosen. */
+  priceId?: number | null;
+  /** Days attending, for a per-day tier only. */
+  days?: number | null;
 }
 
 
@@ -53,7 +58,15 @@ export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
   const seen = new Set<string>();
   for (const item of parsed) {
     if (!item || typeof item !== 'object') continue;
-    const it = item as { name?: unknown; cls?: unknown; personId?: unknown; phone?: unknown; attending?: unknown };
+    const it = item as {
+      name?: unknown;
+      cls?: unknown;
+      personId?: unknown;
+      phone?: unknown;
+      attending?: unknown;
+      priceId?: unknown;
+      days?: unknown;
+    };
     // A row toggled to "Can't make it" is not sent at all — the RPC's
     // reconcile turns its saved entry to 'no'. Absent means attending
     // (older clients never carried the flag).
@@ -68,11 +81,15 @@ export function normalizeGuestRows(raw: string | null | undefined): GuestRow[] {
     if (seen.has(key)) continue;
     seen.add(key);
     const phoneRaw = String(it.phone ?? '').trim().slice(0, 40);
+    const priceId = typeof it.priceId === 'number' && Number.isInteger(it.priceId) && it.priceId > 0 ? it.priceId : null;
+    const days = typeof it.days === 'number' && Number.isInteger(it.days) && it.days >= 1 && it.days <= 30 ? it.days : null;
     out.push({
       personId,
       name,
       cls: cls as GuestClass,
-      phone: cls === 'adult_guest' && phoneRaw ? phoneRaw : null
+      phone: cls === 'adult_guest' && phoneRaw ? phoneRaw : null,
+      // Only a priced guest carries these (an unpriced row reads as before).
+      ...(priceId != null ? { priceId, days } : {})
     });
     if (out.length >= MAX_GUEST_ROWS) break;
   }
@@ -94,7 +111,9 @@ export function guestEntriesFor(guests: readonly GuestRow[], hostKey: string): R
     guest_name: g.personId == null ? g.name : null,
     guest_phone: g.cls === 'adult_guest' ? g.phone : null,
     status: 'yes',
-    participation: 'full'
+    participation: 'full',
+    price_id: g.priceId ?? null,
+    days: g.priceId != null ? (g.days ?? null) : null
   }));
 }
 

@@ -16,7 +16,7 @@ describe('GuestRowsEditor', () => {
     const onChange = vi.fn();
     render(<GuestRowsEditor guests={[]} onChange={onChange} />);
     await user.click(screen.getByRole('button', { name: /add a guest/i }));
-    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: '', cls: 'youth_guest', phone: '', attending: true }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: '', cls: 'youth_guest', phone: '', attending: true, priceId: null, days: null }]);
   });
 
   it('RendersEachRow_WithNameInputAndClassSelect_AndRemoves', async () => {
@@ -25,8 +25,8 @@ describe('GuestRowsEditor', () => {
     render(
       <GuestRowsEditor
         guests={[
-          { personId: null, name: 'Sam Lee', cls: 'webelos', phone: '', attending: true },
-          { personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '', attending: true }
+          { personId: null, name: 'Sam Lee', cls: 'webelos', phone: '', attending: true, priceId: null, days: null },
+          { personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '', attending: true, priceId: null, days: null }
         ]}
         onChange={onChange}
       />
@@ -37,7 +37,7 @@ describe('GuestRowsEditor', () => {
     expect(classes[0].value).toBe('webelos');
     expect([...classes[0].options].map((o) => o.value)).toEqual(['webelos', 'cub_scout', 'youth_guest', 'adult_guest']);
     await user.click(screen.getAllByRole('button', { name: /remove/i })[0]);
-    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '', attending: true }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '', attending: true, priceId: null, days: null }]);
   });
 
   it('GuestRow_HasTheSameAttendingToggleAsAMember_AndCarriesItInTheHiddenField', async () => {
@@ -48,7 +48,7 @@ describe('GuestRowsEditor', () => {
     const onChange = vi.fn();
     render(
       <GuestRowsEditor
-        guests={[{ personId: null, name: 'Fred Pike', cls: 'adult_guest', phone: '', attending: true }]}
+        guests={[{ personId: null, name: 'Fred Pike', cls: 'adult_guest', phone: '', attending: true, priceId: null, days: null }]}
         onChange={onChange}
       />
     );
@@ -57,7 +57,7 @@ describe('GuestRowsEditor', () => {
     expect(attending.getAttribute('aria-pressed')).toBe('true');
     expect(cant.getAttribute('aria-pressed')).toBe('false');
     await user.click(cant);
-    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: 'Fred Pike', cls: 'adult_guest', phone: '', attending: false }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: null, name: 'Fred Pike', cls: 'adult_guest', phone: '', attending: false, priceId: null, days: null }]);
     // Name, class and phone stay editable beside the toggle.
     expect(screen.getByRole('textbox', { name: /guest name 1/i })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: /guest class 1/i })).toBeTruthy();
@@ -69,8 +69,8 @@ describe('GuestRowsEditor', () => {
     render(
       <GuestRowsEditor
         guests={[
-          { personId: null, name: 'Sam Lee', cls: 'webelos', phone: '', attending: true },
-          { personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '', attending: true }
+          { personId: null, name: 'Sam Lee', cls: 'webelos', phone: '', attending: true, priceId: null, days: null },
+          { personId: null, name: 'Aunt Jo', cls: 'adult_guest', phone: '', attending: true, priceId: null, days: null }
         ]}
         onChange={() => {}}
       />
@@ -85,10 +85,10 @@ describe('GuestRowsEditor', () => {
     const grandma = { personId: 501, name: 'Grandma Pat', cls: 'adult_guest' as const, phone: '414-555-0100' };
     const { rerender } = render(<GuestRowsEditor guests={[]} onChange={onChange} previousGuests={[grandma]} />);
     await user.click(screen.getByRole('button', { name: 'Add Grandma Pat again' }));
-    expect(onChange).toHaveBeenLastCalledWith([{ personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true, priceId: null, days: null }]);
     rerender(
       <GuestRowsEditor
-        guests={[{ personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true }]}
+        guests={[{ personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true, priceId: null, days: null }]}
         onChange={onChange}
         previousGuests={[grandma]}
       />
@@ -104,7 +104,7 @@ describe('GuestRowsEditor', () => {
     const grandma = { personId: 501, name: 'Grandma Pat', cls: 'adult_guest' as const, phone: null };
     render(
       <GuestRowsEditor
-        guests={[{ personId: null, name: 'grandma pat', cls: 'youth_guest', phone: '', attending: true }]}
+        guests={[{ personId: null, name: 'grandma pat', cls: 'youth_guest', phone: '', attending: true, priceId: null, days: null }]}
         onChange={onChange}
         previousGuests={[grandma]}
       />
@@ -113,15 +113,15 @@ describe('GuestRowsEditor', () => {
     const hidden = document.querySelector('input[type="hidden"][name="guests"]') as HTMLInputElement;
     expect(JSON.parse(hidden.value)[0].personId).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Use Grandma Pat again' }));
-    expect(onChange).toHaveBeenLastCalledWith([{ personId: 501, name: 'Grandma Pat', cls: 'youth_guest', phone: '', attending: true }]);
+    expect(onChange).toHaveBeenLastCalledWith([{ personId: 501, name: 'Grandma Pat', cls: 'youth_guest', phone: '', attending: true, priceId: null, days: null }]);
   });
 
   it('CarriesTheListAsOneHiddenJsonField_NamedGuests', () => {
     const { container } = render(
-      <GuestRowsEditor guests={[{ personId: null, name: 'Sam Lee', cls: 'cub_scout', phone: '', attending: true }]} onChange={() => {}} />
+      <GuestRowsEditor guests={[{ personId: null, name: 'Sam Lee', cls: 'cub_scout', phone: '', attending: true, priceId: null, days: null }]} onChange={() => {}} />
     );
     const hidden = container.querySelector('input[type="hidden"][name="guests"]') as HTMLInputElement;
-    expect(JSON.parse(hidden.value)).toEqual([{ personId: null, name: 'Sam Lee', cls: 'cub_scout', phone: '', attending: true }]);
+    expect(JSON.parse(hidden.value)).toEqual([{ personId: null, name: 'Sam Lee', cls: 'cub_scout', phone: '', attending: true, priceId: null, days: null }]);
   });
 });
 

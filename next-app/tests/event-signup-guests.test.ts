@@ -84,8 +84,28 @@ describe('guest payload helpers (pure)', () => {
         'a:2'
       )
     ).toEqual([
-      { key: 'g:501', guest: true, guest_of_key: 'a:2', participant_class: 'adult_guest', person_id: 501, guest_name: null, guest_phone: '414', status: 'yes', participation: 'full' },
-      { key: 'g:new1', guest: true, guest_of_key: 'a:2', participant_class: 'webelos', person_id: null, guest_name: 'Kid', guest_phone: null, status: 'yes', participation: 'full' }
+      { key: 'g:501', guest: true, guest_of_key: 'a:2', participant_class: 'adult_guest', person_id: 501, guest_name: null, guest_phone: '414', status: 'yes', participation: 'full', price_id: null, days: null },
+      { key: 'g:new1', guest: true, guest_of_key: 'a:2', participant_class: 'webelos', person_id: null, guest_name: 'Kid', guest_phone: null, status: 'yes', participation: 'full', price_id: null, days: null }
     ]);
+  });
+});
+
+describe('guest prices (pure)', () => {
+  it('NormalizeGuestRows_KeepsAPriceAndDays_AndDropsGarbageOnes', () => {
+    const rows = normalizeGuestRows(
+      JSON.stringify([
+        { name: 'Logan', cls: 'webelos', priceId: 5, days: 2 },
+        { name: 'Sib', cls: 'youth_guest', priceId: 'x', days: 99 }
+      ])
+    );
+    expect(rows.map((r) => [r.priceId ?? null, r.days ?? null])).toEqual([
+      [5, 2],
+      [null, null]
+    ]);
+  });
+
+  it('GuestEntriesFor_SendsTheGuestsPriceAndDays', () => {
+    const [row] = guestEntriesFor([{ personId: null, name: 'Logan', cls: 'webelos', phone: null, priceId: 5, days: null }], 'a:2');
+    expect([row.price_id, row.days]).toEqual([5, null]);
   });
 });

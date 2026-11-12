@@ -370,7 +370,10 @@ export default async function EventSignupPage({
                     name: e.guest_name ?? '',
                     cls: e.participant_class as GuestRowValue['cls'],
                     phone: ctx.householdGuests.find((g) => g.personId === e.person_id)?.phone ?? '',
-                    attending: e.status === 'yes' || e.status === 'waitlist'
+                    attending: e.status === 'yes' || e.status === 'waitlist',
+                    // Kept so a re-save here never clears a price chosen on the family form.
+                    priceId: e.price_id,
+                    days: e.days
                   }))}
                 existingGuestCount={(() => {
                   const host = existing.find((e) => e.guest_count > 0);

@@ -109,7 +109,7 @@ describe('PersonFirstForm — guest modes', () => {
     expect(screen.queryByRole('spinbutton', { name: /number of guests/i })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Add Grandma Pat again' }));
     expect(JSON.parse(guestsField()!.value)).toEqual([
-      { personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true }
+      { personId: 501, name: 'Grandma Pat', cls: 'adult_guest', phone: '414-555-0100', attending: true, priceId: null, days: null }
     ]);
     // Members' entries never carry a count in named mode.
     expect(entries().find((e) => e.key === 'a:pe82')!.guest_count).toBe(0);
