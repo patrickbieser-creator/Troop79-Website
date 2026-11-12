@@ -26,6 +26,8 @@ import { moneyScope } from '@/lib/event-money-scope';
 import { bucketNameOf } from '@/lib/buckets';
 import { signedReceiptMediaUrl } from '@/lib/receipt-media';
 import { centralToday } from '@/lib/dates';
+import { isValidISODate } from '@/lib/date-entry';
+import { signOffName, type AmountMode } from '@/lib/event-money';
 import {
   FINANCE_PAGE_SIZE,
   computeBalance,
@@ -588,6 +590,29 @@ async function scoutAccountPayerFor(
   return payer;
 }
 
+/** A payment or refund date from the Money tab: a real day, from 1900, not in the future (Central). Omitted = today. */
+function paidOnProblem(occurredOn: string | undefined): string | null {
+  if (occurredOn === undefined) return null;
+  if (typeof occurredOn !== 'string' || !isValidISODate(occurredOn)) return 'Pick the date it was paid.';
+  if (occurredOn > centralToday()) return 'Pick a date that isn’t in the future.';
+  return null;
+}
+
+/** An optional reason (custom amount, void): trimmed, null when blank, at most 200 characters. */
+function optionalReason(reason: unknown): { ok: true; value: string | null } | { ok: false; error: string } {
+  if (reason == null) return { ok: true, value: null };
+  if (typeof reason !== 'string') return { ok: false, error: 'Type the reason as text.' };
+  const v = reason.trim();
+  if (v.length > 200) return { ok: false, error: 'Keep the reason under 200 characters.' };
+  return { ok: true, value: v || null };
+}
+
+/** A money write the database refused for a reason no screen should show raw: log the code, say something useful. */
+function moneyWriteFailed(error: { code?: string; message: string }): Result {
+  console.error('event money write failed:', error.code ?? 'unknown');
+  return { ok: false, error: 'Couldn’t save that. Try again, or reload the page.' };
+}
+
 function revalidateEventMoney(signupId?: number) {
   revalidateFinance();
   if (signupId) {
@@ -611,6 +636,8 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
   // locked ordinary event leaders out of a checkbox they already used.
   const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
   if (!(input.amount > 0)) return { ok: false, error: 'Amount must be positive.' };
+  const dateProblem = paidOnProblem(input.occurredOn);
+  if (dateProblem) return { ok: false, error: dateProblem };
 
   const supabase = createAdminClient();
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
@@ -648,7 +675,7 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
       revalidateEventMoney(input.signupId);
       return { ok: true }; // the retry of a write that already landed
     }
-    return { ok: false, error: insertError.message };
+    return moneyWriteFailed(insertError);
   }
 
   revalidateEventMoney(input.signupId);
@@ -658,10 +685,12 @@ export async function recordEventFeePaymentAction(input: RecordEventFeePaymentIn
 /** Void ONE event-fee transaction by id — a real correction, not a delete.
  *  With many payments per entry, "un-tick the box" is gone; the Money tab
  *  voids the specific row. */
-export async function voidEventFeePaymentAction(transactionId: number, signupId?: number): Promise<Result> {
+export async function voidEventFeePaymentAction(transactionId: number, signupId?: number, reason?: string | null): Promise<Result> {
   // Same calendar.write-OR-finance.manage gate as recordEventFeePaymentAction —
   // whoever can record a payment must be able to correct it too.
   const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
+  const why = optionalReason(reason);
+  if (!why.ok) return { ok: false, error: why.error };
   const supabase = createAdminClient();
 
   const { data: txn, error: findError } = await supabase
@@ -669,7 +698,7 @@ export async function voidEventFeePaymentAction(transactionId: number, signupId?
     .select('id, signup_entry_id, kind, voided_at')
     .eq('id', transactionId)
     .maybeSingle();
-  if (findError) return { ok: false, error: findError.message };
+  if (findError) return moneyWriteFailed(findError);
   const t = txn as { id: number; signup_entry_id: number | null; kind: string; voided_at: string | null } | null;
   if (!t) return { ok: false, error: 'Transaction not found.' };
   if (t.signup_entry_id == null || t.kind !== 'event_fee') {
@@ -679,9 +708,9 @@ export async function voidEventFeePaymentAction(transactionId: number, signupId?
 
   const { error: voidError } = await supabase
     .from('financial_transactions')
-    .update({ voided_at: new Date().toISOString(), voided_by_person_id: actor.personId })
+    .update({ voided_at: new Date().toISOString(), voided_by_person_id: actor.personId, void_reason: why.value })
     .eq('id', t.id);
-  if (voidError) return { ok: false, error: voidError.message };
+  if (voidError) return moneyWriteFailed(voidError);
 
   revalidateEventMoney(signupId);
   return { ok: true };
@@ -699,9 +728,13 @@ export async function refundEventFeeAction(input: {
   idempotencyKey?: string;
   /** As on a payment: whose scout account the refund goes back into. */
   scoutAccountPersonId?: number | null;
+  /** Defaults to today. */
+  occurredOn?: string;
 }): Promise<Result> {
   const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
   if (!(input.amount > 0)) return { ok: false, error: 'Refund amount must be positive.' };
+  const dateProblem = paidOnProblem(input.occurredOn);
+  if (dateProblem) return { ok: false, error: dateProblem };
   const supabase = createAdminClient();
   const ctx = await eventForSignupEntry(supabase, input.signupEntryId);
   if (!ctx) return { ok: false, error: 'Signup entry not found.' };
@@ -709,7 +742,7 @@ export async function refundEventFeeAction(input: {
   const payer = await scoutAccountPayerFor(supabase, ctx, input.method, input.scoutAccountPersonId);
   if (!payer.ok) return { ok: false, error: payer.error };
   const { error } = await supabase.from('financial_transactions').insert({
-    occurred_on: centralToday(),
+    occurred_on: input.occurredOn ?? centralToday(),
     account,
     // A refund INTO a notional account is a positive row there (balance back up);
     // the event reads it as −paid. Cash refunds are negative on checking.
@@ -727,7 +760,7 @@ export async function refundEventFeeAction(input: {
   });
   if (error) {
     if (error.code === '23505' && input.idempotencyKey) return { ok: true };
-    return { ok: false, error: error.message };
+    return moneyWriteFailed(error);
   }
   revalidateEventMoney(input.signupId);
   return { ok: true };
@@ -785,27 +818,39 @@ export async function creditOverpaymentAction(input: {
   });
   if (error) {
     if (error.code === '23505' && input.idempotencyKey) return { ok: true };
-    return { ok: false, error: error.message };
+    return moneyWriteFailed(error);
   }
   revalidateEventMoney(input.signupId);
   return { ok: true };
 }
 
-/** Per-person owed override (Tesomas tiers, BWCA 840 vs 850, Lapham
- *  "Expected"). null = back to the tier. */
+/** What one person owes (Tesomas tiers, BWCA 840 vs 850, Lapham "Expected"): null = the tier, 0 = Not paying, else a
+ *  custom amount with an optional reason (Plans/Event-Money-Ledger-Redesign.md). One RPC writes the override, its
+ *  reason and the history row together; saving what is already saved writes nothing. */
 export async function setAmountOverrideAction(
   signupEntryId: number,
   amount: number | null,
-  signupId?: number
+  signupId?: number,
+  reason?: string | null
 ): Promise<Result> {
-  await requireAnyOf(['calendar.write', 'finance.manage']);
-  if (amount != null && !(amount >= 0)) return { ok: false, error: 'Amount must be zero or more.' };
+  const actor = await requireAnyOf(['calendar.write', 'finance.manage']);
+  if (!Number.isSafeInteger(signupEntryId)) return { ok: false, error: 'Pick a person.' };
+  if (amount != null && !(typeof amount === 'number' && Number.isFinite(amount) && amount >= 0)) return { ok: false, error: 'Amount must be zero or more.' };
+  const why = optionalReason(reason);
+  if (!why.ok) return { ok: false, error: why.error };
   const supabase = createAdminClient();
-  const { error } = await supabase
-    .from('signup_entries')
-    .update({ amount_override: amount == null ? null : Math.round(amount * 100) / 100 })
-    .eq('id', signupEntryId);
-  if (error) return { ok: false, error: error.message };
+  const { error } = await supabase.rpc('set_entry_amount_override', {
+    p_entry_id: signupEntryId,
+    p_amount: amount == null ? null : Math.round(amount * 100) / 100,
+    p_reason: why.value,
+    p_changed_by_person_id: actor.personId,
+    p_changed_by_label: actor.label
+  });
+  if (error) {
+    if (error.code === 'T7902') return { ok: false, error: error.message };
+    console.error('set_entry_amount_override failed:', error.code ?? 'unknown');
+    return { ok: false, error: 'Couldn’t save the amount. Try again.' };
+  }
   revalidateEventMoney(signupId);
   return { ok: true };
 }
@@ -893,11 +938,23 @@ export interface EventMoneyPerson {
   tierLabel: string | null;
   tierAmount: number;
   amountOverride: number | null;
+  /** Why a custom amount (optional); null on the tier. */
+  amountOverrideReason: string | null;
   owed: number;
   paid: number;
   balance: number;
   settled: boolean;
   credited: number;
+  /** Every change to what they owe, oldest first; merged with `transactions` into the panel's history. */
+  amountChanges: {
+    oldAmount: number;
+    newAmount: number;
+    oldMode: AmountMode;
+    newMode: AmountMode;
+    reason: string | null;
+    by: string | null;
+    changedAt: string;
+  }[];
   transactions: {
     id: number;
     occurredOn: string;
@@ -911,6 +968,11 @@ export interface EventMoneyPerson {
     accountOf: string | null;
     /** That family member's person id — the refund dialog defaults to it. */
     accountPersonId: number | null;
+    /** Who recorded / voided it, as the history signs it (initials, else "First L."); null = unknown or imported. */
+    enteredBy: string | null;
+    voidedBy: string | null;
+    voidReason: string | null;
+    createdAt: string;
   }[];
 }
 
@@ -948,7 +1010,32 @@ export interface EventMoneyData {
 
 /** Everything the event's Money tab shows — the sheet's money block for one
  *  event. Pure math over it lives in lib/event-money.ts. */
-type Tx = { id: number; occurred_on: string; amount: number; kind: string; method: string | null; memo: string | null; person_id: number | null; signup_entry_id: number | null; voided_at: string | null; account: string };
+type Tx = {
+  id: number;
+  occurred_on: string;
+  amount: number;
+  kind: string;
+  method: string | null;
+  memo: string | null;
+  person_id: number | null;
+  signup_entry_id: number | null;
+  voided_at: string | null;
+  account: string;
+  entered_by_person_id: number | null;
+  voided_by_person_id: number | null;
+  void_reason: string | null;
+  created_at: string;
+};
+type AmountChangeRow = {
+  signup_entry_id: number;
+  old_amount: number;
+  new_amount: number;
+  old_mode: AmountMode;
+  new_mode: AmountMode;
+  reason: string | null;
+  changed_by_person_id: number | null;
+  changed_at: string;
+};
 
 export async function getEventMoneyAction(signupId: number): Promise<EventMoneyData | null> {
   await requireAnyOf(['calendar.write', 'finance.manage']);
@@ -959,20 +1046,32 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   // The entry's bucket (every row in it), or the entry's own rows when it has none (lib/buckets moneyScopeFor).
   const scope = await moneyScope(supabase, calendarEntryId);
 
-  const [{ data: entries }, { data: balances }, { data: prices }, { data: people }, tx, { data: reqs }, { data: ms }, { data: allEntries }] =
-    await Promise.all([
+  const [
+    { data: entries },
+    { data: balances },
+    { data: prices },
+    { data: people },
+    tx,
+    { data: reqs },
+    { data: ms },
+    { data: allEntries },
+    { data: codes },
+    { data: changeRows }
+  ] = await Promise.all([
       supabase
         .from('signup_entries')
-        .select('id, person_id, person_kind, status, participation, price_id, amount_override')
+        .select('id, person_id, person_kind, status, participation, price_id, amount_override, amount_override_reason')
         .eq('event_signup_id', signupId)
         .neq('status', 'cancelled'),
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance, settled').eq('event_signup_id', signupId),
       supabase.from('event_prices').select('id, label, amount, per').eq('event_signup_id', signupId),
-      supabase.from('people').select('id, display_name'),
+      supabase.from('people').select('id, display_name, first_name, last_name'),
       fetchAllRows<Tx>((from, to) =>
         supabase
           .from('financial_transactions')
-          .select('id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account')
+          .select(
+            'id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, entered_by_person_id, voided_by_person_id, void_reason, created_at'
+          )
           .or(scope.filter)
           .order('occurred_on')
           .order('id')
@@ -985,10 +1084,31 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
         .order('created_at'),
       supabase.from('event_milestones').select('id, kind, label, due_on, amount, applies_to, sort').eq('event_signup_id', signupId),
       // Every entry of this sign-up, cancelled ones too: their fee rows are this sign-up's, never "other" money.
-      supabase.from('signup_entries').select('id').eq('event_signup_id', signupId)
+      supabase.from('signup_entries').select('id').eq('event_signup_id', signupId),
+      // Sign-off initials, to sign the history (one row per person; a retired code still names its own entries).
+      supabase.from('leaders').select('code, person_id').not('person_id', 'is', null),
+      supabase
+        .from('signup_entry_amount_changes')
+        .select('signup_entry_id, old_amount, new_amount, old_mode, new_mode, reason, changed_by_person_id, changed_at, signup_entries!inner(event_signup_id)')
+        .eq('signup_entries.event_signup_id', signupId)
+        .order('changed_at')
+        .order('id')
     ]);
 
-  const nameOf = new Map(((people ?? []) as { id: number; display_name: string }[]).map((p) => [p.id, p.display_name]));
+  const personRows = (people ?? []) as { id: number; display_name: string; first_name: string | null; last_name: string | null }[];
+  const nameOf = new Map(personRows.map((p) => [p.id, p.display_name]));
+  const personById = new Map(personRows.map((p) => [p.id, p]));
+  const codeOf = new Map(((codes ?? []) as { code: string; person_id: number }[]).map((l) => [l.person_id, l.code]));
+  const signer = (id: number | null): string | null => {
+    if (id == null) return null;
+    const p = personById.get(id);
+    if (!p) return codeOf.get(id) ?? null;
+    return signOffName(codeOf.get(id), { first: p.first_name, last: p.last_name, display: p.display_name });
+  };
+  const changesByEntry = new Map<number, AmountChangeRow[]>();
+  for (const c of (changeRows ?? []) as unknown as AmountChangeRow[]) {
+    changesByEntry.set(c.signup_entry_id, [...(changesByEntry.get(c.signup_entry_id) ?? []), c]);
+  }
   const priceById = new Map(((prices ?? []) as { id: number; label: string; amount: number; per: string }[]).map((p) => [p.id, p]));
   const balById = new Map(
     ((balances ?? []) as { entry_id: number; owed: number; paid: number; balance: number; settled: boolean }[]).map((b) => [b.entry_id, b])
@@ -1015,6 +1135,16 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       tierLabel: tier?.label ?? null,
       tierAmount: tier ? Number(tier.amount) : 0,
       amountOverride: e.amount_override != null ? Number(e.amount_override) : null,
+      amountOverrideReason: (e.amount_override_reason as string | null) ?? null,
+      amountChanges: (changesByEntry.get(id) ?? []).map((c) => ({
+        oldAmount: Number(c.old_amount),
+        newAmount: Number(c.new_amount),
+        oldMode: c.old_mode,
+        newMode: c.new_mode,
+        reason: c.reason,
+        by: signer(c.changed_by_person_id),
+        changedAt: c.changed_at
+      })),
       owed: Number(b?.owed ?? 0),
       paid: Number(b?.paid ?? 0),
       balance: Number(b?.balance ?? 0),
@@ -1034,7 +1164,11 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
             ? (nameOf.get(t.person_id) ?? null)
             : null,
         accountPersonId:
-          t.account === 'scout_account' && t.person_id != null && t.person_id !== Number(e.person_id) ? t.person_id : null
+          t.account === 'scout_account' && t.person_id != null && t.person_id !== Number(e.person_id) ? t.person_id : null,
+        enteredBy: signer(t.entered_by_person_id),
+        voidedBy: t.voided_at ? signer(t.voided_by_person_id) : null,
+        voidReason: t.void_reason,
+        createdAt: t.created_at
       }))
     };
   });

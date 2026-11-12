@@ -9,6 +9,7 @@
  */
 
 export const ROUND = (n: number) => Math.round(n * 100) / 100;
+const cents = (n: number) => Math.round(n * 100);
 
 /** Accounts that are notional sub-ledgers (per-scout balances, the
  *  scholarship fund): a fee paid FROM one is a NEGATIVE row on that account
@@ -31,20 +32,71 @@ export function refundAccountDefault(
   const paid = transactions.filter((t) => !t.voidedAt && t.kind === 'event_fee' && t.amount > 0 && t.accountPersonId != null);
   return paid.length > 0 ? paid[paid.length - 1].accountPersonId : null;
 }
-/** A payment method as offered in the Record payment dialog — the ledger's
- *  methods plus the scholarship fund (stored as account 'scholarship', method 'other'). */
+/** A payment method as offered on the Money tab — the ledger's methods plus the scholarship fund (stored as account
+ *  'scholarship', method 'other'). The one label map for the tab: the method switch, the ledger's Method column, the
+ *  By-method line and the history all read it. */
 export type PayMethod = 'venmo' | 'paypal' | 'check' | 'cash' | 'scout_account' | 'scholarship' | 'bank' | 'other';
 export const PAY_METHOD_LABEL: Record<PayMethod, string> = {
   venmo: 'Venmo',
   paypal: 'PayPal',
   check: 'Check',
   cash: 'Cash',
-  scout_account: 'Scout account balance',
+  scout_account: 'Scout account',
   scholarship: 'Scholarship fund',
   bank: 'Bank transfer',
   other: 'Other'
 };
-const cents = (n: number) => Math.round(n * 100);
+export const methodLabel = (m: string | null | undefined): string => (m ? (PAY_METHOD_LABEL[m as PayMethod] ?? m) : '—');
+
+/** The four methods the Money tab offers directly (Plans/Event-Money-Ledger-Redesign.md); the rest sit under Other ▾. */
+export const PRIMARY_PAY_METHODS = ['venmo', 'paypal', 'cash', 'check'] as const satisfies readonly PayMethod[];
+export const OTHER_PAY_METHODS = ['scout_account', 'scholarship', 'bank', 'other'] as const satisfies readonly PayMethod[];
+
+/** The summary band's "By method" line: the four primary methods always (so "$0 PayPal" is a fact, not a gap),
+ *  any other only when money moved through it. */
+export function byMethodLine(incomeByMethod: Record<string, number>): { method: string; label: string; amount: number }[] {
+  const primary = PRIMARY_PAY_METHODS.map((m) => ({ method: m as string, label: methodLabel(m), amount: incomeByMethod[m] ?? 0 }));
+  const others = Object.entries(incomeByMethod)
+    .filter(([m, v]) => !(PRIMARY_PAY_METHODS as readonly string[]).includes(m) && cents(v) !== 0)
+    .map(([m, v]) => ({ method: m, label: methodLabel(m), amount: v }));
+  return [...primary, ...others];
+}
+
+/** Who recorded or voided a row, as the history signs it: their sign-off initials, else "First L." (never guessed
+ *  initials — "KP" could be another leader's code). */
+export function signOffName(code: string | null | undefined, name: { first: string | null; last: string | null; display: string }): string {
+  if (code) return code;
+  const parts = name.display.trim().split(/\s+/);
+  const first = name.first?.trim() || parts[0] || '';
+  const last = name.last?.trim() || (parts.length > 1 ? parts[parts.length - 1] : '');
+  return last ? `${first} ${last[0].toUpperCase()}.` : first;
+}
+
+/** What one person owes, as the panel's switch reads it: the tier, a custom amount, or Not paying (override 0). */
+export type AmountMode = 'tier' | 'custom' | 'none';
+export function amountMode(amountOverride: number | null): AmountMode {
+  return amountOverride == null ? 'tier' : cents(amountOverride) === 0 ? 'none' : 'custom';
+}
+export const AMOUNT_MODE_LABEL: Record<AmountMode, string> = { tier: 'Tier', custom: 'Custom', none: 'Not paying' };
+
+/** The ledger's Status badge — what they owe and where they stand. "Not going" is the sign-up status and shows on the
+ *  name, not here: someone not going may still owe a deposit, and someone going may be Not paying (Patrick,
+ *  2026-11-12: separate facts). */
+export function ledgerStatus(
+  p: { owed: number; paid: number; balance: number; amountOverride: number | null },
+  standing: MilestoneStanding,
+  shortBy: number,
+  hasPaymentSchedule: boolean
+): { label: string; variant: 'success' | 'warning' | 'danger' | 'info' | 'muted' } {
+  if (cents(p.owed) === 0) {
+    if (cents(p.balance) < 0) return { label: `Overpaid · ${money(-p.balance)}`, variant: 'danger' };
+    return p.amountOverride != null ? { label: 'Not paying', variant: 'muted' } : { label: 'Nothing owed', variant: 'muted' };
+  }
+  if (standing === 'settled') return { label: 'Paid', variant: 'success' };
+  if (standing === 'behind') return { label: `Behind · ${money(shortBy)}`, variant: 'danger' };
+  if (hasPaymentSchedule) return { label: 'On schedule', variant: 'info' };
+  return { label: `${money(p.balance)} due`, variant: 'warning' };
+}
 
 export interface EntryMoneyRow {
   entryId: number;
