@@ -3,7 +3,7 @@
  * percentage over a date range, in two tabs (Patrick, 2026-08-24: "the
  * attendance report under roll call should have a tab for scouts and adults").
  *
- * Scouts read `ledger_active` rows of kind `meeting_attendance` — the credit
+ * Scouts read `reportable_ledger` rows (no Webelos) of kind `meeting_attendance` — the credit
  * Roll Call grants, and where imported history lives. Adults have no ledger;
  * they read `event_attendance` on entries whose category grants meeting
  * credit (Troop Meeting), which is what Roll Call writes for everyone present.
@@ -43,7 +43,7 @@ async function loadScouts(from: string, to: string) {
   const [{ data: scouts }, attendanceRows] = await Promise.all([
     supabase.from('scouts').select('id, display_name, patrol').eq('active', true).order('display_name'),
     fetchAllRows<{ scout_id: string; date: string }>((fromIdx, toIdx) => {
-      let query = supabase.from('ledger_active').select('scout_id, date').eq('kind', 'meeting_attendance');
+      let query = supabase.from('reportable_ledger').select('scout_id, date').eq('kind', 'meeting_attendance');
       if (from) query = query.gte('date', from);
       if (to) query = query.lte('date', to);
       return query.order('date').range(fromIdx, toIdx);

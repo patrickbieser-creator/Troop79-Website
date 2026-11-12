@@ -66,10 +66,12 @@ async function loadFastEntry(): Promise<{
     leadershipPositionsRes,
     tapeRes
   ] = await Promise.all([
+    // Active scouts AND Webelos (Plans/Webelos-On-The-Roster.md): a Webelos's work is recorded here, marked
+    // Webelos in the picker; reports read reportable_ledger and leave it out until crossover.
     supabase
       .from('scouts')
-      .select('id, display_name, current_rank')
-      .eq('active', true)
+      .select('id, display_name, current_rank, is_webelos')
+      .or('active.eq.true,is_webelos.eq.true')
       .order('display_name'),
     supabase.from('leaders').select('code, name').order('code'),
     // Ranks, rank/MB requirement trees and merit badges come from the cached catalog (they only change when a
@@ -86,11 +88,14 @@ async function loadFastEntry(): Promise<{
       .order('entered_at', { ascending: false })
   ]);
 
-  const scouts = (scoutsRes.data ?? []) as {
-    id: string;
-    display_name: string;
-    current_rank: string | null;
-  }[];
+  const scouts = (
+    (scoutsRes.data ?? []) as {
+      id: string;
+      display_name: string;
+      current_rank: string | null;
+      is_webelos: boolean;
+    }[]
+  ).map(({ is_webelos, ...sc }) => (is_webelos ? { ...sc, display_name: `${sc.display_name} (Webelos)` } : sc));
   const leaders = (leadersRes.data ?? []) as { code: string; name: string }[];
   // Same orders the direct reads used: ranks by sort_order (already), requirements by parent then sort_order
   // (buildTree sorts siblings), badges by name.

@@ -33,7 +33,7 @@ describe('the Has/Needs tab load (B7)', () => {
   it('HasNeeds_LoadsInBoundedRoundTrips', async () => {
     const catalog = await fetchAdvancementCatalog(sb);
     const [{ count: ledger }, { count: awarded }] = await Promise.all([
-      sb.from('ledger_active').select('id', { count: 'exact', head: true }).in('kind', ['rank_requirement', 'merit_badge_requirement']),
+      sb.from('reportable_ledger').select('id', { count: 'exact', head: true }).in('kind', ['rank_requirement', 'merit_badge_requirement']),
       sb.from('mb_progress').select('scout_id', { count: 'exact', head: true }).eq('awarded', true)
     ]);
     const tables: string[] = [];
@@ -48,9 +48,9 @@ describe('the Has/Needs tab load (B7)', () => {
     expect({
       scouts: tally('scouts'),
       meeting_topics: tally('meeting_topics'),
-      ledgerPaged: tally('ledger_active') <= pages(ledger ?? 0),
+      ledgerPaged: tally('reportable_ledger') <= pages(ledger ?? 0),
       awardedPaged: tally('mb_progress') <= pages(awarded ?? 0),
-      others: tables.filter((t) => !['scouts', 'meeting_topics', 'ledger_active', 'mb_progress'].includes(t))
+      others: tables.filter((t) => !['scouts', 'meeting_topics', 'reportable_ledger', 'mb_progress'].includes(t))
     }).toEqual({ scouts: 1, meeting_topics: 1, ledgerPaged: true, awardedPaged: true, others: [] });
   }, 60_000);
 

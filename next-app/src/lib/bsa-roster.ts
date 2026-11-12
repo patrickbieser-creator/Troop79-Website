@@ -55,7 +55,8 @@ export interface RosterPerson {
   yptCompleted: string | null;
   active: boolean;
   inactiveReason: string | null;
-  scout: { active: boolean; inactiveReason: string | null } | null;
+  /** isWebelos: on the way in (Plans/Webelos-On-The-Roster.md) — not active, but not "left" either. */
+  scout: { active: boolean; inactiveReason: string | null; isWebelos?: boolean } | null;
   leaderRoles: string[];
 }
 
@@ -247,7 +248,8 @@ export function buildRosterReport(roster: ParsedRoster, people: RosterPerson[]):
     if (m.phone && phoneDigits(m.phone) !== phoneDigits(p.phone)) diff('phone', m.phone, p.phone);
     if (m.gender && (p.gender ?? '').slice(0, 1).toUpperCase() !== m.gender) diff('gender', m.gender, p.gender);
 
-    const inactive = m.youth ? (p.scout ? !p.scout.active : !p.active) : !p.active;
+    // A Webelos registered with BSA has not left the troop — they have not joined it yet.
+    const inactive = m.youth ? (p.scout ? !p.scout.active && !p.scout.isWebelos : !p.active) : !p.active;
     if (inactive) {
       report.inactiveButRegistered.push({
         personId: p.id,

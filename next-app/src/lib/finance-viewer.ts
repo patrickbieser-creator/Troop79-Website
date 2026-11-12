@@ -55,6 +55,7 @@ import { resolveAdminActor, actorHas, type AdminActor } from '@/lib/admin-actor'
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { resolveFamilyScope } from '@/lib/household-scope';
+import { loadScoutSwitchOptions } from '@/lib/youth';
 
 /** Same subjectKind guard as actorCanProxyLibrary() and for the same reason:
  *  a scout holding finance.manage / library.proxy_view by grant-table mistake must never proxy as
@@ -161,16 +162,8 @@ export async function resolveFinanceViewer(
 
   let activeScouts: FinanceSwitchOption[] = [];
   if (canProxy) {
-    const { data } = await supabase
-      .from('scouts')
-      .select('person_id, display_name')
-      .eq('active', true)
-      .not('person_id', 'is', null)
-      .order('display_name');
-    activeScouts = ((data ?? []) as { person_id: number; display_name: string }[]).map((s) => ({
-      personId: s.person_id,
-      name: s.display_name
-    }));
+    // Active scouts AND Webelos ("(Webelos)" on the label) — a Webelos has a scout account too.
+    activeScouts = await loadScoutSwitchOptions(supabase);
   }
 
   const chosenId = viewScoutParam ? Number(viewScoutParam) : undefined;

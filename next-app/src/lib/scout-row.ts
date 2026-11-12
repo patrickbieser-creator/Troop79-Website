@@ -16,7 +16,7 @@ import type { ScoutRow } from '@/app/admin/(workspace)/advancement/roster/scout-
 
 /** Columns that stay on `scouts`. */
 export const SCOUT_CORE_COLS =
-  'id, first_name, last_name, display_name, patrol, current_rank, active, inactive_reason, ' +
+  'id, first_name, last_name, display_name, patrol, current_rank, active, inactive_reason, is_webelos, ' +
   'school, graduation_year, swim_class, junior_leader_override, person_id';
 
 export interface ScoutCoreRow {
@@ -28,6 +28,8 @@ export interface ScoutCoreRow {
   current_rank: string | null;
   active: boolean;
   inactive_reason: InactiveReason | null;
+  /** A Webelos on the way into the troop (active is false, no reason). */
+  is_webelos?: boolean;
   school: string | null;
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
@@ -81,6 +83,7 @@ export function mergeScoutRow(s: ScoutCoreRow, person: ScoutPersonContactRow | u
     junior_leader_override: s.junior_leader_override,
     active: s.active,
     inactive_reason: s.inactive_reason,
+    is_webelos: s.is_webelos ?? false,
     address_line1: person?.address_line1 ?? null,
     address_line2: person?.address_line2 ?? null,
     city: person?.city ?? null,

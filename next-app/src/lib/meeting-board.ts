@@ -175,7 +175,7 @@ export async function loadScoutProgress(sb: SupabaseClient, scoutIds: readonly s
   const ids = [...scoutIds];
   const [ledger, progress] = await Promise.all([
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
-      sb.from('ledger_active').select('scout_id, code').eq('kind', 'rank_requirement').in('scout_id', ids).order('id').range(from, to)
+      sb.from('reportable_ledger').select('scout_id, code').eq('kind', 'rank_requirement').in('scout_id', ids).order('id').range(from, to)
     ),
     fetchAllRows<{ scout_id: string; mb_id: string; awarded: boolean; has_any_req: boolean }>((from, to) =>
       sb.from('mb_progress').select('scout_id, mb_id, awarded, has_any_req').in('scout_id', ids).order('scout_id').order('mb_id').range(from, to)

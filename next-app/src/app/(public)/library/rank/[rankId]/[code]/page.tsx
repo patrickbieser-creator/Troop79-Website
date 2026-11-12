@@ -94,7 +94,7 @@ export default async function LibraryRequirementPage({
     const [ledgerRows, activeRes, pending] = await Promise.all([
       fetchAllRows<{ scout_id: string }>((from, to) =>
         supabase
-          .from('ledger_active')
+          .from('reportable_ledger')
           .select('scout_id')
           .eq('kind', 'rank_requirement')
           .eq('code', targetKey)

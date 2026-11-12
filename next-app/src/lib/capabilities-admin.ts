@@ -9,13 +9,14 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CAPABILITIES, isCapability, type Capability } from '@/lib/capabilities';
+import { youthPersonIds } from '@/lib/youth';
 
 export interface GrantRow {
   personId: number;
   name: string;
   /** Leader code when this person has one — helps disambiguate two Mikes. */
   leaderCode: string | null;
-  /** True when they are an active scout. Youth CAN hold grants
+  /** True when they are youth (an active scout or a Webelos). Youth CAN hold grants
    *  (meeting_plan.use for an SPL); the screen just says so plainly. */
   isActiveScout: boolean;
   capabilities: Capability[];
@@ -80,11 +81,11 @@ export interface AccessScreenData {
 }
 
 export async function loadAccessScreen(supabase: SupabaseClient): Promise<AccessScreenData> {
-  const [peopleRes, leadersRes, scoutsRes, grantsRes] = await Promise.all([
+  const [peopleRes, leadersRes, youth, grantsRes] = await Promise.all([
     // Guest people (guest_host_household_id) are never grant candidates.
     supabase.from('people').select('id, display_name').eq('active', true).is('guest_host_household_id', null).order('display_name'),
     supabase.from('leaders').select('code, person_id, is_person, can_login'),
-    supabase.from('scouts').select('person_id').eq('active', true),
+    youthPersonIds(supabase), // active scouts AND Webelos: never an eligible adult, tagged youth
     supabase.from('person_capabilities').select('person_id, capability, granted_at, granted_by')
   ]);
 
@@ -95,11 +96,6 @@ export async function loadAccessScreen(supabase: SupabaseClient): Promise<Access
     is_person: boolean;
     can_login: boolean;
   }[];
-  const activeScoutPersonIds = new Set(
-    ((scoutsRes.data ?? []) as { person_id: number | null }[])
-      .map((s) => s.person_id)
-      .filter((id): id is number => typeof id === 'number')
-  );
   const grants = (grantsRes.data ?? []) as {
     person_id: number;
     capability: string;
@@ -116,12 +112,12 @@ export async function loadAccessScreen(supabase: SupabaseClient): Promise<Access
   // will look like it lost people.
   const eligibleAdults = new Set(
     leaders
-      .filter((l) => l.is_person && l.person_id != null && !activeScoutPersonIds.has(l.person_id))
+      .filter((l) => l.is_person && l.person_id != null && !youth.has(l.person_id))
       .map((l) => l.person_id as number)
   );
 
   const shown = people.filter((p) => holders.has(p.id) || eligibleAdults.has(p.id));
-  const rows = buildGrantRows(shown, leaders, activeScoutPersonIds, grants, nameById);
+  const rows = buildGrantRows(shown, leaders, youth, grants, nameById);
 
   const shownIds = new Set(shown.map((p) => p.id));
   const addable = people
@@ -129,7 +125,7 @@ export async function loadAccessScreen(supabase: SupabaseClient): Promise<Access
     .map((p) => ({
       personId: p.id,
       name: p.display_name,
-      isActiveScout: activeScoutPersonIds.has(p.id)
+      isActiveScout: youth.has(p.id)
     }));
 
   return { rows, addable };

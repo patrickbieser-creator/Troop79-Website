@@ -95,6 +95,7 @@ describe('buildRosterSearchRows', () => {
   it('LabelsEveryKind_Singular', () => {
     expect(ROSTER_KIND_LABEL).toEqual({
       active_scout: 'Active Scout',
+      webelos: 'Webelos',
       inactive_scout: 'Inactive Scout',
       leader: 'Leader',
       adult: 'Adult',

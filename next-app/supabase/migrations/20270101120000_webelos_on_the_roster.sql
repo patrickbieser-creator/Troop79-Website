@@ -77,7 +77,7 @@ WITH scout_record AS (
             WHEN COALESCE(cr.holds_troop_role, false) THEN 'leader'::text
             ELSE 'adult'::text
         END AS tab,
-    p.active AND NOT (sr.scout_id IS NOT NULL AND sr.active AND NOT sr.no_longer_youth) AND NOT (sr.scout_id IS NOT NULL AND NOT sr.active AND NOT sr.no_longer_youth) AS in_picker,
+    p.active AND NOT (sr.scout_id IS NOT NULL AND sr.active AND NOT sr.no_longer_youth) AND NOT (sr.scout_id IS NOT NULL AND NOT sr.active AND NOT sr.no_longer_youth) AND NOT COALESCE(sr.is_webelos, false) AS in_picker,
     p.active,
     p.inactive_reason AS person_inactive_reason
    FROM people p
@@ -97,6 +97,8 @@ select la.*
 
 comment on view public.reportable_ledger is
   'ledger_active without Webelos rows: the advancement every report, export and public page may count.';
+-- Service-role only, like every table and view since 2026-08-25.
+revoke all on public.reportable_ledger from anon, authenticated;
 
 -- ── scout_tenure: a crossed-over scout starts on crossover day ──────────────
 create or replace view public.scout_tenure with (security_invoker = true) as
@@ -297,6 +299,18 @@ begin
   if v_scout.is_webelos or v_scout.crossed_over_on is null then
     raise exception 'NOT_CROSSED_OVER: % has no crossover to undo', p_scout_id;
   end if;
+  -- Undo is for a mistake, not a rewrite: once they have left, or have troop
+  -- advancement dated after crossover, flipping back would hide real work.
+  if not v_scout.active then
+    raise exception 'UNDO_SCOUT_LEFT: % is no longer active', p_scout_id;
+  end if;
+  if exists (
+    select 1 from public.ledger_entries le
+     where le.scout_id = p_scout_id and le.deleted_at is null and le.archived_at is null
+       and le.date > v_scout.crossed_over_on
+  ) then
+    raise exception 'UNDO_HAS_TROOP_ADVANCEMENT: % has advancement recorded after crossover', p_scout_id;
+  end if;
 
   -- The Scout rank this crossover awarded goes with it (soft delete, like any ledger removal).
   update public.ledger_entries
@@ -322,3 +336,112 @@ $function$;
 
 revoke execute on function public.cross_over_webelos(text, date, text, bigint, text) from public, anon, authenticated;
 revoke execute on function public.undo_cross_over(text, bigint, text) from public, anon, authenticated;
+
+-- ── Teaching skills: a Webelos is youth, never an adult teacher ─────────────
+-- Both checked "an ACTIVE scout" before refusing adults-only skills; a Webelos
+-- (active = false) passed as an adult. Same bodies, the youth test widened.
+CREATE OR REPLACE FUNCTION public.set_teaching_skills(p_person_id bigint, p_skill_ids text[], p_source text, p_changed_by_person_id bigint, p_changed_by_label text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_merged bigint;
+  v_wanted text[] := array(select distinct w from unnest(coalesce(p_skill_ids, '{}')) w order by w);
+  v_unknown text[];
+  v_adult_only text[];
+  v_added text[];
+  v_removed text[];
+begin
+  if p_source not in ('member', 'admin') then
+    raise exception 'Unknown source %', p_source;
+  end if;
+  select merged_into_person_id into v_merged from people where id = p_person_id for update;
+  if not found then raise exception 'That person no longer exists.'; end if;
+  if v_merged is not null then
+    raise exception 'That person was merged into another record. Edit the one they were merged into.';
+  end if;
+
+  v_unknown := array(select w from unnest(v_wanted) w where not exists (select 1 from skills s where s.id = w));
+  if cardinality(v_unknown) > 0 then
+    raise exception 'Unknown skill: %', array_to_string(v_unknown, ', ');
+  end if;
+  if exists (select 1 from scouts where person_id = p_person_id and (active or is_webelos)) then
+    v_adult_only := array(
+      select s.name from skills s where s.id = any (v_wanted) and not s.youth_teachable order by s.sort_order
+    );
+    if cardinality(v_adult_only) > 0 then
+      raise exception 'Adults only, so a scout can''t teach it: %', array_to_string(v_adult_only, ', ');
+    end if;
+  end if;
+
+  v_removed := array(
+    select t.skill_id from teaching_skills t where t.person_id = p_person_id and not (t.skill_id = any (v_wanted)) order by 1
+  );
+  v_added := array(
+    select w from unnest(v_wanted) w
+     where not exists (select 1 from teaching_skills t where t.person_id = p_person_id and t.skill_id = w)
+     order by w
+  );
+
+  delete from teaching_skills where person_id = p_person_id and skill_id = any (v_removed);
+  insert into teaching_skills (person_id, skill_id, authorized_by)
+  select p_person_id, a, case when p_source = 'member' then 'self' else p_changed_by_label end from unnest(v_added) a;
+
+  insert into teaching_skill_changes (person_id, skill_id, action, source, changed_by_person_id, changed_by_label, reviewed_at)
+  select p_person_id, x.skill_id, x.action, p_source, p_changed_by_person_id, p_changed_by_label,
+         case when p_source = 'member' then null else now() end
+    from (
+      select a as skill_id, 'added' as action from unnest(v_added) a
+      union all
+      select r, 'removed' from unnest(v_removed) r
+    ) x;
+
+  return jsonb_build_object('added', to_jsonb(v_added), 'removed', to_jsonb(v_removed));
+end;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.undo_teaching_skill_change(p_change_id bigint, p_changed_by_person_id bigint, p_changed_by_label text)
+ RETURNS text
+ LANGUAGE plpgsql
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  c teaching_skill_changes%rowtype;
+  v_held boolean;
+begin
+  select * into c from teaching_skill_changes where id = p_change_id for update;
+  if not found then return 'missing'; end if;
+  if c.reverted_at is not null or c.source = 'undo' then return 'already'; end if;
+  if exists (select 1 from people where id = c.person_id and merged_into_person_id is not null) then
+    raise exception 'That person was merged into another record. Edit the one they were merged into.';
+  end if;
+  perform 1 from people where id = c.person_id for update;
+
+  v_held := exists (select 1 from teaching_skills where person_id = c.person_id and skill_id = c.skill_id);
+  -- Undoing an add removes the skill; undoing a remove restores it. If the skill already changed back, or a later
+  -- change touched the same skill (only the latest one is reversible, so an old undo can't flip today's state), there
+  -- is nothing to reverse: mark it reviewed and say so rather than logging a no-op.
+  if (c.action = 'added' and not v_held) or (c.action = 'removed' and v_held)
+     or exists (select 1 from teaching_skill_changes x where x.person_id = c.person_id and x.skill_id = c.skill_id and x.id > c.id) then
+    update teaching_skill_changes set reviewed_at = coalesce(reviewed_at, now()) where id = c.id;
+    return 'superseded';
+  end if;
+  if c.action = 'removed'
+     and exists (select 1 from scouts where person_id = c.person_id and (active or is_webelos))
+     and exists (select 1 from skills where id = c.skill_id and not youth_teachable) then
+    raise exception 'Adults only, so a scout can''t teach it.';
+  end if;
+
+  if c.action = 'added' then
+    delete from teaching_skills where person_id = c.person_id and skill_id = c.skill_id;
+  else
+    insert into teaching_skills (person_id, skill_id, authorized_by) values (c.person_id, c.skill_id, p_changed_by_label);
+  end if;
+  insert into teaching_skill_changes (person_id, skill_id, action, source, changed_by_person_id, changed_by_label, reviewed_at)
+  values (c.person_id, c.skill_id, case when c.action = 'added' then 'removed' else 'added' end, 'undo',
+          p_changed_by_person_id, p_changed_by_label, now());
+  update teaching_skill_changes set reverted_at = now(), reviewed_at = coalesce(reviewed_at, now()) where id = c.id;
+  return 'ok';
+end;
+$function$;

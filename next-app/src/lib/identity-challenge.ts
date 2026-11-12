@@ -29,6 +29,23 @@ import { sendEmail, renderEmail } from '@/lib/email';
 import { siteUrl } from '@/lib/site-url';
 import type { IdentitySubjectKind } from '@/lib/identity-session';
 
+/** A Webelos (person_directory tab 'webelos') never signs in as themselves — not by code, link or passkey; a parent
+ *  signs in for them (Plans/Webelos-On-The-Roster.md). Gated on the flag, never on age. */
+function maySignInAs(tab: string): boolean {
+  return tab !== 'webelos';
+}
+
+function subjectKindForTab(tab: string): IdentitySubjectKind {
+  return tab === 'active_scout' ? 'scout' : 'adult';
+}
+
+/** Which of these people are Webelos (scouts.is_webelos). */
+async function webelosPersonIds(supabase: SupabaseClient, personIds: readonly number[]): Promise<Set<number>> {
+  if (!personIds.length) return new Set();
+  const { data } = await supabase.from('scouts').select('person_id').eq('is_webelos', true).in('person_id', [...personIds]);
+  return new Set(((data ?? []) as { person_id: number }[]).map((r) => r.person_id));
+}
+
 /** Exported so callers can quote the real expiry rather than a copied
  *  constant (the Roster's "Send sign-in link" confirmation — Plans/Verified-Signup.md
  *  Phase A). */
@@ -121,14 +138,19 @@ async function resolveChallengeTarget(
   // declared unique in the schema — a young scout can share a parent's
   // address — so this takes the first match rather than .maybeSingle(),
   // which would throw on a real, expected duplicate.
+  // A Webelos never signs in with their own address — and when one shares a parent's, the parent must still
+  // resolve — so Webelos are dropped from the matches before taking the first.
   const { data: directPeople } = await supabase
     .from('people')
     .select('id')
     .eq('active', true)
     .ilike('primary_email', needle)
-    .limit(1);
+    .order('id')
+    .limit(10);
+  const directIds = ((directPeople ?? []) as { id: number }[]).map((p) => p.id);
+  const webelosIds = await webelosPersonIds(supabase, directIds);
 
-  let personId = ((directPeople ?? []) as { id: number }[])[0]?.id ?? null;
+  let personId = directIds.find((id) => !webelosIds.has(id)) ?? null;
 
   // person_emails fallback (Plans/Retire-Roster-Contact-Columns.md Phase 2) —
   // a tracked address that isn't people.primary_email, e.g. a parent who
@@ -169,7 +191,7 @@ async function resolveChallengeTarget(
     .eq('person_id', personId)
     .maybeSingle();
   const directory = directoryRow as { person_id: number; display_name: string; tab: string } | null;
-  if (!directory) return null;
+  if (!directory || !maySignInAs(directory.tab)) return null;
 
   const householdKey = await resolveHouseholdKeyForPerson(personId);
   if (!householdKey) return null;
@@ -177,7 +199,7 @@ async function resolveChallengeTarget(
   return {
     personId,
     displayName: directory.display_name,
-    subjectKind: directory.tab === 'active_scout' ? 'scout' : 'adult',
+    subjectKind: subjectKindForTab(directory.tab),
     householdKey
   };
 }
@@ -292,7 +314,7 @@ export async function targetForPerson(
     .eq('person_id', personId)
     .maybeSingle();
   const directory = directoryRow as { person_id: number; display_name: string; tab: string } | null;
-  if (!directory) return null;
+  if (!directory || !maySignInAs(directory.tab)) return null;
 
   const householdKey = await resolveHouseholdKeyForPerson(personId);
   if (!householdKey) return null;
@@ -300,7 +322,7 @@ export async function targetForPerson(
   return {
     personId,
     displayName: directory.display_name,
-    subjectKind: directory.tab === 'active_scout' ? 'scout' : 'adult',
+    subjectKind: subjectKindForTab(directory.tab),
     householdKey
   };
 }
@@ -494,7 +516,7 @@ async function currentIdentityFor(
     .eq('person_id', personId)
     .maybeSingle();
   const directory = directoryRow as { person_id: number; display_name: string; tab: string } | null;
-  if (!directory) return null;
+  if (!directory || !maySignInAs(directory.tab)) return null;
 
   const { data: personRow } = await supabase
     .from('people')
@@ -515,7 +537,7 @@ async function currentIdentityFor(
   return {
     personId,
     displayName: directory.display_name,
-    subjectKind: directory.tab === 'active_scout' ? 'scout' : 'adult',
+    subjectKind: subjectKindForTab(directory.tab),
     householdKey,
     epoch,
     nextPath

@@ -42,6 +42,7 @@ import type { PersonDetail } from '../person-actions';
 import { StatusCard, reasonLabel } from './status-card';
 import { SectionEditProvider } from './section-card';
 import { IdentitySection } from './identity-section';
+import { CrossoverCard } from './crossover-card';
 import { AdultDetailsSection, ScoutDetailsSection, gradeFor } from './details-section';
 import { ContactSection } from './contact-section';
 import { FamilySection } from './family-section';
@@ -109,7 +110,8 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
 
   // A scout's tab follows the status it just changed; an adult's follows the
   // roles, refetched after every grant / end.
-  const currentTab: RosterTab = kind === 'scout' ? (status.active ? 'active_scout' : 'inactive_scout') : adultTab;
+  const currentTab: RosterTab =
+    kind === 'scout' ? (scout?.is_webelos ? 'webelos' : status.active ? 'active_scout' : 'inactive_scout') : adultTab;
 
   function onStatusChanged(next: PersonStatus) {
     setStatus(next);
@@ -201,7 +203,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         sub={
           <>
             <span className={styles.pills}>
-              <Badge variant={kind === 'adult' ? 'neutral' : 'info'}>{KIND_LABEL[kind]}</Badge>
+              <Badge variant={kind === 'adult' ? 'neutral' : 'info'}>{scout?.is_webelos ? 'Webelos' : KIND_LABEL[kind]}</Badge>
               {status.active ? (
                 <Badge variant="success">Active</Badge>
               ) : (
@@ -258,15 +260,28 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         <div className={styles.main}>
           {familyNotice && <FamilyAddedNotice notice={familyNotice} name={name} onAcknowledged={onAcknowledged} />}
 
-          <StatusCard
-            personId={record.personId}
-            scoutId={kind === 'scout' ? (scout?.id ?? null) : null}
-            kind={kind}
-            name={name}
-            active={record.status.active}
-            reason={record.status.reason}
-            onChanged={onStatusChanged}
-          />
+          {kind === 'scout' && scout && (scout.is_webelos || scout.crossed_over_on) && (
+            <CrossoverCard
+              scoutId={scout.id}
+              name={name}
+              isWebelos={!!scout.is_webelos}
+              crossedOverOn={scout.crossed_over_on ?? null}
+              bsaMemberId={str(f.bsa_member_id) || null}
+              today={record.today}
+            />
+          )}
+          {/* Active/Inactive does not apply to a Webelos — not a scout yet. */}
+          {!(kind === 'scout' && scout?.is_webelos) && (
+            <StatusCard
+              personId={record.personId}
+              scoutId={kind === 'scout' ? (scout?.id ?? null) : null}
+              kind={kind}
+              name={name}
+              active={record.status.active}
+              reason={record.status.reason}
+              onChanged={onStatusChanged}
+            />
+          )}
 
           {kind === 'scout' && scout ? (
             <>

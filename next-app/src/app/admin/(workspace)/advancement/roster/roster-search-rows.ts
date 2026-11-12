@@ -14,6 +14,7 @@ export type RosterKind = DirectoryPerson['tab'] | 'guest';
 
 export const ROSTER_KIND_LABEL: Record<RosterKind, string> = {
   active_scout: 'Active Scout',
+  webelos: 'Webelos',
   inactive_scout: 'Inactive Scout',
   leader: 'Leader',
   adult: 'Adult',

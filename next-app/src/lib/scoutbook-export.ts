@@ -57,7 +57,7 @@ export async function loadScoutbookExport(
     // a Scoutbook upload the leader trusts as complete. Paginate every row.
     fetchAllRows<ExportLedgerRow>((rangeFrom, rangeTo) =>
       supabase
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select('id, scout_id, kind, code, label, date, scoutbook_submitted_at')
         .in('kind', ['merit_badge_award', 'rank_award'])
         .gte('date', from)

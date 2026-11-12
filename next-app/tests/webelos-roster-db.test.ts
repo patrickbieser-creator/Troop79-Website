@@ -14,7 +14,7 @@ const WEB = 'ZZWEB1';
 const WEB2 = 'ZZWEB2';
 const LAST = 'ZZWebelosTest';
 let webPerson = 0;
-let web2Person = 0;
+
 let scoutReqCodes: string[] = [];
 
 async function newWebelos(id: string, first: string): Promise<number> {
@@ -56,11 +56,12 @@ beforeAll(async () => {
   const { data } = await admin.from('rank_requirements').select('code').eq('rank_id', 'scout');
   scoutReqCodes = ((data ?? []) as { code: string }[]).map((r) => r.code);
   webPerson = await newWebelos(WEB, 'Logan');
-  web2Person = await newWebelos(WEB2, 'Hank');
+  await newWebelos(WEB2, 'Hank');
 });
 
 afterAll(async () => {
   await admin.from('audit_log').delete().in('entity_id', [WEB, WEB2]);
+  await admin.from('teaching_skills').delete().eq('person_id', webPerson);
   await admin.from('ledger_entries').delete().in('scout_id', [WEB, WEB2]);
   await admin.from('scouts').delete().in('id', [WEB, WEB2]);
   await admin.from('people').delete().eq('last_name', LAST);
@@ -102,6 +103,18 @@ describe('a Webelos on the roster', () => {
   it('WebelosSignup_DefaultsToClassWebelos', async () => {
     const { data } = await admin.rpc('default_participant_class', { p_person_id: webPerson, p_event_signup_id: 0 });
     expect(data).toBe('webelos');
+  });
+
+  it('Webelos_CannotBeGivenAnAdultsOnlyTeachingSkill', async () => {
+    const { data: skill } = await admin.from('skills').select('id').eq('youth_teachable', false).limit(1).single();
+    const { error } = await admin.rpc('set_teaching_skills', {
+      p_person_id: webPerson,
+      p_skill_ids: [(skill as { id: string }).id],
+      p_source: 'admin',
+      p_changed_by_person_id: null,
+      p_changed_by_label: 'ZZ Vitest'
+    });
+    expect(error?.message).toMatch(/Adults only/);
   });
 
   it('ScoutRankDoneAsAWebelos_IsNotAutoAwarded', async () => {
@@ -182,5 +195,23 @@ describe('crossing over', () => {
       .eq('kind', 'rank_award')
       .is('deleted_at', null);
     expect({ s, award }).toEqual({ s: { active: false, is_webelos: true, crossed_over_on: null }, award: [] });
+  });
+
+  it('UndoCrossOver_LeavesAScoutRankALeaderRecordedByHand', async () => {
+    // WEB is a Webelos again (previous test); cross over with no Scout rank work held, then hand-record one.
+    await admin.from('ledger_entries').delete().eq('scout_id', WEB);
+    await admin.rpc('cross_over_webelos', { p_scout_id: WEB, p_on: '2027-02-28', p_bsa_member_id: null, p_actor_person_id: null, p_actor_label: 'ZZ Vitest' });
+    await admin.from('ledger_entries').insert({
+      scout_id: WEB, date: '2027-02-28', kind: 'rank_award', code: 'scout', label: 'ZZ hand award', by: 'ZZ', entered_by: 'ZZ', notes: 'BoR'
+    });
+    await admin.rpc('undo_cross_over', { p_scout_id: WEB, p_actor_person_id: null, p_actor_label: 'ZZ Vitest' });
+    const { data } = await admin.from('ledger_entries').select('label').eq('scout_id', WEB).eq('kind', 'rank_award').is('deleted_at', null);
+    expect(data).toEqual([{ label: 'ZZ hand award' }]);
+  });
+
+  it('Webelos_PastEighteen_StillNotInTheAdultPicker', async () => {
+    await admin.from('people').update({ birthdate: '2000-01-01' }).eq('id', webPerson);
+    const { data } = await admin.from('person_directory').select('tab, in_picker').eq('person_id', webPerson).single();
+    expect(data).toEqual({ tab: 'webelos', in_picker: false });
   });
 });

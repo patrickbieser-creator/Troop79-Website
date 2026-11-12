@@ -49,13 +49,11 @@ export async function loadCourtOfHonorEntries(supabase: SupabaseClient, range: R
 
   const rawRows = await fetchAllRows<RawLedgerRow>((from, to) =>
     supabase
-      .from('ledger_entries')
+      .from('reportable_ledger')
       .select('id, scout_id, kind, code, label, qty, unit, date, entered_at')
       .in('kind', kinds)
       .gte('date', range.startDate)
       .lte('date', range.endDate)
-      .is('archived_at', null)
-      .is('deleted_at', null)
       .order('id', { ascending: true })
       .range(from, to)
   );

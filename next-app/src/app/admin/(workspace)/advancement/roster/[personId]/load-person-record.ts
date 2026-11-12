@@ -35,7 +35,7 @@ export type LoadPersonRecordResult =
   | { kind: 'missing' };
 
 const SCOUT_RECORD_COLS =
-  'id, patrol, current_rank, school, graduation_year, swim_class, active, inactive_reason, junior_leader_override';
+  'id, patrol, current_rank, school, graduation_year, swim_class, active, inactive_reason, junior_leader_override, is_webelos, crossed_over_on';
 
 export async function loadPersonRecord(personId: number): Promise<LoadPersonRecordResult> {
   const supabase = createAdminClient();

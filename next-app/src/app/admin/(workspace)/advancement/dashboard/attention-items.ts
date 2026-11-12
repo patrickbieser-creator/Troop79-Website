@@ -113,7 +113,7 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
 
   const [{ data: scouts }, { data: people }] = await Promise.all([
     scoutIds.length > 0
-      ? supabase.from('scouts').select('id, display_name, active').in('id', scoutIds)
+      ? supabase.from('scouts').select('id, display_name, active, is_webelos').in('id', scoutIds)
       : Promise.resolve({ data: [] }),
     personIds.length > 0
       ? supabase.from('person_directory').select('person_id, display_name, tab').in('person_id', personIds)
@@ -121,7 +121,7 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
   ]);
 
   const scoutById = new Map(
-    ((scouts ?? []) as { id: string; display_name: string; active: boolean }[]).map((s) => [s.id, s])
+    ((scouts ?? []) as { id: string; display_name: string; active: boolean; is_webelos?: boolean }[]).map((s) => [s.id, s])
   );
   const personById = new Map(
     ((people ?? []) as { person_id: number; display_name: string; tab: string }[]).map((p) => [
@@ -152,7 +152,7 @@ async function loadPendingProfileUpdates(): Promise<AttentionCategory> {
     // Deep-links via the Roster's ?open= redirect to the scout's record page
     // (Active or Inactive tab, whichever the scout is actually on, becomes
     // its Back link) — see roster/page.tsx.
-    const tab = scout?.active === false ? 'inactive_scout' : 'active_scout';
+    const tab = scout?.is_webelos ? 'webelos' : scout?.active === false ? 'inactive_scout' : 'active_scout';
     return {
       label: scout?.display_name ?? r.entity_id,
       meta: `${fieldLabels} · submitted ${fmtDate(r.submitted_at, { year: false })}`,

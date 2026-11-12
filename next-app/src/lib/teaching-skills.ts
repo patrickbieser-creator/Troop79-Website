@@ -5,7 +5,7 @@
  * admin-home alert; Undo and Mark reviewed clear it. Nothing waits for approval: a saved skill counts for the Meeting
  * Plan right away.
  *
- * Who gets the card: an adult (any person who is not an active scout, leaders and parents alike) sees every skill; a
+ * Who gets the card: an adult (any person who is not an active scout or a Webelos, leaders and parents alike) sees every skill; a
  * scout who can offer to teach (canOfferToTeach: First Class+, or a Junior Leader) sees only youth-teachable skills;
  * anyone else gets no card. Server-only: every function takes the service-role client.
  */
@@ -14,6 +14,7 @@ import { canOfferToTeach } from '@/lib/can-offer-to-teach';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import type { JuniorLeaderOverride } from '@/lib/participant-class';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { YOUTH_SCOUTS_FILTER } from '@/lib/youth';
 
 export type TeachingProfileKind = 'adult' | 'junior' | 'none';
 
@@ -41,13 +42,14 @@ export function adultOnlyNote(skillId: string): string {
 }
 
 type SkillRow = { id: string; name: string; youth_teachable: boolean; sort_order: number };
-type ScoutRow = { id: string; current_rank: string | null; graduation_year: number | null; junior_leader_override: JuniorLeaderOverride };
+/** An active scout or a Webelos (lib/youth). A Webelos is youth who never teaches: no card at all. */
+type ScoutRow = { id: string; current_rank: string | null; graduation_year: number | null; junior_leader_override: JuniorLeaderOverride; is_webelos: boolean };
 
 export async function loadTeachingProfile(sb: SupabaseClient, personId: number, onDate: string): Promise<TeachingProfile> {
   const [skillsRes, heldRes, scoutRes, ranksRes, counselorRes] = await Promise.all([
     sb.from('skills').select('id, name, youth_teachable, sort_order').order('sort_order'),
     sb.from('teaching_skills').select('skill_id').eq('person_id', personId),
-    sb.from('scouts').select('id, current_rank, graduation_year, junior_leader_override').eq('person_id', personId).eq('active', true).limit(1),
+    sb.from('scouts').select('id, current_rank, graduation_year, junior_leader_override, is_webelos').eq('person_id', personId).or(YOUTH_SCOUTS_FILTER).limit(1),
     sb.from('ranks').select('id, sort_order'),
     sb.from('merit_badge_counselors').select('sort_order, merit_badges(name)').eq('person_id', personId)
   ]);
@@ -86,7 +88,7 @@ export async function loadTeachingProfile(sb: SupabaseClient, personId: number, 
     override: scout.junior_leader_override,
     onDate
   });
-  if (!may) return { kind: 'none', skills: [], counselorFor };
+  if (scout.is_webelos || !may) return { kind: 'none', skills: [], counselorFor };
 
   // "Finished it themselves" (specialist review): the scout's current rank is at or above the requirement's rank, or
   // the requirement is on their ledger. Rank first, because historical ranks often lack requirement rows.
@@ -251,12 +253,13 @@ export async function countUnreviewedTeachingSkillChanges(sb: SupabaseClient): P
 /** Just the card's audience (the /member grid shows the card only to adults and Junior Leaders): two small reads. */
 export async function loadTeachingKind(sb: SupabaseClient, personId: number, onDate: string): Promise<TeachingProfileKind> {
   const [{ data: scouts, error: scoutErr }, { data: ranks, error: rankErr }] = await Promise.all([
-    sb.from('scouts').select('id, current_rank, graduation_year, junior_leader_override').eq('person_id', personId).eq('active', true).limit(1),
+    sb.from('scouts').select('id, current_rank, graduation_year, junior_leader_override, is_webelos').eq('person_id', personId).or(YOUTH_SCOUTS_FILTER).limit(1),
     sb.from('ranks').select('id, sort_order')
   ]);
   if (scoutErr ?? rankErr) throw new Error((scoutErr ?? rankErr)!.message);
   const scout = ((scouts ?? []) as ScoutRow[])[0];
   if (!scout) return 'adult';
+  if (scout.is_webelos) return 'none';
   const rankSort = new Map(((ranks ?? []) as { id: string; sort_order: number }[]).map((r) => [r.id, r.sort_order]));
   return canOfferToTeach({
     rankSortOrder: scout.current_rank ? (rankSort.get(scout.current_rank) ?? null) : null,

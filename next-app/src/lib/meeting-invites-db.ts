@@ -23,6 +23,7 @@ import { teachTopic } from '@/lib/meeting-board-supply';
 import { loadAdvancementCatalog, type AdvancementCatalog } from '@/lib/advancement-catalog';
 import { carryJson, loadBoardScouts, loadEffectivePicks, loadIntents, loadMeetingById, loadScoutBoard } from '@/lib/meeting-board';
 import { effectiveIntent } from '@/lib/meeting-board-shared';
+import { isYouthTab } from '@/lib/youth';
 import { teacherIntent } from '@/lib/meeting-board-teach';
 import { pickableKeys } from '@/lib/meeting-board-picklist';
 import { INVITE_DEDUPE_HOURS, INVITE_FAILURES_PER_HOUR, INVITE_SEND_CAP, inviteExpiresAt, REMINDER_SEND_CAP, inviteState, type InviteResponse, type InviteState } from '@/lib/meeting-invites';
@@ -458,7 +459,7 @@ export async function adultRecipients(
     loadHouseholds()
   ]);
   if (e1 || e2) throw new Error((e1 ?? e2)!.message);
-  const adult = new Set(((dir ?? []) as { person_id: number; tab: string }[]).filter((d) => d.tab !== 'active_scout').map((d) => d.person_id));
+  const adult = new Set(((dir ?? []) as { person_id: number; tab: string }[]).filter((d) => !isYouthTab(d.tab)).map((d) => d.person_id)); // a Webelos is youth too
   for (const p of (rows ?? []) as { id: number; display_name: string; active: boolean; session_epoch: number | null; primary_email: string | null }[]) {
     if (!adult.has(p.id) || !p.active || p.session_epoch == null) continue;
     if (!householdKeyForPerson(households, p.id)) {

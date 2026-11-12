@@ -39,8 +39,8 @@ export async function loadRosterPeople(sb: SupabaseClient): Promise<RosterPerson
     fetchAllRows<{ person_id: number; email: string; is_primary: boolean }>((from, to) =>
       sb.from('person_emails').select('person_id, email, is_primary').order('id').range(from, to)
     ),
-    fetchAllRows<{ person_id: number | null; active: boolean; inactive_reason: string | null }>((from, to) =>
-      sb.from('scouts').select('person_id, active, inactive_reason').order('id').range(from, to)
+    fetchAllRows<{ person_id: number | null; active: boolean; inactive_reason: string | null; is_webelos: boolean }>((from, to) =>
+      sb.from('scouts').select('person_id, active, inactive_reason, is_webelos').order('id').range(from, to)
     ),
     fetchAllRows<{ person_id: number | null; role: string | null }>((from, to) =>
       sb.from('leaders').select('person_id, role').order('code').range(from, to)
@@ -76,7 +76,7 @@ export async function loadRosterPeople(sb: SupabaseClient): Promise<RosterPerson
       yptCompleted: p.ypt_completed,
       active: p.active,
       inactiveReason: p.inactive_reason,
-      scout: s ? { active: s.active, inactiveReason: s.inactive_reason } : null,
+      scout: s ? { active: s.active, inactiveReason: s.inactive_reason, isWebelos: s.is_webelos ?? false } : null,
       leaderRoles: rolesOf.get(p.id) ?? []
     };
   });

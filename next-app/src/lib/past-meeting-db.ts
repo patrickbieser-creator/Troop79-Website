@@ -21,7 +21,7 @@ export async function loadRankAwards(sb: SupabaseClient, scoutIds: readonly stri
   if (!scoutIds.length) return [];
   // Paged: the ledger is far past PostgREST's 1000-row cap, and a truncated read would give scouts the wrong rank.
   const rows = await fetchAllRows<{ scout_id: string; code: string; date: string }>((from, to) =>
-    sb.from('ledger_active').select('scout_id, code, date').eq('kind', 'rank_award').in('scout_id', [...scoutIds]).order('id').range(from, to)
+    sb.from('reportable_ledger').select('scout_id, code, date').eq('kind', 'rank_award').in('scout_id', [...scoutIds]).order('id').range(from, to)
   );
   return rows.map((r) => ({ scoutId: r.scout_id, code: r.code, date: r.date }));
 }
@@ -33,7 +33,7 @@ export async function loadHappenedRows(sb: SupabaseClient, meeting: Pick<BoardMe
     sb.from('event_attendance').select('person_id').eq('calendar_entry_id', meeting.entryId),
     fetchAllRows<{ scout_id: string; kind: string; code: string }>((from, to) =>
       sb
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select('scout_id, kind, code')
         .eq('date', meeting.date)
         .in('kind', ['rank_requirement', 'merit_badge_requirement', 'rank_award', 'merit_badge_award'])

@@ -223,11 +223,13 @@ export async function createScout(formData: FormData): Promise<Result> {
   // current_rank is intentionally not read from the form — it's computed
   // from rank_award ledger entries via trigger (see the insert below).
   const bsaMemberId = String(formData.get('bsa_member_id') ?? '').trim() || null;
-  const active = formData.get('active') === 'on' || formData.get('active') === 'true';
+  // A Webelos (Plans/Webelos-On-The-Roster.md) is created inactive with no reason: not yet a scout.
+  const isWebelos = formData.get('is_webelos') === 'true';
+  const active = !isWebelos && (formData.get('active') === 'on' || formData.get('active') === 'true');
   const inactiveReasonRaw = String(formData.get('inactive_reason') ?? '').trim();
   const VALID_REASONS = new Set(['dropped_out', 'transferred', 'moved_away', 'aged_out', 'other']);
-  const inactiveReason = active ? null : (inactiveReasonRaw || null);
-  if (!active && !inactiveReason) {
+  const inactiveReason = active || isWebelos ? null : (inactiveReasonRaw || null);
+  if (!active && !isWebelos && !inactiveReason) {
     return { ok: false, error: 'A reason is required when marking the scout inactive.' };
   }
   if (inactiveReason && !VALID_REASONS.has(inactiveReason)) {
@@ -274,6 +276,7 @@ export async function createScout(formData: FormData): Promise<Result> {
     current_rank: null, // computed from rank_award ledger entries via trigger
     active,
     inactive_reason: inactiveReason,
+    is_webelos: isWebelos,
     person_id: personId,
     school: extras.school,
     graduation_year: extras.graduation_year,

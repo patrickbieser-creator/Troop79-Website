@@ -53,6 +53,12 @@ describe('Roll Call sheet — one tab per group', () => {
     expect(tabs).toEqual(['Scouts (1)', 'Leaders (0)', 'Adults (0)', 'Inactive scouts (0)']);
   });
 
+  it('Webelos_HaveTheirOwnTab_RightAfterScouts', () => {
+    renderSheet({ candidates: [...candidates, person(6, 'Logan Webelos', 'webelos')] });
+    const tabs = screen.getAllByRole('tab').map((t) => t.textContent);
+    expect(tabs.slice(0, 2)).toEqual(['Scouts (1)', 'Webelos (0)']);
+  });
+
   it('OpensOnScouts_AndOnlyThatPanelIsVisible', () => {
     renderSheet();
     expect(screen.getByRole('tab', { name: /Scouts/ }).getAttribute('aria-selected')).toBe('true');

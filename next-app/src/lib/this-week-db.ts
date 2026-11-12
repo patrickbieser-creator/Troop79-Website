@@ -29,12 +29,12 @@ export async function loadLeafCodes(sb: SupabaseClient, scoutIds: readonly strin
   // date, so earned badges come from their award rows instead.
   const [rows, awarded] = await Promise.all([
     fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) => {
-      const q = sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).in('scout_id', [...scoutIds]);
+      const q = sb.from('reportable_ledger').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).in('scout_id', [...scoutIds]);
       return (before ? q.lt('date', before) : q).order('id').range(from, to);
     }),
     before
       ? fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
-          sb.from('ledger_active').select('scout_id, code').eq('kind', 'merit_badge_award').like('code', 'MB:%').lt('date', before).in('scout_id', [...scoutIds]).order('id').range(from, to)
+          sb.from('reportable_ledger').select('scout_id, code').eq('kind', 'merit_badge_award').like('code', 'MB:%').lt('date', before).in('scout_id', [...scoutIds]).order('id').range(from, to)
         ).then((rs) => rs.map((r) => ({ scout_id: r.scout_id, mb_id: r.code.slice(3) })))
       : fetchAllRows<{ scout_id: string; mb_id: string }>((from, to) =>
           sb.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).in('scout_id', [...scoutIds]).order('scout_id').order('mb_id').range(from, to)

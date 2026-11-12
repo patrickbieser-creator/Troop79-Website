@@ -114,7 +114,9 @@ interface Props {
    *  The internal tab bar is hidden and this decides the filter, so age-out —
    *  which the page classifies, not this component — cannot be contradicted
    *  here by a bare `scouts.active` test. */
-  only?: 'active' | 'inactive';
+  only?: 'active' | 'inactive' | 'webelos';
+  /** The ID "+ Add Webelos" suggests (lib/scout-ids nextWebelosId). */
+  suggestedWebelosId?: string;
   /** Created (by people.id) and Left (by scout id), derived in lib/roster-dates (Patrick, 2026-11-01). */
   dates: RosterDates;
 }
@@ -122,19 +124,21 @@ interface Props {
 /** Where a scout's name goes: the record page, remembering the tab it came
  *  from so the page's Back link returns here. Null for a scout with no
  *  linked person (defensive — createScout always links one). */
-export function scoutRecordHref(s: Pick<ScoutRow, 'person_id'>, tab: 'active' | 'inactive'): string | null {
+export function scoutRecordHref(s: Pick<ScoutRow, 'person_id'>, tab: 'active' | 'inactive' | 'webelos'): string | null {
   if (s.person_id == null) return null;
-  return `/admin/advancement/roster/${s.person_id}?from=${tab === 'inactive' ? 'inactive_scout' : 'active_scout'}`;
+  const from = tab === 'inactive' ? 'inactive_scout' : tab === 'webelos' ? 'webelos' : 'active_scout';
+  return `/admin/advancement/roster/${s.person_id}?from=${from}`;
 }
 
-export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Props) {
+export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates, suggestedWebelosId }: Props) {
   // `only` must NOT seed state. A state initialiser runs once on mount, and
   // React keeps this component mounted when the page navigates between the
   // Active and Inactive roster tabs — so the internal tab stayed 'active'
   // while the page handed over the inactive list, and the table filtered every
   // row away: "18" in the tab, nothing in the body.
   const [ownTab, setOwnTab] = useState<'active' | 'inactive'>('active');
-  const tab = only ?? ownTab;
+  const tab: 'active' | 'inactive' | 'webelos' = only ?? ownTab;
+  const webelosTab = tab === 'webelos';
   const setTab = setOwnTab;
   // The only dialog left here is "+ Add Scout".
   const [adding, setAdding] = useState(false);
@@ -155,7 +159,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Pr
   const visible = useMemo(
     () =>
       scouts
-        .filter((s) => (tab === 'active' ? s.active : !s.active))
+        .filter((s) => (tab === 'active' ? s.active : tab === 'webelos' ? !!s.is_webelos : !s.active && !s.is_webelos))
         .map((s) => ({
           ...s,
           _today: today,
@@ -199,7 +203,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Pr
           />
         )}
         <span className={styles.toolbarSpacer} />
-        <AddButton onClick={() => setAdding(true)}>+ Add Scout</AddButton>
+        <AddButton onClick={() => setAdding(true)}>{webelosTab ? '+ Add Webelos' : '+ Add Scout'}</AddButton>
       </div>
 
       <table className={styles.table}>
@@ -218,7 +222,7 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Pr
             {head('Health Form', 'health')}
             {/* Created sits after the health form on the Active tab and after the
                 Reason on the Inactive tab, with Left beside it (Patrick, 2026-11-01). */}
-            {tab === 'active' && head('Created', 'created')}
+            {tab !== 'inactive' && head('Created', 'created')}
             {head('Status', 'status')}
             {/* One line per scout (Patrick, 2026-08-27): the reason is its own
                 column on the Inactive tab rather than a second line under Status. */}
@@ -233,7 +237,9 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Pr
               <td colSpan={tab === 'inactive' ? 15 : 13} className={styles.muted}>
                 {tab === 'active'
                   ? 'No active scouts.'
-                  : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
+                  : webelosTab
+                    ? 'No Webelos yet. Add one to sign them up for events and track their advancement before they cross over.'
+                    : 'No inactive scouts — nobody has been marked dropped, transferred, moved, or aged out.'}
               </td>
             </tr>
           )}
@@ -267,10 +273,10 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Pr
                 <td>{s.swim_class ? SWIM_CLASS_LABEL[s.swim_class] : dash}</td>
                 <td className={styles.mono}>{s.bsa_member_id ?? dash}</td>
                 <td>{s.health_form_date ? fmtDate(s.health_form_date) : dash}</td>
-                {tab === 'active' && <td>{s._created ? fmtDate(s._created) : dash}</td>}
+                {tab !== 'inactive' && <td>{s._created ? fmtDate(s._created) : dash}</td>}
                 <td>
-                  <Badge variant={s.active ? 'success' : 'danger'}>
-                    {s.active ? 'Active' : 'Inactive'}
+                  <Badge variant={s.is_webelos ? 'info' : s.active ? 'success' : 'danger'}>
+                    {s.is_webelos ? 'Webelos' : s.active ? 'Active' : 'Inactive'}
                   </Badge>
                 </td>
                 {tab === 'inactive' && (
@@ -288,7 +294,14 @@ export function ScoutsTable({ scouts, ranks, rankLabel, today, only, dates }: Pr
       </table>
 
       <Dialog ref={dialogRef} className={styles.editDialogWide} onClose={() => setAdding(false)}>
-        {adding && <ScoutForm ranks={ranks} onClose={() => setAdding(false)} />}
+        {adding && (
+          <ScoutForm
+            ranks={ranks}
+            onClose={() => setAdding(false)}
+            webelos={webelosTab}
+            suggestedId={webelosTab ? suggestedWebelosId : undefined}
+          />
+        )}
       </Dialog>
     </>
   );

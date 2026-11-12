@@ -42,18 +42,21 @@ import {
   flattenGuestEmbed,
   type GuestEmbedRow,
 } from "@/lib/guest-people";
+import { nextWebelosId } from "@/lib/scout-ids";
 import styles from "./roster.module.css";
 
 export const metadata = {
   title: "Roster — Troop 79",
 };
 
-type TabKey = "active_scout" | "inactive_scout" | "leader" | "adult" | "guest";
+type TabKey = "active_scout" | "webelos" | "inactive_scout" | "leader" | "adult" | "guest";
 
 // Guests (Plans/Guests-As-People.md) are NOT in person_directory — they are
 // people flagged guest_host_household_id, read straight from `people` below.
 const TABS: { key: TabKey; label: string }[] = [
   { key: "active_scout", label: "Active Scouts" },
+  // Webelos on the way in (Plans/Webelos-On-The-Roster.md): tracked, never reported.
+  { key: "webelos", label: "Webelos" },
   { key: "inactive_scout", label: "Inactive Scouts" },
   { key: "leader", label: "Leaders" },
   { key: "adult", label: "Adults" },
@@ -230,7 +233,7 @@ export default async function RosterPage({
         .map((p) => p.scout_id as string),
     );
   const tabScouts =
-    tab === "active_scout" || tab === "inactive_scout"
+    tab === "active_scout" || tab === "inactive_scout" || tab === "webelos"
       ? allScouts.filter((s) => scoutIdsFor(tab).has(s.id))
       : [];
 
@@ -316,14 +319,15 @@ export default async function RosterPage({
 
         {tab === "guest" ? (
           <GuestsTable rows={guestRows} openGuestId={openScoutId} />
-        ) : tab === "active_scout" || tab === "inactive_scout" ? (
+        ) : tab === "active_scout" || tab === "inactive_scout" || tab === "webelos" ? (
           <ScoutsTable
             scouts={tabScouts}
             ranks={ranks}
             rankLabel={rankLabel}
             today={today}
-            only={tab === "active_scout" ? "active" : "inactive"}
+            only={tab === "active_scout" ? "active" : tab === "webelos" ? "webelos" : "inactive"}
             dates={dates}
+            suggestedWebelosId={nextWebelosId(allScouts)}
           />
         ) : (
           <PeopleTable

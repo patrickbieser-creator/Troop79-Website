@@ -12,6 +12,7 @@
  */
 
 import type { createAdminClient } from '@/lib/supabase/server';
+import { youthPersonIds } from '@/lib/youth';
 
 export interface LeaderLite {
   code: string;
@@ -94,17 +95,13 @@ export function autoLoginLabels(adults: { code: string; name: string }[]): Map<s
 export async function loadAdultLeaders(
   supabase: ReturnType<typeof createAdminClient>
 ): Promise<AuthorizedAdult[]> {
-  const [leadersRes, scoutsRes] = await Promise.all([
+  // Youth = active scouts AND Webelos (lib/youth): a Webelos is active = false, so "no active row" called them adult.
+  const [leadersRes, youth] = await Promise.all([
     supabase.from('leaders').select('code, name, is_person, person_id, can_login, login_name'),
-    supabase.from('scouts').select('person_id').eq('active', true)
+    youthPersonIds(supabase)
   ]);
   const leaders = (leadersRes.data ?? []) as LeaderLite[];
-  const activeScoutPersonIds = new Set(
-    ((scoutsRes.data ?? []) as { person_id: number | null }[])
-      .map((s) => s.person_id)
-      .filter((id): id is number => id != null)
-  );
-  return computeAdultPool(leaders, activeScoutPersonIds);
+  return computeAdultPool(leaders, youth);
 }
 
 /** The actual login pool — adults with can_login = true. */

@@ -14,6 +14,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export * from '@/lib/teaching-interests-shared';
 import { interestShort, INTEREST_NOTE_MAX, INTEREST_SEARCH_MAX, NEW_TALENT_DAYS, type InterestHit, type InterestKind, type InterestPick, type TalentGroup, canSeeNewTalent } from '@/lib/teaching-interests-shared';
 import type { PlannerAccess } from '@/lib/meeting-planner-access';
+import { youthPersonIds } from '@/lib/youth';
 
 type HitRow = { topic_key: string; kind: InterestKind; source_name: string; code: string | null; label: string };
 const toHit = (r: HitRow): InterestHit => ({ key: r.topic_key, kind: r.kind, sourceName: r.source_name, code: r.code, label: r.label });
@@ -95,7 +96,7 @@ export async function loadMyInterests(sb: SupabaseClient, personId: number): Pro
 /**
  * Interests added in the last 30 days, grouped by adult (newest adult first, their items newest first). Patrick
  * (qa-lead B10c #1): only a planner editor who is an adult sees them, so a View-only or scout viewer gets nothing
- * here, at the load; and only adults' interests are listed (never an active scout's, Junior Leaders included).
+ * here, at the load; and only adults' interests are listed (never an active scout's, Junior Leaders included, nor a Webelos's).
  */
 export async function loadNewTalent(sb: SupabaseClient, viewer: Pick<PlannerAccess, 'canEdit' | 'canEmail'>, now: Date = new Date(), days = NEW_TALENT_DAYS): Promise<TalentGroup[]> {
   if (!canSeeNewTalent(viewer)) return [];
@@ -113,9 +114,7 @@ export async function loadNewTalent(sb: SupabaseClient, viewer: Pick<PlannerAcce
   type Row = InterestRow & { people: { display_name: string } | { display_name: string }[] | null };
   const all = (data ?? []) as unknown as Row[];
   const owners = [...new Set(all.map((r) => r.person_id))];
-  const { data: youth, error: youthErr } = owners.length ? await sb.from('scouts').select('person_id').eq('active', true).in('person_id', owners) : { data: [], error: null };
-  if (youthErr) throw new Error(youthErr.message);
-  const scouts = new Set(((youth ?? []) as { person_id: number }[]).map((y) => y.person_id));
+  const scouts = await youthPersonIds(sb, owners); // active scouts AND Webelos: never adult talent
   const rows = all.filter((r) => !scouts.has(r.person_id));
   const words = await describeInterests(sb, rows.map((r) => r.topic_key));
   const groups = new Map<number, TalentGroup>();

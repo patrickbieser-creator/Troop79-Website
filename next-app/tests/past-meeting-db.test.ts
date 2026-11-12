@@ -94,12 +94,12 @@ function cappedClient(rowsByTable: Record<string, unknown[]>) {
 describe('past-meeting reads page past 1000 rows', () => {
   it('RankAwards_ReadEveryRow_PastTheCap', async () => {
     const rows = Array.from({ length: 1005 }, (_, i) => ({ scout_id: `S${i}`, code: 'scout', date: '2026-01-01' }));
-    expect((await loadRankAwards(cappedClient({ ledger_active: rows }), ['S1'])).length).toBe(1005);
+    expect((await loadRankAwards(cappedClient({ reportable_ledger: rows }), ['S1'])).length).toBe(1005);
   });
 
   it('HappenedRows_ReadEverySignOff_PastTheCap', async () => {
     const rows = Array.from({ length: 1005 }, (_, i) => ({ scout_id: `S${i}`, kind: 'rank_requirement', code: 'tenderfoot-1' }));
-    const got = await loadHappenedRows(cappedClient({ ledger_active: rows, event_attendance: [] }), { entryId: 1, date: '2026-11-08' });
+    const got = await loadHappenedRows(cappedClient({ reportable_ledger: rows, event_attendance: [] }), { entryId: 1, date: '2026-11-08' });
     expect(got.ledger.length).toBe(1005);
   });
 });

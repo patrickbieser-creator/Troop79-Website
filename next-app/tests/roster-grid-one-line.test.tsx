@@ -63,6 +63,44 @@ const scout = (over: Partial<ScoutRow>): ScoutRow => ({
 });
 
 describe('Scouts grid', () => {
+  // Webelos tab (Plans/Webelos-On-The-Roster.md): only Webelos, marked Webelos, no Reason or Left.
+  it('WebelosTab_ListsOnlyWebelos_MarkedWebelos_WithNoLeftDate', () => {
+    render(
+      <ScoutsTable
+        scouts={[
+          scout({ id: 'F01', person_id: 1, display_name: 'Logan Kroening', active: false, is_webelos: true }),
+          scout({ id: 'E02', person_id: 2, display_name: 'Ellie Gone', active: false, inactive_reason: 'dropped_out' }),
+          scout({ id: 'E05', person_id: 3, display_name: 'Ada Active' })
+        ]}
+        ranks={[]}
+        rankLabel={{}}
+        today="2026-11-12"
+        only="webelos"
+        dates={{ created: { 1: '2026-11-12' }, left: { F01: '2026-11-15' } }}
+      />
+    );
+    const table = screen.getByRole('table');
+    expect([headers(table).slice(-2), firstRowCells(table).slice(-2), within(table).getAllByRole('row').length]).toEqual([
+      ['Created', 'Status'],
+      ['Nov 12, 2026', 'Webelos'],
+      2
+    ]);
+  });
+
+  it('InactiveTab_LeavesOutWebelos', () => {
+    render(
+      <ScoutsTable
+        scouts={[scout({ id: 'F01', active: false, is_webelos: true })]}
+        ranks={[]}
+        rankLabel={{}}
+        today="2026-11-12"
+        only="inactive"
+        dates={{ created: {}, left: {} }}
+      />
+    );
+    expect(screen.getByText(/No inactive scouts/)).toBeTruthy();
+  });
+
   // Created and Left follow the Reason on the Inactive tab (Patrick, 2026-11-01).
   it('InactiveTab_ReasonThenCreatedThenLeft', () => {
     render(

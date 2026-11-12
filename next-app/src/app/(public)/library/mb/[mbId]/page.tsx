@@ -157,11 +157,9 @@ export default async function LibraryMbPage({
     // enough history across every scout — paginate (lib/supabase/paginate.ts).
     fetchAllRows<MbLedgerRow>((from, to) =>
       supabase
-        .from('ledger_entries')
+        .from('reportable_ledger')
         .select('scout_id, kind, code, date')
         .or(`code.like.${mbId}-%,code.eq.MB:${mbId}`)
-        .is('archived_at', null)
-        .is('deleted_at', null)
         .order('id').range(from, to)
     ),
     supabase.from('scouts').select(SCOUT_CORE_COLS).eq('active', true).order('display_name'),

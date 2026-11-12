@@ -196,6 +196,14 @@ describe('buildRosterReport', () => {
     ]);
   });
 
+  it('Report_DoesNotListARegisteredWebelos_AsInactiveOrMissing', () => {
+    const people = [
+      person(3, 'Logan', 'Webelos', { bsaMemberId: '900003', scout: { active: false, inactiveReason: null, isWebelos: true } })
+    ];
+    const report = buildRosterReport(roster(), people);
+    expect([report.inactiveButRegistered, report.notOnRoster]).toEqual([[], []]);
+  });
+
   it('Report_ListsActiveScoutsNotOnTheRoster', () => {
     const people = [person(9, 'New', 'Crossover', { scout: { active: true, inactiveReason: null } })];
     expect(buildRosterReport(roster(), people).notOnRoster).toEqual([

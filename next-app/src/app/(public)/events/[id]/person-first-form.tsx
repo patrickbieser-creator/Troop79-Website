@@ -422,7 +422,10 @@ const ScoutRow = memo(function ScoutRow({
   return (
     <div className={styles.personRow}>
       <div className={styles.personMain}>
-        <span className={styles.personName}>{s.displayName}</span>
+        <span className={styles.personName}>
+          {s.displayName}
+          {s.isWebelos && <span className={styles.personSub}>Webelos</span>}
+        </span>
         <span className={styles.seg}>
           <button
             type="button"

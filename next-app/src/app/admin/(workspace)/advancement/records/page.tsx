@@ -62,7 +62,8 @@ async function loadRecords(parsed: ReturnType<typeof parseSearch>) {
     ((mbsRes.data ?? []) as { id: string; name: string }[]).map((m) => [m.id, m.name])
   );
 
-  let q = supabase.from('ledger_active').select('*', { count: 'exact' }).in('kind', RECORD_KINDS);
+  // reportable_ledger: what goes to Scoutbook never includes a Webelos's work (it shows here after crossover).
+  let q = supabase.from('reportable_ledger').select('*', { count: 'exact' }).in('kind', RECORD_KINDS);
   if (parsed.type) q = q.eq('kind', parsed.type);
   if (parsed.outstanding) {
     q = q.or('scoutbook_submitted_at.is.null,presented_at.is.null');

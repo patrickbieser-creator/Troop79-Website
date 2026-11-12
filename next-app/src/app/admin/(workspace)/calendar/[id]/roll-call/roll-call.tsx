@@ -50,6 +50,7 @@ interface Props {
 /** Tab order — the people you take roll for first come first. */
 const TAB_ORDER: { key: string; label: string }[] = [
   { key: 'active_scout', label: 'Scouts' },
+  { key: 'webelos', label: 'Webelos' },
   { key: 'leader', label: 'Leaders' },
   { key: 'adult', label: 'Adults' },
   { key: 'inactive_scout', label: 'Inactive scouts' },

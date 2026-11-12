@@ -20,6 +20,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { publicScoutName } from '@/lib/scout-name';
 import { recordAuditAs, type AuditActor } from '@/lib/audit';
+import { youthPersonIds } from '@/lib/youth';
 import { MAX_MENUS_PER_SCOUT, MAX_REVIEW_NOTE, coverDays, foldShopping, sanitizeActuals, sanitizeMenu, type Actuals, type Menu, type MenuContext, type MenuMeal } from './menus';
 import { SHELF_DAYS, daysBefore, isPublic } from './menu-access';
 import { typedInIdsIn, typedInPayload, type NewIngredient } from './scout-ingredients';
@@ -543,8 +544,12 @@ export async function listMenuOwnerCandidatesWith(sb: SupabaseClient): Promise<M
     if (error) throw new Error(`parents: ${error.message}`);
     for (const r of data ?? []) live.add(r.id as number);
   }
-  for (const id of live) kinds.set(id, 'parent');
-  for (const r of leaders.data ?? []) kinds.set(r.person_id as number, 'leader');
+  // Youth (an active scout or a Webelos, lib/youth) is never a parent or a leader here; active scouts are re-added
+  // as 'scout' just below, so what this drops is a Webelos sibling.
+  const leaderIds = (leaders.data ?? []).map((r) => r.person_id as number);
+  const youth = await youthPersonIds(sb, [...live, ...leaderIds]);
+  for (const id of live) if (!youth.has(id)) kinds.set(id, 'parent');
+  for (const id of leaderIds) if (!youth.has(id)) kinds.set(id, 'leader');
   for (const r of scouts.data ?? []) kinds.set(r.person_id as number, 'scout');
   const names = await ownerCreditNamesWith(sb, [...kinds.keys()]);
   return [...kinds.entries()]

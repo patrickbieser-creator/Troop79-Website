@@ -91,13 +91,13 @@ async function loadDashboard() {
     // paginate rather than silently see a partial slice (see lib/supabase/paginate.ts).
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select('scout_id, code')
         .eq('kind', 'rank_requirement')
         .order('id').range(from, to)
     ),
     supabase
-      .from('ledger_active')
+      .from('reportable_ledger')
       .select('*')
       .order('entered_at', { ascending: false, nullsFirst: false })
       .order('date', { ascending: false })
@@ -105,7 +105,7 @@ async function loadDashboard() {
     // `totalLedger` is displayed to the leader as a literal stat-card figure
     // (not just a pager total), so this stays `count: 'exact'` rather than
     // 'estimated' (Plans/Performance-Review-2026-08-27.md #16).
-    supabase.from('ledger_active').select('id', { count: 'exact', head: true }),
+    supabase.from('reportable_ledger').select('id', { count: 'exact', head: true }),
     supabase.from('coh_history').select('date').order('date', { ascending: false }).limit(1)
   ]);
 
@@ -136,12 +136,12 @@ async function loadDashboard() {
     // stat-card figure — stays `count: 'exact'`.
     lastCohDate
       ? supabase
-          .from('ledger_active')
+          .from('reportable_ledger')
           .select('id', { count: 'exact', head: true })
           .gt('date', lastCohDate)
           .in('kind', ['rank_award', 'merit_badge_award'])
       : supabase
-          .from('ledger_active')
+          .from('reportable_ledger')
           .select('id', { count: 'exact', head: true })
           .in('kind', ['rank_award', 'merit_badge_award'])
   ]);

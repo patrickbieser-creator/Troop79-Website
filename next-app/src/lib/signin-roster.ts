@@ -36,6 +36,7 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { maskEmail } from '@/lib/identity-challenge';
 import { autoLoginLabels } from '@/lib/authorized-adults';
 import { loadHouseholds } from '@/lib/households';
+import { isYouthTab } from '@/lib/youth';
 
 export interface SignInCandidate {
   personId: number;
@@ -135,13 +136,16 @@ async function loadAllCandidates(): Promise<InternalCandidate[]> {
 
   return eligible.map((d) => {
     const email = emailById.get(d.person_id);
-    const isScout = d.tab === 'active_scout';
+    const isScout = isYouthTab(d.tab);
+    // A Webelos never signs in with their own address (Plans/Webelos-On-The-Roster.md): a parent signs in for them,
+    // so their own address is never offered and the household's parents always are.
+    const ownEmail = d.tab === 'webelos' ? null : email;
     return {
       personId: d.person_id,
       displayName: labels.get(String(d.person_id)) ?? d.display_name,
       isScout,
-      maskedEmail: email ? maskEmail(email) : null,
-      parents: isScout && !email ? (parentsByScoutPersonId.get(d.person_id) ?? []) : [],
+      maskedEmail: ownEmail ? maskEmail(ownEmail) : null,
+      parents: isScout && !ownEmail ? (parentsByScoutPersonId.get(d.person_id) ?? []) : [],
       fullName: d.display_name
     };
   });

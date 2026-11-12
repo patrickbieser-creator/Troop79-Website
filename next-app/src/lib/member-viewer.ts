@@ -39,6 +39,7 @@ import { resolveAdminActor, actorHas, type AdminActor } from '@/lib/admin-actor'
 import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { loadHouseholdByKey, resolveHouseholdKeyForPerson, type Household } from '@/lib/households';
+import { loadScoutSwitchOptions } from '@/lib/youth';
 
 /** Same guard as actorCanProxyLibrary(), restated so this module does not
  *  import the library resolver's data layer. Keep the two in step. */
@@ -85,17 +86,9 @@ export function decideMemberViewer(input: {
   return { kind: 'proxy-available', options: input.activeScouts };
 }
 
+/** Active scouts AND Webelos ("(Webelos)" on the label): a Webelos family is a troop family the proxy can view. */
 export async function loadActiveScoutOptions(supabase: SupabaseClient): Promise<MemberScoutOption[]> {
-  const { data } = await supabase
-    .from('scouts')
-    .select('person_id, display_name')
-    .eq('active', true)
-    .not('person_id', 'is', null)
-    .order('display_name');
-  return ((data ?? []) as { person_id: number; display_name: string }[]).map((s) => ({
-    personId: s.person_id,
-    name: s.display_name
-  }));
+  return loadScoutSwitchOptions(supabase);
 }
 
 export async function resolveMemberViewer(

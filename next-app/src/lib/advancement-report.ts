@@ -947,13 +947,11 @@ export async function loadAdvancementEntries(
 
   const rawRows = await fetchAllRows<RawLedgerRow>((from, to) =>
     supabase
-      .from('ledger_entries')
+      .from('reportable_ledger')
       .select('id, scout_id, kind, code, label, qty, unit, date, entered_at')
       .in('kind', kinds)
       .gte('entered_at', startInclusive)
       .lte('entered_at', endExclusive)
-      .is('archived_at', null)
-      .is('deleted_at', null)
       .not('entered_by', 'in', `(${IMPORT_BATCH_ENTERED_BY.join(',')})`)
       .order('id', { ascending: true })
       .range(from, to)
@@ -1113,12 +1111,10 @@ export async function loadScoutStanding(supabase: SupabaseClient, scoutIds: stri
     supabase.from('scouts').select('id, current_rank').in('id', scoutIds),
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
-        .from('ledger_entries')
+        .from('reportable_ledger')
         .select('scout_id, code')
         .eq('kind', 'merit_badge_award')
         .in('scout_id', scoutIds)
-        .is('archived_at', null)
-        .is('deleted_at', null)
         .order('id').range(from, to)
     ),
     supabase.from('merit_badges').select('id, name')

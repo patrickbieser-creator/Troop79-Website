@@ -67,13 +67,16 @@ export interface HouseholdScout {
   id: string;
   displayName: string;
   personId: number | null;
+  /** A Webelos on the way into the troop (scouts.is_webelos): signs up like a
+   *  scout, labelled Webelos. Absent = a scout. */
+  isWebelos?: boolean;
 }
 
 export interface Household {
   key: string;
   label: string;
-  /** ACTIVE scouts only. An inactive scout's household still surfaces for the
-   *  sake of its adults, but the scout is not offered as someone to sign up. */
+  /** ACTIVE scouts and Webelos. An inactive scout's household still surfaces for
+   *  the sake of its adults, but the scout is not offered as someone to sign up. */
   scouts: HouseholdScout[];
   adults: HouseholdAdult[];
 }
@@ -109,6 +112,7 @@ interface ScoutRow {
   active: boolean;
   person_id: number | null;
   inactive_reason: string | null;
+  is_webelos: boolean;
 }
 /** A parent_of edge, for the family word it carries. Replaced ParentRow when
  *  scout_parents was retired — the word moved to relationships.role_label. */
@@ -152,7 +156,7 @@ async function fetchHouseholdRows(scope?: { householdIds: number[]; personIds: n
     .is('merged_into_person_id', null)
     .is('guest_host_household_id', null)
     .eq('active', true);
-  const scoutsQ = supabase.from('scouts').select('id, display_name, last_name, active, person_id, inactive_reason');
+  const scoutsQ = supabase.from('scouts').select('id, display_name, last_name, active, person_id, inactive_reason, is_webelos');
   const relationsQ = supabase
     .from('relationships')
     .select('id, person_id, role_label')
@@ -284,8 +288,13 @@ function buildHouseholds({ householdData, memberData, peopleData, scoutData, par
 
     for (const personId of personIds) {
       const scout = scoutByPerson.get(personId);
-      if (scout && scout.active) {
-        householdScouts.push({ id: scout.id, displayName: scout.display_name, personId });
+      if (scout && (scout.active || scout.is_webelos)) {
+        householdScouts.push({
+          id: scout.id,
+          displayName: scout.display_name,
+          personId,
+          ...(scout.is_webelos ? { isWebelos: true } : {})
+        });
         continue;
       }
       const adult = asAdult(personId);
@@ -301,7 +310,7 @@ function buildHouseholds({ householdData, memberData, peopleData, scoutData, par
     // Label off the ACTIVE scouts when there are any, so a household isn't
     // named for the sibling who aged out.
     const memberScouts = personIds.map((id) => scoutByPerson.get(id)).filter(Boolean) as ScoutRow[];
-    const forLabel = memberScouts.filter((s) => s.active);
+    const forLabel = memberScouts.filter((s) => s.active || s.is_webelos);
     const surnames = [...new Set((forLabel.length > 0 ? forLabel : memberScouts).map((s) => s.last_name).filter(Boolean))];
 
     households.push({
@@ -322,12 +331,19 @@ function buildHouseholds({ householdData, memberData, peopleData, scoutData, par
   // have not been placed in a family yet. Each becomes a household of one so
   // nobody is unreachable in the picker.
   for (const scout of scouts) {
-    if (!scout.active || scout.person_id == null || placed.has(scout.person_id)) continue;
+    if (!(scout.active || scout.is_webelos) || scout.person_id == null || placed.has(scout.person_id)) continue;
     placed.add(scout.person_id);
     households.push({
       key: `scout:${scout.id}`,
       label: scout.last_name || scout.display_name,
-      scouts: [{ id: scout.id, displayName: scout.display_name, personId: scout.person_id }],
+      scouts: [
+        {
+          id: scout.id,
+          displayName: scout.display_name,
+          personId: scout.person_id,
+          ...(scout.is_webelos ? { isWebelos: true } : {})
+        }
+      ],
       adults: []
     });
   }

@@ -74,7 +74,7 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
     // detail page never silently shows a partial ledger.
     fetchAllRows<LedgerEntry>((from, to) =>
       supabase
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select('*')
         .eq('scout_id', scoutId)
         .order('date')
@@ -84,6 +84,8 @@ export async function loadScoutDetail(scoutId: string): Promise<ScoutDetail | nu
   ]);
 
   if (scoutRes.error || !scoutRes.data) return null;
+  // A Webelos has no public page until they cross over (Plans/Webelos-On-The-Roster.md).
+  if ((scoutRes.data as { is_webelos?: boolean }).is_webelos) return null;
   const scout = scoutRes.data as unknown as Scout;
 
   const ledger = {

@@ -64,7 +64,7 @@ export async function loadHasNeedsPage(
     (deps.loadCatalog ?? loadAdvancementCatalog)(),
     sb.from('scouts').select('id, first_name, display_name, current_rank, people(is_test)').eq('active', true),
     fetchAllRows<{ scout_id: string; code: string; kind: string }>((from, to) =>
-      sb.from('ledger_active').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).order('id').range(from, to)
+      sb.from('reportable_ledger').select('scout_id, code, kind').in('kind', ['rank_requirement', 'merit_badge_requirement']).order('id').range(from, to)
     ),
     fetchAllRows<{ scout_id: string; mb_id: string }>((from, to) =>
       sb.from('mb_progress').select('scout_id, mb_id').eq('awarded', true).order('mb_id').order('scout_id').range(from, to)

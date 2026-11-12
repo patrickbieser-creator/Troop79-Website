@@ -12,13 +12,14 @@ import type { PersonEmailRow } from '@/lib/person-emails';
 import type { InactiveReason } from '@/lib/supabase/types';
 import type { PersonDetail } from '../person-actions';
 
-export type RosterTab = 'active_scout' | 'inactive_scout' | 'leader' | 'adult';
+export type RosterTab = 'active_scout' | 'webelos' | 'inactive_scout' | 'leader' | 'adult';
 export type PersonKind = 'scout' | 'leader' | 'adult';
 
-export const ROSTER_TABS: readonly RosterTab[] = ['active_scout', 'inactive_scout', 'leader', 'adult'];
+export const ROSTER_TABS: readonly RosterTab[] = ['active_scout', 'webelos', 'inactive_scout', 'leader', 'adult'];
 
 export const TAB_LABEL: Record<RosterTab, string> = {
   active_scout: 'Active Scouts',
+  webelos: 'Webelos',
   inactive_scout: 'Inactive Scouts',
   leader: 'Leaders',
   adult: 'Adults'
@@ -29,7 +30,7 @@ export function isRosterTab(v: string | undefined | null): v is RosterTab {
 }
 
 export function kindOfTab(tab: RosterTab): PersonKind {
-  if (tab === 'active_scout' || tab === 'inactive_scout') return 'scout';
+  if (tab === 'active_scout' || tab === 'inactive_scout' || tab === 'webelos') return 'scout';
   return tab;
 }
 
@@ -68,6 +69,10 @@ export interface ScoutRecordRow {
   active: boolean;
   inactive_reason: InactiveReason | null;
   junior_leader_override: 'yes' | 'no' | null;
+  /** A Webelos on the way into the troop (Plans/Webelos-On-The-Roster.md). */
+  is_webelos?: boolean;
+  /** The day they crossed over, when it happened here. */
+  crossed_over_on?: string | null;
 }
 
 export interface HouseholdMember {

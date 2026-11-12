@@ -12,7 +12,7 @@ export interface PersonDirectoryRow {
   scout_id: string | null;
   inactive_reason: string | null;
   roles: string;
-  tab: 'active_scout' | 'inactive_scout' | 'leader' | 'adult';
+  tab: 'active_scout' | 'webelos' | 'inactive_scout' | 'leader' | 'adult';
   in_picker: boolean;
   active: boolean;
   person_inactive_reason: string | null;

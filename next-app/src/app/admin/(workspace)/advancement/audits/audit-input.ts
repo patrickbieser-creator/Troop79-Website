@@ -81,7 +81,7 @@ export async function loadAuditInput(
       .select('id, rank_id, parent_id, code, label, complete_rule, complete_n, sort_order'),
     fetchAllRows<AuditLedgerRow>((from, to) =>
       supabase
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select(
           'id, scout_id, kind, code, label, date, by, qty, unit, notes, entered_by, entered_at, calendar_entry_id'
         )

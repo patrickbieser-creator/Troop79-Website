@@ -53,14 +53,14 @@ export async function loadEngineInput(meetingDate: string, title: string): Promi
     ),
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select('scout_id, code')
         .eq('kind', 'rank_requirement')
         .order('id').range(from, to)
     ),
     fetchAllRows<{ scout_id: string; code: string }>((from, to) =>
       supabase
-        .from('ledger_active')
+        .from('reportable_ledger')
         .select('scout_id, code')
         .eq('kind', 'merit_badge_requirement')
         .order('id').range(from, to)

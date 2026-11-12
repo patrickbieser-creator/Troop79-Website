@@ -46,6 +46,8 @@ export interface ScoutRow {
   junior_leader_override: 'yes' | 'no' | null;
   active: boolean;
   inactive_reason: InactiveReason | null;
+  /** A Webelos on the way into the troop (scouts.is_webelos). */
+  is_webelos?: boolean;
   address_line1: string | null;
   address_line2: string | null;
   city: string | null;
@@ -79,15 +81,21 @@ const SECTION_TITLES = [
 ];
 
 export function ScoutForm({
-  onClose
+  onClose,
+  webelos = false,
+  suggestedId
 }: {
   /** Kept on the props so the Scouts tab's call is unchanged; a new scout
    *  has no rank (Current Rank is derived from the ledger), so nothing here
    *  reads the list. */
   ranks: { id: string; display_name: string }[];
   onClose: () => void;
+  /** "+ Add Webelos" (Plans/Webelos-On-The-Roster.md): created as a Webelos —
+   *  no Active/Inactive choice, ID prefilled with the next cohort's. */
+  webelos?: boolean;
+  suggestedId?: string;
 }) {
-  const [id, setId] = useState('');
+  const [id, setId] = useState(suggestedId ?? '');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [patrol, setPatrol] = useState('');
@@ -151,7 +159,7 @@ export function ScoutForm({
 
   function submit() {
     setErr(null);
-    if (!active && !inactiveReason) {
+    if (!webelos && !active && !inactiveReason) {
       setErr('Pick a reason — required when the scout is inactive.');
       return;
     }
@@ -161,8 +169,9 @@ export function ScoutForm({
     fd.set('last_name', lastName);
     fd.set('patrol', patrol);
     fd.set('bsa_member_id', bsaMemberId);
-    fd.set('active', active ? 'true' : 'false');
-    fd.set('inactive_reason', active ? '' : inactiveReason);
+    fd.set('active', !webelos && active ? 'true' : 'false');
+    fd.set('inactive_reason', webelos || active ? '' : inactiveReason);
+    if (webelos) fd.set('is_webelos', 'true');
     fd.set('address_line1', addr1);
     fd.set('address_line2', addr2);
     fd.set('city', city);
@@ -196,11 +205,11 @@ export function ScoutForm({
   return (
     <div className={styles.editDialogRosterInner}>
       <div className={styles.editDialogHeader}>
-        <h3>Add Scout</h3>
+        <h3>{webelos ? 'Add Webelos' : 'Add Scout'}</h3>
         <p>
-          Internal ID is permanent once created. Current Rank is derived from
-          the ledger&rsquo;s rank-award entries and updates automatically when
-          a BoR is recorded.
+          {webelos
+            ? 'The ID is the next cohort’s and stays with them when they cross over. Their advancement is tracked but left out of reports until then.'
+            : 'Internal ID is permanent once created. Current Rank is derived from the ledger’s rank-award entries and updates automatically when a BoR is recorded.'}
         </p>
       </div>
 
@@ -493,6 +502,12 @@ export function ScoutForm({
           sectionRefs.current[5] = el;
         }}
       >
+        {webelos ? (
+          <p className={styles.helpText}>
+            Webelos. Becomes an active scout with this same ID on the record page&rsquo;s Cross over.
+          </p>
+        ) : (
+          <>
         <div className={styles.statusRadioRow}>
           <label className={styles.statusRadio}>
             <input
@@ -535,6 +550,8 @@ export function ScoutForm({
           Inactive scouts disappear from rosters, dashboards, and the Fast Entry
           picker. Their ledger history is preserved.
         </p>
+          </>
+        )}
       </FormSection>
 
         </div>
@@ -555,8 +572,8 @@ export function ScoutForm({
           dirty={dirty}
           pending={isPending}
           isNew
-          newLabel="Create Scout"
-          blocked={!firstName.trim() || !lastName.trim() || !id.trim() || (!active && !inactiveReason)}
+          newLabel={webelos ? 'Create Webelos' : 'Create Scout'}
+          blocked={!firstName.trim() || !lastName.trim() || !id.trim() || (!webelos && !active && !inactiveReason)}
           blockedReason="Internal ID, first and last name are required (and a reason when inactive)"
           onClick={submit}
         />
