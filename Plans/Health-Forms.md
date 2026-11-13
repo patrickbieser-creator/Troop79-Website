@@ -1,6 +1,7 @@
 # Health Records (BSA health form, insurance card, immunizations)
 
-**Status:** Planning — decisions answered 2026-11-12; prototypes need the changes listed below, then build
+**Status:** Parked for the night (2026-11-12) — all decisions answered. **Next: Brad updates the prototypes (the
+four changes below), starting 2026-11-13; then build, riskiest step first (binder merge with real scans).**
 **Parked:** 2026-08-20 · **Reopened:** 2026-11-12 (Patrick: "enable parents to upload the BSA medical health records,
 health insurance cards, immunization records … parents and adult leaders would be able to access it on demand … print
 out in bulk to fill up our binder before campouts")
@@ -183,7 +184,7 @@ resize pipeline.
    - **Named adult leaders** — the capability `health_forms.view`, granted by name (Access screen), troop-wide.
    - **The family** — parents and adult family members see their own household's records (household-scoped, no
      capability). Scouts never get access (answer 7).
-   - **Leaders on a trip** — any adult leader signed up as attending an outing can open **that event's attendees'**
+   - **Adults on a trip** — any adult signed up as attending an outing can open **that event's attendees'**
      records from **7 days before it starts until 2 days after it ends**. Computed at request time from the sign-up
      (status yes) and the event dates; no grant to remember or revoke. The leader `/health` view's "This trip" list
      is exactly this window.
@@ -207,12 +208,12 @@ resize pipeline.
 8. **Families see who opened their records** — a "Who opened these" list on the parent screen, from the access log.
 9. **The printed binder is kept by the health officer** — nothing for the site to do.
 
-## Open Questions
+## Open Questions — answered 2026-11-12 (late)
 
-- [ ] Names for the named-leader group (`health_forms.view`) at launch — the health officer, Scoutmaster, …?
-- [ ] "Adult leader" for the trip window: anyone in the leaders table (has sign-off initials or a leader role) who is
-      signed up as attending, or any adult attending with current YPT? (Recommend: leaders table + attending.)
-- [ ] An adult who leaves the troop (no longer in a household, or marked inactive): same 90 days?
+- [x] Named group at launch: **Patrick, Jason, Mindy, Jack, Melissa, Summer.** Resolve each to a person id when
+      granting — there is a known duplicate Mindy (people 57/80); grant the live record only.
+- [x] Trip window: **any adult listed as attending** the event (sign-up status yes, an adult) — not only leaders.
+- [x] An adult who leaves the troop: **erased 90 days after**, same as a scout.
 - [ ] Is the Supabase project on Pro already? (Doesn't change the Bunny decision; only noted.)
 
 ## Prototype changes these answers need
