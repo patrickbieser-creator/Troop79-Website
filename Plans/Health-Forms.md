@@ -1,6 +1,6 @@
 # Health Records (BSA health form, insurance card, immunizations)
 
-**Status:** Planning — UX prototypes in review (2026-11-12)
+**Status:** Planning — decisions answered 2026-11-12; prototypes need the changes listed below, then build
 **Parked:** 2026-08-20 · **Reopened:** 2026-11-12 (Patrick: "enable parents to upload the BSA medical health records,
 health insurance cards, immunization records … parents and adult leaders would be able to access it on demand … print
 out in bulk to fill up our binder before campouts")
@@ -66,6 +66,14 @@ NOT tracked — health form dates only, the forms themselves stay on paper." Pat
 - [ ] `StoredObject_IsCiphertext_NotTheUploadedBytes()` — the bytes at Bunny don't contain the file's magic number
 - [ ] `Decrypt_FailsClosed_OnTamperedCiphertext()` — GCM auth tag mismatch → refuse, no partial file
 - [ ] `Decrypt_Refuses_CiphertextMovedToAnotherDocumentRow()` — the document id is the AAD
+- [ ] `TripLeader_CanView_AttendeesFromSevenDaysBefore_ToTwoDaysAfter()` / `TripLeader_IsRefused_OutsideTheWindow()`
+- [ ] `TripLeader_IsRefused_ForSomeoneNotOnTheirEvent()`
+- [ ] `Scout_CannotView_OwnRecords()` (parents only)
+- [ ] `Expiry_IsTwelveMonths_FromTheLaterSignatureDate()`
+- [ ] `Complete_RequiresBsaFormInsuranceAndAReview_PartCOnlyWhenTheEventNeedsIt()`
+- [ ] `ReplacingADocument_ClearsTheReview()`
+- [ ] `Family_SeesWhoOpenedTheirRecords()`
+- [ ] `Retention_ErasesAScoutsRecords_NinetyDaysAfterInactive()`
 - [ ] `Read_IsRefused_WhenTheAccessLogInsertFails()` — log first, fail closed
 - [ ] `ProductionWithoutKeyOrBunnyEnv_Throws_NeverFallsBackToMemory()`
 - [ ] `Upload_DeletesTheObject_WhenTheRowInsertFails()` + `RetentionSweep_DeletesOrphanObjects()`
@@ -169,20 +177,50 @@ resize pipeline.
 8. Retention job.
 9. qa-lead security review (mandatory) + Jenna review of the built screens; Patrick tries it with one family.
 
+## Patrick's answers (2026-11-12)
+
+1. **Who can open records — a new security group, three ways in:**
+   - **Named adult leaders** — the capability `health_forms.view`, granted by name (Access screen), troop-wide.
+   - **The family** — parents and adult family members see their own household's records (household-scoped, no
+     capability). Scouts never get access (answer 7).
+   - **Leaders on a trip** — any adult leader signed up as attending an outing can open **that event's attendees'**
+     records from **7 days before it starts until 2 days after it ends**. Computed at request time from the sign-up
+     (status yes) and the event dates; no grant to remember or revoke. The leader `/health` view's "This trip" list
+     is exactly this window.
+   - Every way in is logged the same way; the log records which way (named / family / trip <event>).
+2. **The 12 months start from the later of the parent's and the doctor's signature dates** (usually days apart). The
+   upload asks for both dates where the form has both; `effective_on` = the later one; `expires_on` = +12 months.
+3. **What "complete" means:**
+   - **Base:** the BSA form (Parts A+B) and the insurance card (front and back).
+   - **Part C** is also required when the event's sign-up has `needs_ahmr_c` (summer camp, high adventure — the flag
+     already exists on `event_signups`). Otherwise Part C is "not needed".
+   - **Immunizations:** about half the time they are on the BSA form, not a separate file. So a person is
+     **Complete only when an authorized adult has reviewed the records and ticked "Reviewed — complete"** (who and
+     when are stored). Uploading or replacing any document clears the review, so it is re-checked. Until reviewed,
+     a person with every required file reads **"Ready for review"**.
+4. **Allergies and "things we should know"** are shown only to the group in 1 — no wider "emergency view".
+5. **Keep the insurance card photos.**
+6. **Retention:** a scout's records are erased **90 days after they are marked inactive** (the retention job reads
+   the date they went inactive). Expired documents stay until replaced (an expired form still shows history to the
+   reviewer) — revisit if that holds too much.
+7. **Parents only** — scouts 13+ don't see their records or get reminders.
+8. **Families see who opened their records** — a "Who opened these" list on the parent screen, from the access log.
+9. **The printed binder is kept by the health officer** — nothing for the site to do.
+
 ## Open Questions
 
-- [ ] Who holds `health_forms.view` at launch (named people), and does it include every trip leader on an event or
-      only the standing few?
-- [ ] Retention after a person leaves the troop (e.g. 30 days, end of the year, immediately)? And how long an expired
-      BSA form is kept before deletion (e.g. 60 days)?
-- [ ] Do scouts 13+ with their own sign-in see their own records, or parents only?
-- [ ] Keep insurance cards at all, or only "insurance on file: yes" + carrier name? (Smallest data held = safest.)
-- [ ] `people.health_form_date`: derive it from the uploaded BSA form, or retire it?
-- [ ] Paper binder after a campout: shred, or the health officer keeps it until the next print?
+- [ ] Names for the named-leader group (`health_forms.view`) at launch — the health officer, Scoutmaster, …?
+- [ ] "Adult leader" for the trip window: anyone in the leaders table (has sign-off initials or a leader role) who is
+      signed up as attending, or any adult attending with current YPT? (Recommend: leaders table + attending.)
+- [ ] An adult who leaves the troop (no longer in a household, or marked inactive): same 90 days?
 - [ ] Is the Supabase project on Pro already? (Doesn't change the Bunny decision; only noted.)
-- [ ] Part C: required per event (treks, trips over 72 hours) or tracked per person? Changes "expires before the trip".
-- [ ] Do families see who opened their records (a "See who opened this" line)?
-- [ ] Should a leader's access depend on being signed up for the event, or hold troop-wide?
+
+## Prototype changes these answers need
+
+- A "Reviewed — complete" checkbox in the admin person panel and the leader view, with "Ready for review" status.
+- Part C shown as required only on events with `needs_ahmr_c`; two signature dates on the BSA form upload.
+- A "Who opened these" list on the parent screen.
+- The leader view's This trip list limited to the 7-days-before / 2-days-after window, with a note when outside it.
 
 ## Notes
 
