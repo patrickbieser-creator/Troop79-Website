@@ -57,6 +57,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { runWithStartupRetry } from "../src/lib/git-bash-retry";
 
 // ── Config ────────────────────────────────────────────────────────────────
 
@@ -290,14 +291,23 @@ const dataFile = join(appRoot, dataFileRel);
 writeFileSync(dataFile, `SET session_replication_role = replica;\n${data}`);
 
 const bash = existsSync(gitBash) ? gitBash : "bash";
-const run = spawnSync(bash, [refreshScript, `--from=${dataFileRel}`], {
-  cwd: appRoot,
-  encoding: "utf8",
-  maxBuffer: 256 * 1024 * 1024,
-  timeout: 15 * 60 * 1000,
-  env: { ...process.env, MSYS_NO_PATHCONV: "1" },
-});
-const output = `${run.stdout ?? ""}${run.stderr ?? ""}`;
+// Git Bash sometimes dies at startup (add_item … errno 1) before the script runs; retry
+// that crash only — see src/lib/git-bash-retry.ts.
+const { result: run, attempts } = runWithStartupRetry(
+  () => {
+    const r = spawnSync(bash, [refreshScript, `--from=${dataFileRel}`], {
+      cwd: appRoot,
+      encoding: "utf8",
+      maxBuffer: 256 * 1024 * 1024,
+      timeout: 15 * 60 * 1000,
+      env: { ...process.env, MSYS_NO_PATHCONV: "1" },
+    });
+    return { status: r.status, output: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+  },
+  { attempts: 3, delayMs: 5000, sleep: (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms) },
+);
+if (attempts > 1) record(`NOTE sync: Git Bash startup crash, retried (attempt ${attempts} of 3)`);
+const output = run.output;
 const syncLog = join(dir, `sync_${stamp}.log`);
 writeFileSync(syncLog, output);
 
