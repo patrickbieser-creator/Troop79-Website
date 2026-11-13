@@ -6,6 +6,9 @@ import type { NextConfig } from "next";
 const bunnyHostname = process.env.BUNNY_PULL_ZONE_HOSTNAME;
 
 const nextConfig: NextConfig = {
+  // Since 16.3 `next dev` writes a managed "This is NOT the Next.js you know" block into AGENTS.md. Ours already
+  // opens with that warning, hand-maintained, so the writer is off rather than editing a tracked file on every run.
+  agentRules: false,
   // The meeting-plan PDF (/planner/print): react-pdf ships ESM-only subpackages (@react-pdf/hyphenate exports only an
   // "import" condition), so Node loads it natively instead of the bundler.
   serverExternalPackages: ['@react-pdf/renderer'],

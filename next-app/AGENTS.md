@@ -1,4 +1,3 @@
-<!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
@@ -115,7 +114,6 @@ a new raw hex, a new inline `style={{}}` site, or a cross-side token read outsid
 sanctioned allowlists. If your change trips one, the fix is a token, a class, or a shared
 component — growing an allowlist requires the `/* deliberate */` comment at the site AND a
 scoreboard note on `/admin/styleguide/public`, in the same commit.
-<!-- END:nextjs-agent-rules -->
 
 ## Known gotcha: JSX drops the space after an inline element at a line wrap
 
