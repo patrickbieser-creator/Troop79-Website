@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 79 — Scout Accounts, Health Records Plan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Scout Accounts, and health records planned</h1>
+        <p class="subtitle">Session 79. A new Scout Accounts screen under Money shows every scout account&rsquo;s balance and history, and moves a departed scout&rsquo;s money to the troop. Health records &mdash; parents uploading the BSA form, insurance cards and immunizations &mdash; were designed, prototyped and planned on encrypted Bunny storage, ready to build.</p>
+        <div class="meta">
+            <span>&#128197; November 12, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.266.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">1</div><div class="label">Feature shipped (Scout Accounts)</div></div>
+            <div class="stat"><div class="number">8,400</div><div class="label">Tests passing (was 8,337)</div></div>
+            <div class="stat"><div class="number">36</div><div class="label">Scout accounts listed, plus the Scholarship Fund</div></div>
+            <div class="stat"><div class="number">5</div><div class="label">Health records prototype pages</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> leaders can see every scout account in one list, open any account&rsquo;s full history, and move a departed scout&rsquo;s balance into the troop&rsquo;s general funds in one confirmed step. The health records feature has every decision answered and clickable prototypes; building starts tomorrow.
+        </div>
+        <h3>Money: Scout Accounts (live)</h3>
+        <ul>
+            <li>Every scout account &mdash; including scouts who have left, aged-out scouts who are now adults, Webelos and the Scholarship Fund &mdash; with its balance and last activity. Filter by All, Active, Inactive or Adults, or search by name. The total ties to the Financial Ledger.</li>
+            <li>Clicking a name shows that account&rsquo;s history beside the list: date, what it was for, the amount, and the balance after each entry, with who recorded it.</li>
+            <li><strong>Move to troop fund&hellip;</strong> takes a departed scout&rsquo;s whole balance into the troop&rsquo;s available funds, one scout at a time. Voiding it in the Financial Ledger undoes it. Two people moving the same balance at once still records it only once.</li>
+        </ul>
+        <h3>Health records (planned)</h3>
+        <ul>
+            <li>Files are encrypted by the site and stored in a private Bunny storage area with no public address; they are only ever shown through the site, and every view is logged.</li>
+            <li>Who can open them: six named leaders, each family for its own household, and any adult attending a trip for that trip&rsquo;s attendees from a week before until two days after.</li>
+            <li>A person is complete when the BSA form and insurance card are on file (plus Part C for summer camp and high adventure) and an authorized adult has reviewed them.</li>
+            <li>Prototypes cover the parent upload on a phone, a leader on a campout, the event&rsquo;s Medical tab with binder printing, the troop-wide list, and the access log.</li>
+        </ul>
+        <h3>Email</h3>
+        <ul>
+            <li>The DMARC record and Cloudflare email routing were confirmed working; tightening DMARC to quarantine is scheduled for on or after November 26.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-491</td><td>A departed scout&rsquo;s balance moves to the troop as one Transfer row on their account; the general fund stays derived, never an account</td></tr>
+                <tr><td>D-492</td><td>Health records on a private Bunny zone with site-side encryption; a three-way access group; complete means reviewed</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Brad updates the health records prototypes with the four changes from Patrick&rsquo;s answers; then the build begins with the riskiest step, merging real phone photos and a filled BSA form into one binder.</li>
+            <li>Patrick keeps using the Money tab and Scout Accounts and reports problems; Climbing night is Sunday.</li>
+            <li>Check that large photo uploads fit within Vercel&rsquo;s request size limit.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>admin finance/scout-accounts/*</td><td>New screen: list, ledger panel, move action, styles</td></tr>
+                <tr><td>lib/scout-accounts.ts</td><td>Who holds an account, balances, running balance, who may be moved</td></tr>
+                <tr><td>nav-data.ts, finance/page.tsx</td><td>Money nav item; &ldquo;By scout&rdquo; link on the ledger</td></tr>
+                <tr><td>Plans/Health-Forms.md</td><td>Rewritten for Bunny with every decision answered</td></tr>
+                <tr><td>prototypes/health-records/*</td><td>Five clickable prototype pages</td></tr>
+                <tr><td>tests (3 new files)</td><td>8,337 &rarr; 8,400 tests</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
