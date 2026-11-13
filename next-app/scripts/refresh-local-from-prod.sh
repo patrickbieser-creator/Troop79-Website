@@ -32,7 +32,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-CONTAINER="${SUPABASE_DB_CONTAINER:-supabase_db_next-app}"
+CONTAINER="${SUPABASE_DB_CONTAINER:-supabase_db_Troop-79}"
 STAMP="$(date +%Y%m%d-%H%M%S)"
 DUMP=""
 for a in "$@"; do

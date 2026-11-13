@@ -8,7 +8,7 @@
  *
  * Options: --dir (backup root, default D:\Projects\Backups), --project (folder + file
  * prefix, default troop79), --container (local Postgres container, default
- * supabase_db_next-app), --keep (dumps to retain, default 30), --no-sync.
+ * supabase_db_Troop-79), --keep (dumps to retain, default 30), --no-sync.
  *
  * Scheduled by Pen-Vision's scripts/register-backup-task.ps1 as the second action of
  * the "Pen-Vision Backup" task (daily 07:00, runs at next wake if missed). Same shape as
@@ -69,7 +69,7 @@ const args = Object.fromEntries(
 ) as Record<string, string>;
 
 const project = args.project ?? "troop79";
-const container = args.container ?? "supabase_db_next-app";
+const container = args.container ?? "supabase_db_Troop-79";
 const root = args.dir ?? "D:\\Projects\\Backups";
 const keep = Math.max(1, Number(args.keep ?? 30));
 const doSync = args["no-sync"] !== "true";

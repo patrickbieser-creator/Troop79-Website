@@ -129,7 +129,7 @@ describe('mm_rename_store', () => {
       "select has_function_privilege('anon','public.mm_rename_store(integer,text)','execute'), " +
       "has_function_privilege('authenticated','public.mm_rename_store(integer,text)','execute'), " +
       "has_function_privilege('public','public.mm_rename_store(integer,text)','execute')";
-    const out = execSync(`docker exec supabase_db_next-app psql -U postgres -tAc "${sql}"`).toString().trim();
+    const out = execSync(`docker exec supabase_db_Troop-79 psql -U postgres -tAc "${sql}"`).toString().trim();
     expect(out).toBe('f|f|f');
   });
 });

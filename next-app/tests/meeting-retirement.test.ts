@@ -35,7 +35,7 @@ async function person(label: string): Promise<number> {
 /** Runs SQL in the local database; returns stdout, or the error text when psql fails. */
 function psql(sql: string): { ok: boolean; out: string } {
   try {
-    const out = execFileSync('docker', ['exec', '-i', 'supabase_db_next-app', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-tA'], { input: sql, stdio: ['pipe', 'pipe', 'pipe'] });
+    const out = execFileSync('docker', ['exec', '-i', 'supabase_db_Troop-79', 'psql', '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-tA'], { input: sql, stdio: ['pipe', 'pipe', 'pipe'] });
     return { ok: true, out: out.toString() };
   } catch (e) {
     const err = e as { stderr?: Buffer; stdout?: Buffer };
