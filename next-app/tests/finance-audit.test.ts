@@ -246,3 +246,12 @@ describe('compareIndependentTotals', () => {
     expect(f.some((x) => x.check === 'independent_total' && x.severity === 'error')).toBe(true);
   });
 });
+
+describe('checkTransfers and Scout Accounts', () => {
+  it('CheckTransfers_IgnoresALoneScoutAccountTransfer_TheMoveToTroopFund', () => {
+    // Money › Scout Accounts moves a departed scout's balance to the troop with ONE row on their account; it has no
+    // bank-side partner by design (the general fund is checking + savings minus the earmarks).
+    const move = txn({ kind: 'transfer', account: 'scout_account', person_id: 10, amount: -109.49, memo: 'Balance moved to the troop fund' });
+    expect(checkTransfers([move])).toEqual([]);
+  });
+});

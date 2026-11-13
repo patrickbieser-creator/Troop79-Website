@@ -243,6 +243,15 @@ export const SECTIONS: NavSection[] = [
         description: 'Orders, sellers and the Rose order',
         seasonal: true,
         capability: 'finance.manage'
+      },
+      {
+        // Patrick, 2026-11-12: each scout account's balance and its history, beside the list; a departed scout's
+        // balance can be moved to the troop fund. The page also accepts finance.view (read-only).
+        label: 'Scout Accounts',
+        href: '/admin/finance/scout-accounts',
+        matchPath: '/admin/finance/scout-accounts',
+        description: 'Balance and history for each scout',
+        capability: 'finance.manage'
       }
     ]
   },

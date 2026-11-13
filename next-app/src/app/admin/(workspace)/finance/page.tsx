@@ -155,7 +155,7 @@ export default async function FinancePage({
           <p className={styles.balanceValue}>${earmarkedTotal.toFixed(2)}</p>
           <p className={styles.balanceSubtext}>
             {scoutBalances.length} scouts, ${scoutAccountTotal.toFixed(2)} · scholarship $
-            {accountBalances.scholarship.toFixed(2)}
+            {accountBalances.scholarship.toFixed(2)} · <Link href="/admin/finance/scout-accounts">By scout</Link>
           </p>
         </div>
         <div className={`${styles.balanceCard} ${styles.balanceCardEmphasis}`}>

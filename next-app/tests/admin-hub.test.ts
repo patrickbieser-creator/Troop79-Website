@@ -270,7 +270,11 @@ describe('Section bar and tabs', () => {
   it('AdminNav_KeepsMoneyLit_OnTheFinancialLedger_NotReports', () => {
     const n = nav(['finance.manage'], '/admin/finance');
     expect(n.bar.find((b) => b.active)!.label).toBe('Money');
-    expect(labels(n.tabs)).toEqual(['Financial Ledger', 'Reimbursements', 'Wreath Sale']);
+    expect(labels(n.tabs)).toEqual(['Financial Ledger', 'Reimbursements', 'Wreath Sale', 'Scout Accounts']);
+  });
+
+  it('AdminNav_LightsScoutAccounts_NotTheFinancialLedger_OnItsPage', () => {
+    expect(nav(['finance.manage'], '/admin/finance/scout-accounts').activeKey).toBe('/admin/finance/scout-accounts');
   });
 
   it('AdminNav_LightsAdvancementAndItsDashboardTab_OnTheDashboardUrl', () => {

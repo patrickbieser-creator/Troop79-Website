@@ -1,0 +1,102 @@
+/* Money › Scout Accounts — a holder list beside one holder's ledger (the Money tab's ledger + person panel, with the
+   widths inverted: the list is narrow, the ledger wide). Tables are DataTable·Card; admin tokens only. */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-4);
+  margin-bottom: var(--admin-space-4);
+}
+
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--admin-space-5);
+}
+.listCol { flex: 1 1 380px; max-width: 480px; min-width: 0; }
+.panelCol { flex: 999 1 520px; min-width: 0; }
+@media (max-width: 1000px) {
+  .listCol { max-width: none; }
+}
+
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
+.num { composes: numCell from '../../_components/data-table.module.css'; }
+.empty { composes: empty from '../../_components/data-table.module.css'; }
+.table.table td { vertical-align: top; }
+.nowrap { white-space: nowrap; }
+
+/* A row you select: the Money tab's selection treatment. */
+.row { cursor: pointer; }
+.row:hover td { background: var(--admin-gray-50); }
+.rowOn td,
+.rowOn:hover td { background: var(--admin-status-info-bg); }
+.rowOn td:first-child { box-shadow: inset 3px 0 0 var(--admin-navy); }
+.fundRow td { border-top: 1px solid var(--admin-gray-300); }
+.nameBtn {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+  text-align: left;
+  cursor: pointer;
+}
+.nameBtn:focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 2px; border-radius: var(--admin-radius-sm); }
+.chip {
+  display: inline-block;
+  margin-left: var(--admin-space-2);
+  padding: 0 var(--admin-space-2);
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-regular);
+  color: var(--admin-gray-600);
+  background: var(--admin-gray-100);
+  border-radius: var(--admin-radius-pill);
+}
+.neg { color: var(--admin-danger); }
+.table.table tfoot td {
+  font-weight: var(--admin-weight-semibold);
+  background: var(--admin-gray-50);
+  border-bottom: 0;
+}
+.foot {
+  margin: var(--admin-space-3) 0 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-500);
+}
+
+/* The holder's panel. */
+.panel {
+  padding: var(--admin-space-4);
+  background: var(--admin-form-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+}
+.panelHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--admin-space-3);
+}
+.panelHead h2 { margin: 0; font-size: var(--admin-text-xl); }
+.headActions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--admin-space-3); }
+.close {
+  border: 0;
+  background: none;
+  padding: 0 var(--admin-space-1);
+  font-size: var(--admin-text-xl);
+  line-height: 1;
+  color: var(--admin-gray-500);
+  cursor: pointer;
+}
+.close:focus-visible { outline: 2px solid var(--admin-navy); outline-offset: 2px; }
+.status { margin: var(--admin-space-1) 0 var(--admin-space-4); color: var(--admin-gray-600); }
+.status strong { color: var(--admin-gray-900); }
+.hint { margin: 0; font-size: var(--admin-text-sm); color: var(--admin-gray-500); }
+.sub { display: block; font-size: var(--admin-text-sm); color: var(--admin-gray-500); }
+.voided .what,
+.voided .amount { text-decoration: line-through; color: var(--admin-gray-500); }
