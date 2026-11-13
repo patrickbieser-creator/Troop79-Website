@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fall Camp · Medical — Troop 79 admin prototype</title>
+<link rel="stylesheet" href="assets/health.css">
+<style>
+  .remindNote { font-size: 11px; color: var(--admin-gray-500); }
+  .pg .cover h4 { font-size: 16px; }
+  .pg .cover p { margin: 2px 0 6px; }
+  .pg .cover .big { font-size: 10px; }
+  .pg .two { display: grid; gap: 8px; width: 100%; }
+  .pg .toldP { border: 1px solid #ddd; background: #fffaf0; padding: 4px 6px; margin-bottom: 6px; }
+  .printHead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--admin-gray-600); }
+</style>
+</head>
+<body class="admin">
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Flow 3a — <code>/admin/rosters/&lt;id&gt;/medical</code>, the event workbench’s new Medical tab. Signed in as Jordan Alvarez.</span><a href="index.html">All prototypes</a></div></div>
+<div class="adminTop"><div class="adminTopInner"><span class="brand">Troop 79 Admin</span><nav aria-label="Admin"><a href="#">Home</a><a href="#" class="on">Calendar</a><a href="admin-roster.html">People</a><a href="#">Money</a><a href="#">Reports</a></nav><span>Jordan Alvarez</span></div></div>
+
+<main class="adminPage">
+  <div class="backNav"><a href="#">‹ Calendar</a></div>
+  <div class="titleLine"><h1>Fall Camp</h1><span class="meta">Nov 21–23, ’26 · Camp Wahkonda</span></div>
+  <nav class="tabs" aria-label="Fall Camp">
+    <a class="tab" href="#" title="Not in this prototype">Builder</a>
+    <a class="tab" href="#" title="Not in this prototype">Roster <span class="cnt">(14)</span></a>
+    <a class="tab" href="#" title="Not in this prototype">Patrols</a>
+    <a class="tab" href="#" title="Not in this prototype">Tents</a>
+    <a class="tab" href="#" title="Not in this prototype">Cars there</a>
+    <a class="tab" href="#" title="Not in this prototype">Cars back</a>
+    <a class="tab" href="#" title="Not in this prototype">Money</a>
+    <a class="tab on" href="#" aria-current="page">Medical</a>
+  </nav>
+
+  <p class="summary" id="summary"></p>
+  <div id="notices" aria-live="polite"></div>
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Show">
+      <button type="button" data-f="all" aria-pressed="true">All</button>
+      <button type="button" data-f="needs" aria-pressed="false">Needs attention</button>
+    </div>
+    <label class="sr" for="q">Search by name</label>
+    <input class="search" id="q" type="search" placeholder="Search by name…" autocomplete="off">
+    <span class="spacer"></span>
+    <span class="remindNote" id="remindNote"></span>
+    <button class="aBtn quiet" type="button" id="remindBtn"></button>
+    <button class="aBtn primary" type="button" id="printBtn">Print binder</button>
+  </div>
+
+  <div class="split">
+    <div class="listCol">
+      <div class="cardWrap"><table class="dt cardT" aria-label="Fall Camp health forms">
+        <thead><tr>
+          <th scope="col"><button class="sort" type="button" data-sort="name">Name</button></th>
+          <th scope="col"><button class="sort" type="button" data-sort="health">Health record</button></th>
+          <th scope="col">Insurance</th>
+          <th scope="col">Immunizations</th>
+          <th scope="col">Notes</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <p class="foot">Click a name, or use ↑ ↓, to see that person’s forms.</p>
+    </div>
+    <div class="panelCol" id="panel" hidden></div>
+  </div>
+</main>
+
+<script src="assets/common.js"></script>
+<script src="assets/admin.js"></script>
+<script>
+(function () {
+  var fmt = HR.fmt, esc = HR.esc, TRIP = HR.TRIP;
+  var going = HR.people.filter(function (p) { return p.going; });
+  var filter = 'all', q = '', sort = 'name', sel = null, reminded = null;
+  function st(p) { return HR.status(p.health, TRIP); }
+  function needs(p) { return st(p).key !== 'ok'; }
+  function households() {
+    var h = {};
+    going.filter(needs).forEach(function (p) { (h[p.household] = h[p.household] || []).push(p); });
+    return h;
+  }
+  var CONTACTS = { Thornton: ['Erin Thornton', 'Greg Thornton'], Kowalczyk: ['Ann Kowalczyk', 'Paul Kowalczyk'] };
+
+  function summary() {
+    var c = { ok: 0, soon: 0, missing: 0, expired: 0 };
+    going.forEach(function (p) { c[st(p).key]++; });
+    document.getElementById('summary').innerHTML = '<strong>' + going.length + ' going</strong> · ' + c.ok + ' complete · ' + c.soon + ' expire before trip · ' + c.missing + ' missing' + (c.expired ? ' · ' + c.expired + ' expired' : '');
+    var n = Object.keys(households()).length;
+    var b = document.getElementById('remindBtn');
+    b.textContent = 'Remind families (' + n + ')';
+    b.disabled = n === 0;
+    document.getElementById('remindNote').textContent = reminded ? 'Reminded ' + fmt(reminded) : '';
+    document.querySelector('[data-f=needs]').textContent = 'Needs attention (' + going.filter(needs).length + ')';
+  }
+
+  function visible() {
+    return going.filter(function (p) { return (filter === 'all' || needs(p)) && (!q || p.name.toLowerCase().indexOf(q) >= 0); })
+      .sort(function (a, b) {
+        if (sort === 'health') { var d = st(a).rank - st(b).rank; if (d) return d; }
+        if (a.kind !== b.kind) return a.kind === 'scout' ? -1 : 1;
+        return a.last.localeCompare(b.last) || a.first.localeCompare(b.first);
+      });
+  }
+  function render() {
+    var rows = visible();
+    var tb = document.getElementById('rows');
+    if (!rows.length) tb.innerHTML = '<tr><td colspan="5" class="empty">' + (q ? 'No one going named “' + esc(q) + '”.' : 'Everyone going has a current health record.') + '</td></tr>';
+    else tb.innerHTML = rows.map(function (p) {
+      var on = sel === p.id;
+      var rem = reminded && needs(p) ? '<span class="sub">Family reminded ' + fmt(reminded) + '</span>' : '';
+      return '<tr class="row' + (on ? ' on' : '') + '" data-id="' + p.id + '"' + (on ? ' aria-selected="true"' : '') + '>' +
+        '<td><button class="nameBtn" type="button">' + esc(p.name) + '</button><span class="chip">' + p.kind + '</span>' + rem + '</td>' +
+        '<td>' + HA.cellHealth(p, TRIP) + '</td><td>' + HA.cellIns(p) + '</td><td>' + HA.cellImm(p) + '</td><td>' + HA.cellNotes(p) + '</td></tr>';
+    }).join('');
+    summary();
+  }
+  function select(id, focus) {
+    sel = id;
+    render();
+    var host = document.getElementById('panel');
+    if (!id) { host.hidden = true; host.innerHTML = ''; return; }
+    var p = HR.people.filter(function (x) { return x.id === id; })[0];
+    HA.panel(host, p, { trip: TRIP, where: TRIP.name, onClose: function () { var was = sel; select(null); var b = document.querySelector('tr[data-id="' + was + '"] .nameBtn'); if (b) b.focus(); }, onRemind: function () { remind(p.household); } });
+    if (focus) { var b = document.querySelector('tr[data-id="' + id + '"] .nameBtn'); if (b) b.focus(); }
+  }
+
+  document.getElementById('rows').addEventListener('click', function (e) { var tr = e.target.closest('tr[data-id]'); if (tr) select(sel === tr.dataset.id ? null : tr.dataset.id, true); });
+  document.getElementById('rows').addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+    e.preventDefault();
+    var ids = visible().map(function (p) { return p.id; }), i = ids.indexOf(sel);
+    i = e.key === 'ArrowDown' ? Math.min(ids.length - 1, i + 1) : Math.max(0, i - 1);
+    select(ids[i], true);
+  });
+  document.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { filter = b.dataset.f; document.querySelectorAll('[data-f]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); render(); }; });
+  document.getElementById('q').oninput = function (e) { q = e.target.value.trim().toLowerCase(); render(); };
+  document.querySelectorAll('[data-sort]').forEach(function (b) { b.onclick = function () { sort = b.dataset.sort; render(); }; });
+
+  /* ── Remind families: recipients preview → Send → "Sent to n households." ── */
+  function remind(only) {
+    var hh = households(), keys = Object.keys(hh).filter(function (k) { return !only || k === only; });
+    var n = keys.length, word = n === 1 ? 'household' : 'households';
+    var list = keys.map(function (k) {
+      return '<li><strong>' + k + ' household</strong> · ' + CONTACTS[k].join(', ') + '<small>' + hh[k].map(function (p) { var s = st(p); return p.first + ': ' + (s.key === 'missing' ? 'no health record' : 'runs out ' + fmt(s.until)); }).join(' · ') + '</small></li>';
+    }).join('');
+    var d = HA.dialog('<header><h2 id="dlgT">Remind ' + n + ' ' + word + '</h2><p>One email per household, to every adult in it.</p></header>' +
+      '<div class="body"><ul class="recip">' + list + '</ul>' +
+      '<div class="emailPrev"><strong>Subject:</strong> Health forms for Fall Camp<br><br>Hi ' + keys.map(function (k) { return CONTACTS[k][0].split(' ')[0]; })[0] + ',<br><br>Before Fall Camp (Nov 21–23) we still need a current health record for ' + hh[keys[0]].map(function (p) { return p.first; }).join(', ').replace(/, ([^,]*)$/, ' and $1') + '. You can add it from your phone in a couple of minutes:<br><a href="parent.html">troop-79.com/member/health-forms</a><br><br>— Troop 79</div></div>' +
+      '<div class="acts"><button class="aBtn" type="button" data-cancel>Cancel</button><button class="aBtn primary" type="button" data-send data-autofocus>Send reminder to ' + n + ' ' + word + '</button></div>');
+    d.el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-cancel]')) d.close();
+      var s = e.target.closest('[data-send]');
+      if (s) {
+        s.disabled = true; s.textContent = 'Sending…';
+        setTimeout(function () {
+          d.close();
+          reminded = HR.iso(HR.TODAY);
+          document.getElementById('notices').innerHTML = '<div class="aNotice success">Sent to ' + n + ' ' + word + '.</div>';
+          render();
+        }, 800);
+      }
+    });
+  }
+  document.getElementById('remindBtn').onclick = function () { remind(); };
+
+  /* ── Print binder: options → PDF preview; printing is logged ── */
+  document.getElementById('printBtn').onclick = function () {
+    var ns = going.filter(function (p) { return p.kind === 'scout'; }).length, na = going.length - ns;
+    var d = HA.dialog('<header><h2 id="dlgT">Print binder</h2><p>Scouts A–Z, then adults A–Z. One scan per page; a stub page for anyone without a form.</p></header>' +
+      '<div class="body"><fieldset style="border:0;margin:0;padding:0"><legend class="sr">Include</legend>' +
+      '<label class="ck"><input type="checkbox" id="iS" checked> Scouts (' + ns + ')</label>' +
+      '<label class="ck"><input type="checkbox" id="iA" checked> Adults (' + na + ')</label>' +
+      '<label class="ck"><input type="checkbox" id="iC" checked> Cover sheet</label></fieldset>' +
+      '<p class="hint">Printing is logged.</p><div id="pErr"></div></div>' +
+      '<div class="acts"><button class="aBtn" type="button" data-cancel>Cancel</button><button class="aBtn primary" type="button" data-make data-autofocus>Make PDF</button></div>');
+    d.el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-cancel]')) d.close();
+      var m = e.target.closest('[data-make]');
+      if (!m) return;
+      var inS = d.el.querySelector('#iS').checked, inA = d.el.querySelector('#iA').checked, cover = d.el.querySelector('#iC').checked;
+      if (!inS && !inA) {
+        d.el.querySelector('#pErr').innerHTML = '<div class="problem">Pick scouts, adults, or both.</div>';
+        d.el.querySelectorAll('#iS,#iA').forEach(function (c) { c.parentNode.style.outline = '2px solid var(--admin-danger)'; c.parentNode.style.outlineOffset = '2px'; });
+        return;
+      }
+      m.disabled = true; m.textContent = 'Making PDF…';
+      setTimeout(function () { d.close(); preview(inS, inA, cover); }, 900);
+    });
+  };
+
+  function preview(inS, inA, cover) {
+    var who = going.filter(function (p) { return (inS && p.kind === 'scout') || (inA && p.kind === 'adult'); })
+      .sort(function (a, b) { return a.kind !== b.kind ? (a.kind === 'scout' ? -1 : 1) : a.last.localeCompare(b.last) || a.first.localeCompare(b.first); });
+    var pages = [], n = 0;
+    function head(p) { return '<div class="pgHead"><span>' + esc(p.name) + ' · ' + p.kind + ', ' + p.age + '</span><span>Fall Camp · Nov 21–23, ’26</span></div>'; }
+    if (cover) {
+      var miss = who.filter(function (p) { return st(p).key === 'missing'; }), soon = who.filter(function (p) { return st(p).key === 'soon'; });
+      pages.push('<div class="pg cover"><h4>Fall Camp medical binder</h4><p>Nov 21–23, ’26 · Camp Wahkonda<br>Printed ' + fmt(HR.TODAY) + ' by ' + HA.ME + '</p>' +
+        '<table class="big"><tr><td>People</td><td>' + who.length + '</td></tr><tr><td>Scouts</td><td>' + who.filter(function (p) { return p.kind === 'scout'; }).length + '</td></tr><tr><td>Adults</td><td>' + who.filter(function (p) { return p.kind === 'adult'; }).length + '</td></tr><tr><td>Health record runs out before the trip</td><td>' + soon.length + '</td></tr><tr><td>No health record</td><td>' + miss.length + '</td></tr></table>' +
+        '<p style="margin-top:8px"><strong>No form on file</strong><br>' + (miss.map(function (p) { return esc(p.name); }).join('<br>') || 'None') + '</p>' +
+        '<p><strong>Runs out before the trip</strong><br>' + (soon.map(function (p) { return esc(p.name) + ' (' + fmt(st(p).until) + ')'; }).join('<br>') || 'None') + '</p>' +
+        '<p><strong>Things families told us</strong><br>' + who.filter(function (p) { return p.notes; }).map(function (p) { return esc(p.first + ' ' + p.last[0] + '.: ' + p.notes.text); }).join('<br>') + '</p></div>');
+    }
+    who.forEach(function (p) {
+      var first = '<div class="toldP"><strong>Family:</strong> ' + (p.notes ? esc(p.notes.text) : 'nothing typed') + ' · <strong>Contact:</strong> ' + esc(p.contact.name) + ' (' + p.contact.rel + ') ' + p.contact.phone + '</div>';
+      if (!p.health) { pages.push('<div class="pg">' + head(p) + first + '<div class="pgBody"><div class="stub"><strong>No form on file</strong><br>' + esc(p.name) + '</div></div></div>'); return; }
+      var parts = p.health.parts === 'A+B+C' ? ['A', 'B', 'C'] : ['A', 'B'];
+      parts.forEach(function (t, i) { pages.push('<div class="pg">' + head(p) + (i === 0 ? first : '') + '<div class="pgBody">' + HR.scan(t) + '</div></div>'); });
+      if (p.insurance) pages.push('<div class="pg">' + head(p) + '<div class="pgBody"><div class="two">' + HR.scan('front') + (p.insurance.back ? HR.scan('back') : '') + '</div></div></div>');
+      if (p.immun) pages.push('<div class="pg">' + head(p) + '<div class="pgBody">' + HR.scan('immun') + '</div></div>');
+    });
+    var total = pages.length;
+    var html = pages.map(function (pg, i) { return '<div>' + pg + '<div class="pgNum">' + (i + 1) + ' of ' + total + '</div></div>'; }).join('');
+    HA.LOG.unshift({ on: HR.iso(HR.TODAY), who: HA.ME, whose: who.length + ' people', what: 'Printed binder', where: TRIP.name });
+    document.getElementById('notices').innerHTML = '<div class="aNotice info">Logged: printed binder for Fall Camp, ' + who.length + ' people.</div>';
+    var d = HA.dialog('<header><h2 id="dlgT">Fall Camp binder.pdf</h2><p>' + total + ' pages · ' + who.length + ' people</p></header>' +
+      '<div class="body"><div class="pages">' + html + '</div></div>' +
+      '<div class="acts"><button class="aBtn" type="button" data-cancel>Close</button><button class="aBtn primary" type="button" data-print data-autofocus>Print</button></div>', true);
+    d.el.addEventListener('click', function (e) {
+      if (e.target.closest('[data-cancel]')) d.close();
+      var pb = e.target.closest('[data-print]'); if (pb) { pb.textContent = 'Sent to printer'; pb.disabled = true; }
+    });
+  }
+
+  render();
+})();
+</script>
+</body>
+</html>

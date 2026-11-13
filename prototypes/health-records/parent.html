@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health forms (parent) — Troop 79 prototype</title>
+<link rel="stylesheet" href="assets/health.css">
+<style>
+  /* Flow 1 extras */
+  .people { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .personHead { display: flex; align-items: center; gap: var(--sp-2); width: 100%; padding: 12px var(--sp-4); border: 0; background: none; text-align: left; cursor: pointer; font-family: var(--font-ui); }
+  .personHead .pname { font-weight: 700; font-size: var(--fs-md); color: var(--text-head); }
+  .personHead .kind { font-size: var(--fs-sm); color: var(--text-meta); }
+  .personHead .badge { margin-left: auto; }
+  .personHead .chev { flex: none; width: 16px; color: var(--text-meta); transition: transform var(--transition); }
+  .personHead[aria-expanded="true"] .chev { transform: rotate(90deg); }
+  .docs { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+  .doc { display: flex; align-items: center; gap: var(--sp-2); padding: 9px var(--sp-4); border-top: 1px solid var(--rule); font-family: var(--font-ui); min-height: 52px; }
+  .doc:first-child { border-top: 0; }
+  .doc.justSaved { animation: hl 1.6s ease; }
+  @keyframes hl { 0%, 40% { background: var(--status-success-bg); } }
+  .docMain { flex: 1; min-width: 0; }
+  .docLabel { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text-head); }
+  .docDetail { display: block; font-size: var(--fs-sm); color: var(--text-meta); line-height: 1.35; }
+  .docDetail.clip { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .docActs { flex: none; display: flex; align-items: center; gap: var(--sp-3); }
+  .docActs .btn.ghost { padding: 6px 0; min-height: 32px; }
+  .pfoot { margin: var(--sp-4) 0 0; font: var(--fs-sm)/1.5 var(--font-ui); color: var(--text-meta); }
+
+  /* add/replace drawer */
+  .pickRow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2); }
+  .pickRow .btn { min-height: 52px; flex-direction: column; gap: 2px; font-size: var(--fs-sm); }
+  .pickRow .ico { font-size: 18px; line-height: 1; }
+  .pagesList { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+  .pg1 { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2); border: 1px solid var(--border-light); border-radius: var(--rad-md); background: #fff; font-family: var(--font-ui); }
+  .pg1.failed { border-color: var(--status-danger); box-shadow: 0 0 0 1px var(--status-danger); }
+  .thumb { flex: none; display: block; width: 46px; height: 60px; overflow: hidden; border: 1px solid var(--border-light); border-radius: var(--rad-sm); background: #fff; }
+  .thumb.wide { width: 76px; height: 48px; }
+  .thumb svg { width: 100%; height: 100%; display: block; }
+  .pgInfo { flex: 1; min-width: 0; font-size: var(--fs-sm); }
+  .pgInfo strong { display: block; color: var(--text-head); }
+  .pgInfo span { color: var(--text-meta); }
+  .pgInfo .err { color: var(--status-danger); font-weight: 600; }
+  .pgInfo .ok { color: var(--status-success); font-weight: 600; }
+  .bar { height: 4px; background: var(--border-light); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--forest); transition: width .2s linear; }
+  .pgBtns { flex: none; display: flex; gap: 2px; }
+  .iconBtn { width: 34px; height: 34px; border: 1px solid var(--border-light); border-radius: var(--rad-md); background: #fff; color: var(--navy); cursor: pointer; font-size: 15px; line-height: 1; }
+  .iconBtn:disabled { opacity: .35; cursor: default; }
+  .iconBtn:not(:disabled):hover { border-color: var(--navy); }
+  .slot { display: grid; gap: var(--sp-2); }
+  .slotHead { font: 600 var(--fs-sm) var(--font-ui); color: var(--text-head); }
+  .goodUntil { margin: 6px 0 0; font: 600 var(--fs-sm) var(--font-ui); color: var(--forest); }
+  .keepLine { margin: 0; font: var(--fs-xs)/1.4 var(--font-ui); color: var(--text-meta); text-align: center; }
+  .drawer.noAnim .drawerPanel { animation: none; }
+  .footRow { display: flex; justify-content: space-between; align-items: center; }
+
+  /* /member + sign-up mimic */
+  .memberGrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-3); }
+  .mCard h2 { margin: 0 0 var(--sp-2); font: 700 var(--fs-lg) var(--font-ui); color: var(--text-head); display: flex; justify-content: space-between; align-items: baseline; }
+  .mCard h2 a { font-size: var(--fs-sm); font-weight: 600; }
+  .mLines { list-style: none; margin: 0; padding: 0; font: var(--fs-sm)/1.5 var(--font-ui); color: var(--text-body); }
+  .mLines li { padding: 5px 0; border-top: 1px solid var(--rule); display: flex; gap: var(--sp-2); align-items: baseline; justify-content: space-between; }
+  .mLines li:first-child { border-top: 0; }
+  .mLines a { font-weight: 600; }
+  .soon { opacity: .65; }
+  .who { list-style: none; margin: 0 0 var(--sp-3); padding: 0; font-family: var(--font-ui); }
+  .who li { display: flex; align-items: center; gap: var(--sp-2); padding: 10px 0; border-top: 1px solid var(--rule); font-size: var(--fs-md); }
+  .who li:first-child { border-top: 0; }
+  .who input { width: 20px; height: 20px; accent-color: var(--forest); }
+  .who .meta { margin-left: auto; color: var(--text-meta); font-size: var(--fs-sm); }
+  .notices { display: grid; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+</style>
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Flow 1 — parent on a phone, <code>/member/health-forms</code>. Invented family, fake scans. Starts before Ben’s form was renewed.</span><a href="index.html">All prototypes</a></div></div>
+
+<div class="devStage">
+  <div class="phone"><div class="screen" id="screen">
+    <div class="statusBar"><span>9:41</span><span id="sig">●●●● 5G</span></div>
+    <div class="siteNav"><span class="brand">Troop 79</span><button class="menu" type="button">Menu</button></div>
+    <div class="scroll" id="view"></div>
+  </div></div>
+
+  <aside class="devBar" aria-label="Prototype controls">
+    <h2>Screen</h2>
+    <button type="button" data-go="member">/member — Health forms card</button>
+    <button type="button" data-go="signup">Event sign-up — Fall Camp</button>
+    <button type="button" data-go="health">/member/health-forms</button>
+    <h2>When Save is pressed</h2>
+    <label><input type="radio" name="sim" value="normal" checked> Saves normally</label>
+    <label><input type="radio" name="sim" value="uploading"> Slow upload (per-page progress, Cancel)</label>
+    <label><input type="radio" name="sim" value="fail"> Page 2 fails, Retry</label>
+    <label><input type="radio" name="sim" value="large"> Next page added is 14 MB</label>
+    <label><input type="radio" name="sim" value="offline"> Offline</label>
+    <h2>Data</h2>
+    <button type="button" id="reset">Reset the Riveras</button>
+    <p>Try: open Ben → Immunizations → Add → Take photo twice → reorder → Save. Then Replace his health record, change the date, Discard, Remove.</p>
+  </aside>
+</div>
+
+<script src="assets/common.js"></script>
+<script>
+(function () {
+  var fmt = HR.fmt, esc = HR.esc, TRIP = HR.TRIP;
+  var screenEl = document.getElementById('screen');
+  var view = document.getElementById('view');
+
+  /* ── Document kinds ── */
+  var KINDS = {
+    health: { label: 'Annual health record', noun: 'health record', save: 'Save health record', pages: 'free', dated: true, fileType: 'A' },
+    partC: { label: 'Part C', noun: 'Part C', save: 'Save Part C', pages: 'free', dated: false, fileType: 'C' },
+    insurance: { label: 'Insurance card', noun: 'insurance card', save: 'Save insurance card', pages: 'slots' },
+    immun: { label: 'Immunizations', noun: 'immunization record', save: 'Save immunizations', pages: 'free', dated: false, fileType: 'immun' }
+  };
+  var ORDER = ['health', 'partC', 'insurance', 'immun'];
+  var uid = 0;
+  function pg(type, src, mb) { return { id: ++uid, type: type, src: src || 'Photo', mb: mb || (1.4 + (uid % 5) * 0.3) }; }
+
+  function seed() {
+    return [
+      { id: 'ben', first: 'Ben', last: 'Rivera', kind: 'scout', docs: {
+        health: { pages: [pg('A', 'PDF', 0.9), pg('B', 'PDF', 0.8)], signed: '2025-11-20', on: '2025-11-22' },
+        partC: null,
+        insurance: { front: pg('front'), back: pg('back'), on: '2026-03-03' },
+        immun: null }, notes: { text: 'Peanut allergy, EpiPen in blue bag. Gets homesick the first night.', on: '2026-10-02' } },
+      { id: 'dana', first: 'Dana', last: 'Rivera', kind: 'adult', docs: {
+        health: { pages: [pg('A', 'PDF', 1.1), pg('B', 'PDF', 0.9)], signed: '2026-03-04', on: '2026-03-04' },
+        partC: null,
+        insurance: { front: pg('front'), back: pg('back'), on: '2026-03-04' },
+        immun: { pages: [pg('immun', 'PDF', 0.6)], on: '2026-03-04' } }, notes: null }
+    ];
+  }
+  var fam = seed();
+  var expanded = {};
+  var screenName = 'health';
+  function person(id) { return fam.filter(function (p) { return p.id === id; })[0]; }
+  function sim() { return document.querySelector('input[name=sim]:checked').value; }
+  function healthStatus(p, trip) { var h = p.docs.health; return HR.status(h ? { signed: h.signed } : null, trip); }
+  function hasProblem(p) { var s = healthStatus(p).key; return s !== 'ok' || !p.docs.immun || !p.docs.insurance; }
+
+  function badge(s) { return '<span class="badge ' + s.tone + '">' + s.label + '</span>'; }
+  function flash(msg) { var f = document.createElement('div'); f.className = 'flash'; f.setAttribute('role', 'status'); f.textContent = msg; screenEl.appendChild(f); setTimeout(function () { f.remove(); }, 2500); }
+
+  /* ── Screen: /member ── */
+  function renderMember() {
+    var lines = fam.map(function (p) {
+      var s = healthStatus(p), h = p.docs.health, extra = [];
+      if (!p.docs.immun) extra.push('immunizations missing');
+      if (!p.docs.insurance) extra.push('insurance card missing');
+      var txt = s.key === 'missing' ? 'missing' : s.key === 'ok' ? 'on file · expires ' + fmt(s.until) : s.key === 'expired' ? 'expired ' + fmt(s.until) : 'expires ' + fmt(s.until);
+      return '<li><span><strong>' + esc(p.first) + ':</strong> ' + txt + (extra.length ? ' · ' + extra.join(', ') : '') + '</span>' + (s.key !== 'ok' || extra.length ? '<a href="#" data-for="' + p.id + '">Update</a>' : '') + '</li>';
+    }).join('');
+    view.innerHTML =
+      '<header class="pageHeader"><div class="kicker">Members</div><h1 class="pageTitle">Welcome back, Dana</h1></header>' +
+      '<div class="wrap memberGrid">' +
+      '<section class="card cardPad mCard"><h2>Registration <a href="#">Open</a></h2><ul class="mLines"><li><span><strong>Ben:</strong> registered · renews Dec 31, \'26</span></li><li><span><strong>Dana:</strong> registered · YPT current</span></li></ul></section>' +
+      '<section class="card cardPad mCard" aria-labelledby="hfCard"><h2 id="hfCard">Health forms <a href="#" data-go="health">Open</a></h2><ul class="mLines">' + lines + '</ul></section>' +
+      '<section class="card cardPad mCard"><h2>Wreath orders <a href="#">Open</a></h2><ul class="mLines"><li><span>3 orders · $96.00</span></li></ul></section>' +
+      '<section class="card cardPad mCard soon"><h2>Photo albums <span class="badge neutral">Soon</span></h2></section>' +
+      '</div>';
+  }
+
+  /* ── Screen: event sign-up ── */
+  var going = { ben: true, dana: true };
+  function renderSignup() {
+    var nts = fam.filter(function (p) { return going[p.id]; }).map(function (p) {
+      var s = healthStatus(p, TRIP);
+      if (s.key === 'ok') return '';
+      var what = s.key === 'missing' ? 'has no health record on file' : s.key === 'expired' ? 'health record has expired' : (s.beforeTrip ? 'health record expires before ' + TRIP.name : 'health record expires ' + fmt(s.until));
+      return '<div class="notice warning">' + esc(p.first) + (s.key === 'missing' ? ' ' : '’s ') + what + '. <a href="#" data-for="' + p.id + '">Update it</a></div>';
+    }).join('');
+    view.innerHTML =
+      '<header class="pageHeader"><div class="kicker">Calendar</div><h1 class="pageTitle">Fall Camp</h1><p class="pageLede">Nov 21–23, \'26 · ' + TRIP.where + ' · $35 per person</p></header>' +
+      '<div class="wrap"><section class="card cardPad"><h2 style="margin:0 0 8px;font:700 17px var(--font-ui)">Who’s going?</h2>' +
+      '<ul class="who">' + fam.map(function (p) { return '<li><input type="checkbox" id="g-' + p.id + '" data-going="' + p.id + '"' + (going[p.id] ? ' checked' : '') + '><label for="g-' + p.id + '">' + esc(p.first + ' ' + p.last) + '</label><span class="meta">' + p.kind + '</span></li>'; }).join('') + '</ul>' +
+      '<div class="notices" aria-live="polite">' + nts + '</div>' +
+      '<button class="btn primary block" type="button" id="signUp">Sign up</button><div id="signedUp"></div></section></div>';
+    view.querySelectorAll('[data-going]').forEach(function (c) { c.onchange = function () { going[c.dataset.going] = c.checked; renderSignup(); }; });
+    document.getElementById('signUp').onclick = function () { document.getElementById('signedUp').innerHTML = '<div class="notice success" style="margin-top:12px">You’re signed up. Total $70.00.</div>'; };
+  }
+
+  /* ── Screen: /member/health-forms ── */
+  function docDetail(k, d) {
+    if (k === 'health') return (d.pages.length >= 3 ? 'Parts A+B+C' : 'Parts A+B') + ' · ' + fmt(d.signed) + ' → ' + fmt(HR.plusYear(d.signed));
+    if (k === 'insurance') return (d.back ? 'Front, back' : 'Front') + ' · ' + fmt(d.on);
+    if (k === 'partC') return d.pages.length + (d.pages.length === 1 ? ' page' : ' pages') + ' · ' + fmt(d.on);
+    return d.pages.length + (d.pages.length === 1 ? ' page' : ' pages') + ' · ' + fmt(d.on);
+  }
+  function renderHealth(focusId) {
+    var html = '<header class="pageHeader"><div class="kicker"><a href="#" data-go="member">Members</a></div><h1 class="pageTitle">Health forms</h1></header><div class="wrap"><ul class="people">';
+    fam.forEach(function (p) {
+      var s = healthStatus(p), open = expanded[p.id];
+      html += '<li class="card person" id="p-' + p.id + '"><button type="button" class="personHead" aria-expanded="' + !!open + '" aria-controls="d-' + p.id + '" data-toggle="' + p.id + '"><span class="pname">' + esc(p.first + ' ' + p.last) + '</span><span class="kind">' + p.kind + '</span>' + badge(s) + '<span class="chev" aria-hidden="true">›</span></button>';
+      html += '<ul class="docs" id="d-' + p.id + '"' + (open ? '' : ' hidden') + '>';
+      ORDER.forEach(function (k) {
+        var d = p.docs[k], K = KINDS[k];
+        html += '<li class="doc" data-row="' + p.id + '-' + k + '"><div class="docMain"><span class="docLabel">' + K.label + '</span>';
+        if (d) html += '<span class="docDetail">' + docDetail(k, d) + '</span></div><div class="docActs"><button class="btn ghost" type="button" data-view="' + p.id + ':' + k + '">View</button><button class="btn ghost" type="button" data-edit="' + p.id + ':' + k + '">Replace</button></div>';
+        else if (k === 'partC') html += '<span class="docDetail">Not needed</span></div><div class="docActs"><button class="btn ghost" type="button" data-add="' + p.id + ':partC">Needed for a trek?</button></div>';
+        else html += '</div><div class="docActs"><span class="badge danger">Missing</span><button class="btn secondary sm" type="button" data-add="' + p.id + ':' + k + '">Add</button></div>';
+        html += '</li>';
+      });
+      var n = p.notes;
+      html += '<li class="doc"><div class="docMain"><span class="docLabel">Things we should know</span><span class="docDetail clip">' + (n && n.text ? esc(n.text) : 'Nothing yet') + '</span></div><div class="docActs"><button class="btn ghost" type="button" data-notes="' + p.id + '">' + (n && n.text ? 'Edit' : 'Add') + '</button></div></li>';
+      html += '</ul></li>';
+    });
+    html += '</ul><p class="pfoot">Only leaders with health access can open these files, and each view is logged.</p></div>';
+    view.innerHTML = html;
+    if (focusId) { var el = document.getElementById('p-' + focusId); if (el) { el.scrollIntoView({ block: 'start' }); el.querySelector('.personHead').focus(); } }
+  }
+
+  function go(name, forId) {
+    screenName = name;
+    view.scrollTop = 0;
+    if (name === 'member') renderMember();
+    else if (name === 'signup') renderSignup();
+    else {
+      if (forId) expanded[forId] = true;
+      else if (!Object.keys(expanded).length) { var first = fam.filter(hasProblem)[0]; if (first) expanded[first.id] = true; } /* first person with a problem starts open */
+      renderHealth(forId);
+    }
+  }
+
+  /* ── Delegated clicks inside the phone ── */
+  view.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-go],[data-for],[data-toggle],[data-view],[data-edit],[data-add],[data-notes]');
+    if (!t) return;
+    e.preventDefault();
+    if (t.dataset.go) return go(t.dataset.go);
+    if (t.dataset.for) return go('health', t.dataset.for);
+    if (t.dataset.toggle) { expanded[t.dataset.toggle] = !expanded[t.dataset.toggle]; var ul = document.getElementById('d-' + t.dataset.toggle); ul.hidden = !expanded[t.dataset.toggle]; t.setAttribute('aria-expanded', !!expanded[t.dataset.toggle]); return; }
+    if (t.dataset.notes) return openNotes(t.dataset.notes);
+    var parts = (t.dataset.view || t.dataset.edit || t.dataset.add).split(':');
+    var p = person(parts[0]), k = parts[1];
+    if (t.dataset.view) {
+      var d = p.docs[k];
+      var pages = k === 'insurance' ? [d.front.type].concat(d.back ? [d.back.type] : []) : d.pages.map(function (x) { return x.type; });
+      HR.openViewer({ host: screenEl, title: p.first + ' ' + p.last + ' · ' + KINDS[k].label, pages: pages });
+      return;
+    }
+    openDrawer(p, k, t.dataset.edit ? 'replace' : 'add');
+  });
+
+  /* ── Add / Replace drawer ── */
+  var dr = null; /* drawer working state */
+  function snapshot(s) { return JSON.stringify({ pages: s.pages.map(function (x) { return x.id; }), front: s.front && s.front.id, back: s.back && s.back.id, signed: s.signed }); }
+  function openDrawer(p, k, mode) {
+    var d = p.docs[k];
+    dr = { p: p, k: k, mode: mode, pages: d && d.pages ? d.pages.slice() : [], front: d && d.front || null, back: d && d.back || null, signed: d && d.signed || '', picking: false, problem: '', dateProblem: '', phase: 'edit', progress: {}, failedId: null, largeUsed: false, offlineTried: false };
+    dr.orig = snapshot(dr);
+    renderDrawer();
+  }
+  function failedLabel() {
+    if (KINDS[dr.k].pages === 'slots') return dr.back && dr.back.id === dr.failedId ? 'The back' : 'The front';
+    return 'Page ' + (dr.pages.findIndex(function (x) { return x.id === dr.failedId; }) + 1);
+  }
+  function dirty() { return dr.mode === 'add' || snapshot(dr) !== dr.orig; }
+  function canSave() { return KINDS[dr.k].pages === 'slots' ? !!dr.front : dr.pages.length > 0; }
+  function pageRow(x, idx, n) {
+    var pr = dr.progress[x.id], failed = dr.failedId === x.id;
+    var status = '';
+    if (failed) status = '<span class="err">Didn’t upload</span>';
+    else if (pr === 100) status = '<span class="ok">Uploaded</span>';
+    else if (pr != null) status = '<span>Uploading… ' + pr + '%</span>';
+    else status = '<span>' + x.src + ' · ' + x.mb.toFixed(1) + ' MB</span>';
+    var busy = dr.phase !== 'edit';
+    return '<li class="pg1' + (failed ? ' failed' : '') + '">' + HR.thumb(x.type).replace('class="thumb"', 'class="thumb' + (x.type === 'front' || x.type === 'back' ? ' wide' : '') + '"') +
+      '<div class="pgInfo"><strong>Page ' + (idx + 1) + '</strong>' + status + (pr != null && pr < 100 && !failed ? '<div class="bar"><i style="width:' + pr + '%"></i></div>' : '') + '</div>' +
+      (failed ? '<button class="btn secondary sm" type="button" data-retry>Retry</button>' :
+        '<div class="pgBtns"><button class="iconBtn" type="button" data-up="' + idx + '" aria-label="Move page ' + (idx + 1) + ' up"' + (idx === 0 || busy ? ' disabled' : '') + '>↑</button><button class="iconBtn" type="button" data-down="' + idx + '" aria-label="Move page ' + (idx + 1) + ' down"' + (idx === n - 1 || busy ? ' disabled' : '') + '>↓</button><button class="iconBtn" type="button" data-rm="' + idx + '" aria-label="Remove page ' + (idx + 1) + '"' + (busy ? ' disabled' : '') + '>✕</button></div>') + '</li>';
+  }
+  function pickButtons(slot) {
+    var s = slot ? ' data-slot="' + slot + '"' : '';
+    return '<div class="pickRow"><button class="btn secondary" type="button" data-pick="photo"' + s + '><span class="ico" aria-hidden="true">📷</span>Take photo</button><button class="btn secondary" type="button" data-pick="file"' + s + '><span class="ico" aria-hidden="true">📄</span>Choose file or PDF</button></div>';
+  }
+  function renderDrawer() {
+    var K = KINDS[dr.k], p = dr.p, busy = dr.phase !== 'edit';
+    var old = screenEl.querySelector('.drawer'); var again = !!old; if (old) old.remove();
+    var title = (dr.mode === 'add' ? 'Add ' : 'Replace ') + (dr.k === 'immun' ? 'immunizations' : K.noun);
+    var body = '';
+    var offline = sim() === 'offline';
+    if (offline) body += '<div class="notice ' + (dr.offlineTried ? 'error' : 'warning') + '" role="status">No connection. Your pages are kept on this screen; Save when you have a signal.</div>';
+    if (dr.phase === 'failed') body += '<div class="notice error" role="alert">' + failedLabel() + ' didn’t upload. Check your signal and retry.</div>';
+
+    if (K.pages === 'slots') {
+      ['front', 'back'].forEach(function (slot) {
+        var x = dr[slot];
+        body += '<div class="slot"><div class="slotHead">' + (slot === 'front' ? 'Front' : 'Back') + '</div>';
+        if (x) body += '<div class="pg1">' + HR.thumb(x.type).replace('class="thumb"', 'class="thumb wide"') + '<div class="pgInfo"><strong>' + (slot === 'front' ? 'Front' : 'Back') + '</strong><span>' + x.src + ' · ' + x.mb.toFixed(1) + ' MB</span></div><div class="pgBtns"><button class="btn ghost" type="button" data-retake="' + slot + '"' + (busy ? ' disabled' : '') + '>Retake</button>&nbsp;<button class="iconBtn" type="button" data-clear="' + slot + '" aria-label="Remove ' + slot + '"' + (busy ? ' disabled' : '') + '>✕</button></div></div>';
+        else body += pickButtons(slot);
+        if (dr.problem && dr.problemSlot === slot) body += '<div class="problem" role="alert">' + dr.problem + '</div>';
+        body += '</div>';
+      });
+    } else {
+      if (dr.pages.length) {
+        body += '<div><div class="fieldLabel">Pages</div><ul class="pagesList">' + dr.pages.map(function (x, i) { return pageRow(x, i, dr.pages.length); }).join('') + '</ul></div>';
+        if (!busy) body += dr.picking ? pickButtons() : '<button class="btn ghost" type="button" data-more style="justify-self:start">+ Add another page</button>';
+      } else {
+        body += '<p style="margin:0;font:var(--fs-sm)/1.5 var(--font-ui);color:var(--text-meta)">' + (dr.k === 'health' ? 'Parts A and B, plus Part C if a doctor filled one in. One page per photo.' : 'Every page of the record. One page per photo.') + '</p>' + pickButtons();
+      }
+      if (dr.problem) body += '<div class="problem" role="alert">' + dr.problem + '</div>';
+    }
+    if (K.dated) {
+      var until = dr.signed ? HR.plusYear(dr.signed) : '';
+      body += '<div class="field' + (dr.dateProblem ? ' bad' : '') + '"><label for="signed">Date the doctor signed</label><input type="date" id="signed" value="' + dr.signed + '" max="' + HR.iso(HR.TODAY) + '"' + (busy ? ' disabled' : '') + (dr.dateProblem ? ' aria-describedby="signedErr" aria-invalid="true"' : '') + '>' +
+        (dr.dateProblem ? '<div class="problem" id="signedErr">' + dr.dateProblem + '</div>' : until ? '<p class="goodUntil">Good until ' + fmt(until) + '</p>' : '') + '</div>';
+    }
+
+    var foot = '';
+    if (dr.phase === 'uploading') {
+      var done = dr.pages.filter(function (x) { return dr.progress[x.id] === 100; }).length, n = K.pages === 'slots' ? 1 : dr.pages.length;
+      foot = '<button class="btn primary block" type="button" disabled>Uploading ' + Math.min(done + 1, n) + ' of ' + n + '…</button><button class="btn secondary block" type="button" data-cancel>Cancel</button>';
+    } else if (dr.phase === 'failed') {
+      foot = '<button class="btn primary block" type="button" data-retry>Retry ' + failedLabel().replace('The ', 'the ').replace('Page', 'page') + '</button><button class="btn secondary block" type="button" data-cancel>Cancel</button>';
+    } else if (dr.mode === 'add') {
+      foot = '<button class="btn primary block" type="button" data-save' + (canSave() ? '' : ' disabled') + '>' + K.save + '</button>';
+    } else {
+      var dt = dirty();
+      foot = '<button class="btn primary block" type="button" data-save' + (dt && canSave() ? '' : ' disabled') + '>' + (dt ? 'Save changes' : 'Saved') + '</button>' +
+        '<div class="footRow">' + (dt ? '<button class="btn ghost" type="button" data-discard>Discard changes</button>' : '<span></span>') + '<button class="btn dangerGhost" type="button" data-remove>Remove</button></div>' +
+        (dt ? '<p class="keepLine">Your current file stays until this one saves.</p>' : '');
+    }
+
+    var el = document.createElement('div');
+    el.className = 'drawer' + (again ? ' noAnim' : '');
+    el.innerHTML = '<div class="drawerPanel" role="dialog" aria-modal="true" aria-labelledby="drT"><div class="drawerHead"><div><p class="eyebrow">' + esc(p.first + ' ' + p.last) + '</p><h2 id="drT">' + title + '</h2></div><button class="x" type="button" data-close aria-label="Close">✕</button></div>' +
+      '<div class="drawerBody">' + body + '</div><div class="drawerFoot">' + foot + '</div></div>';
+    screenEl.appendChild(el);
+    wireDrawer(el);
+  }
+
+  function addPage(how, slot) {
+    var K = KINDS[dr.k];
+    dr.problem = ''; dr.problemSlot = null;
+    if (sim() === 'large' && !dr.largeUsed) { dr.largeUsed = true; dr.problem = 'Too large (14 MB). Retake at lower quality or choose a PDF.'; dr.problemSlot = slot; return renderDrawer(); }
+    if (K.pages === 'slots') { dr[slot] = pg(slot, how === 'photo' ? 'Photo' : 'PDF'); return renderDrawer(); }
+    var type;
+    if (dr.k === 'health') type = how === 'photo' ? 'photo' : ['A', 'B', 'C'][Math.min(dr.pages.length, 2)];
+    else if (dr.k === 'partC') type = 'C';
+    else type = how === 'photo' ? 'photoImmun' : 'immun';
+    dr.pages.push(pg(type, how === 'photo' ? 'Photo' : 'PDF', how === 'photo' ? 2.4 : 0.7));
+    dr.picking = false;
+    renderDrawer();
+  }
+
+  function wireDrawer(el) {
+    el.onclick = function (e) {
+      var t = e.target.closest('button'); if (!t || t.disabled) return;
+      var ds = t.dataset;
+      if ('close' in ds) return tryClose();
+      if (ds.pick) return addPage(ds.pick, ds.slot);
+      if ('more' in ds) { dr.picking = true; return renderDrawer(); }
+      if (ds.up) { var i = +ds.up; dr.pages.splice(i - 1, 0, dr.pages.splice(i, 1)[0]); return renderDrawer(); }
+      if (ds.down) { var j = +ds.down; dr.pages.splice(j + 1, 0, dr.pages.splice(j, 1)[0]); return renderDrawer(); }
+      if (ds.rm) { dr.pages.splice(+ds.rm, 1); return renderDrawer(); }
+      if (ds.retake) return addPage('photo', ds.retake);
+      if (ds.clear) { dr[ds.clear] = null; return renderDrawer(); }
+      if ('discard' in ds) return openDrawer(dr.p, dr.k, 'replace');
+      if ('remove' in ds) return confirmRemove();
+      if ('save' in ds) return save();
+      if ('cancel' in ds) { clearInterval(dr.timer); dr.phase = 'edit'; dr.progress = {}; dr.failedId = null; return renderDrawer(); }
+      if ('retry' in ds) return upload(true);
+    };
+    var inp = el.querySelector('#signed');
+    if (inp) inp.onchange = function () { dr.signed = inp.value; dr.dateProblem = checkDate(); renderDrawer(); };
+  }
+  function checkDate() {
+    if (!dr.signed) return '';
+    if (dr.signed > HR.iso(HR.TODAY)) return 'That date is in the future. Use the date beside the signature.';
+    var until = HR.plusYear(dr.signed);
+    if (until < HR.iso(HR.TODAY)) return 'This form ran out ' + fmt(until) + '. It needs a new signature before it counts.';
+    return '';
+  }
+  function tryClose() {
+    var added = dr.mode === 'add' ? canSave() : dirty();
+    if (dr.phase === 'uploading') return;
+    if (!added) return closeDrawer();
+    confirmBox('Leave without saving?', 'The pages you added stay on this phone only until you leave. They haven’t been sent.', 'Leave', closeDrawer, 'Keep editing');
+  }
+  function closeDrawer() { clearInterval(dr && dr.timer); var el = screenEl.querySelector('.drawer'); if (el) el.remove(); dr = null; }
+
+  function save() {
+    dr.dateProblem = KINDS[dr.k].dated ? (dr.signed ? checkDate() : 'Enter the date the doctor signed. It’s next to the signature.') : '';
+    if (dr.dateProblem) { renderDrawer(); screenEl.querySelector('#signed').focus(); return; }
+    if (sim() === 'offline') { dr.offlineTried = true; return renderDrawer(); }
+    var s = sim();
+    if (s === 'uploading' || s === 'fail') return upload(false);
+    /* normal: saving overlay, then saved */
+    var ov = document.createElement('div'); ov.className = 'overlay'; ov.innerHTML = '<div><div class="spinner"></div>Saving…</div>';
+    screenEl.querySelector('.drawerPanel').appendChild(ov);
+    setTimeout(commit, 900);
+  }
+  /* per-page progress; in "fail" mode page 2 stops, pages 1 and 3 finish and are kept */
+  function upload(retry) {
+    var list = KINDS[dr.k].pages === 'slots' ? [dr.front].concat(dr.back ? [dr.back] : []) : dr.pages;
+    var failMode = sim() === 'fail' && !retry;
+    dr.phase = 'uploading';
+    if (retry) { dr.progress[dr.failedId] = 0; dr.failedId = null; }
+    else list.forEach(function (x) { dr.progress[x.id] = 0; });
+    renderDrawer();
+    dr.timer = setInterval(function () {
+      var allDone = true;
+      list.forEach(function (x, i) {
+        var v = dr.progress[x.id];
+        if (v == null || v >= 100) return;
+        if (failMode && i === 1 && v >= 45) { dr.failedId = x.id; return; }
+        dr.progress[x.id] = Math.min(100, v + (sim() === 'uploading' ? 4 + i : 12));
+        if (dr.progress[x.id] < 100) allDone = false;
+      });
+      if (dr.failedId && list.every(function (x) { return x.id === dr.failedId || dr.progress[x.id] === 100; })) { clearInterval(dr.timer); dr.phase = 'failed'; return renderDrawer(); }
+      if (allDone && !dr.failedId) { clearInterval(dr.timer); renderDrawer(); setTimeout(commit, 300); return; }
+      renderDrawer();
+    }, 160);
+  }
+  function commit() {
+    var p = dr.p, k = dr.k, wasAdd = dr.mode === 'add';
+    var rec = KINDS[k].pages === 'slots' ? { front: dr.front, back: dr.back, on: HR.iso(HR.TODAY) } : { pages: dr.pages.slice(), on: HR.iso(HR.TODAY) };
+    if (KINDS[k].dated) rec.signed = dr.signed;
+    p.docs[k] = rec;
+    if (wasAdd) {
+      closeDrawer();
+      renderHealth();
+      var row = view.querySelector('[data-row="' + p.id + '-' + k + '"]'); if (row) row.classList.add('justSaved');
+      flash(KINDS[k].label + ' saved');
+    } else {
+      openDrawer(p, k, 'replace'); /* stays open, now "Saved" */
+      renderHealth();
+      flash('Saved');
+    }
+  }
+
+  function confirmBox(title, text, okLabel, onOk, cancelLabel, danger) {
+    var s = document.createElement('div');
+    s.className = 'scrim';
+    s.innerHTML = '<div class="confirm" role="alertdialog" aria-modal="true" aria-labelledby="cfT" aria-describedby="cfB"><h2 id="cfT"' + (danger ? '' : ' style="color:var(--navy);border-top-color:var(--navy)"') + '>' + title + '</h2><p id="cfB">' + text + '</p><div class="acts"><button class="btn secondary sm" type="button" data-no>' + (cancelLabel || 'Cancel') + '</button><button class="btn ' + (danger ? 'danger' : 'primary') + ' sm" type="button" data-ok>' + okLabel + '</button></div></div>';
+    screenEl.appendChild(s);
+    s.querySelector('[data-no]').focus();
+    s.onclick = function (e) {
+      if (e.target.closest('[data-no]')) s.remove();
+      if (e.target.closest('[data-ok]')) { s.remove(); onOk(); }
+    };
+  }
+  function confirmRemove() {
+    var p = dr.p, k = dr.k, d = p.docs[k];
+    var when = fmt(d.signed || d.on);
+    confirmBox('Remove ' + esc(p.first) + '’s ' + KINDS[k].noun + '?', 'Leaders will no longer see it. The ' + when + ' file will be erased.', 'Remove', function () {
+      p.docs[k] = null;
+      closeDrawer();
+      renderHealth();
+      flash(KINDS[k].label + ' removed');
+    }, 'Cancel', true);
+  }
+
+  /* ── "Things we should know" drawer ── */
+  function openNotes(id) {
+    var p = person(id), orig = p.notes ? p.notes.text : '';
+    var el = document.createElement('div');
+    el.className = 'drawer';
+    function paint(val) {
+      el.innerHTML = '<div class="drawerPanel" role="dialog" aria-modal="true" aria-labelledby="ntT"><div class="drawerHead"><div><p class="eyebrow">' + esc(p.first + ' ' + p.last) + '</p><h2 id="ntT">Things we should know</h2></div><button class="x" type="button" data-close aria-label="Close">✕</button></div>' +
+        '<div class="drawerBody"><div class="field"><label for="nt">Allergies, medicines, anything a leader should know first</label><textarea id="nt" rows="6">' + esc(val) + '</textarea><p class="hint">Leaders see this before the forms, marked as typed by you, not read from the form.</p></div></div>' +
+        '<div class="drawerFoot"></div></div>';
+      el.querySelector('#nt').oninput = foot;
+      foot();
+    }
+    function foot() {
+      var dt = el.querySelector('#nt').value !== orig;
+      el.querySelector('.drawerFoot').innerHTML = '<button class="btn primary block" type="button" data-save' + (dt ? '' : ' disabled') + '>' + (dt ? 'Save changes' : 'Saved') + '</button>' + (dt ? '<button class="btn ghost" type="button" data-discard>Discard changes</button>' : '');
+    }
+    el.onclick = function (e) {
+      var t = e.target.closest('button'); if (!t || t.disabled) return;
+      var cur = el.querySelector('#nt').value;
+      if ('close' in t.dataset) { el.remove(); return; }
+      if ('discard' in t.dataset) { el.querySelector('#nt').value = orig; return foot(); }
+      if ('save' in t.dataset) {
+        var ov = document.createElement('div'); ov.className = 'overlay'; ov.innerHTML = '<div><div class="spinner"></div>Saving…</div>';
+        el.querySelector('.drawerPanel').appendChild(ov);
+        setTimeout(function () { p.notes = cur.trim() ? { text: cur.trim(), on: HR.iso(HR.TODAY) } : null; orig = cur; ov.remove(); foot(); renderHealth(); flash('Saved'); }, 700);
+      }
+    };
+    screenEl.appendChild(el);
+    paint(orig);
+    el.querySelector('#nt').focus();
+  }
+
+  /* ── Dev bar ── */
+  document.querySelectorAll('.devBar [data-go]').forEach(function (b) { b.onclick = function () { closeDrawer(); go(b.dataset.go); }; });
+  document.querySelectorAll('input[name=sim]').forEach(function (r) {
+    r.onchange = function () {
+      document.getElementById('sig').textContent = sim() === 'offline' ? 'No service' : sim() === 'fail' || sim() === 'uploading' ? '●○○○ 3G' : '●●●● 5G';
+      if (dr) { dr.offlineTried = false; dr.largeUsed = false; renderDrawer(); }
+    };
+  });
+  document.getElementById('reset').onclick = function () { closeDrawer(); fam = seed(); expanded = {}; going = { ben: true, dana: true }; go(screenName); };
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && dr && !document.querySelector('.viewer,.scrim')) tryClose(); });
+
+  go('health');
+})();
+</script>
+</body>
+</html>

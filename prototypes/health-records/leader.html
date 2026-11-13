@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Medical (leader) — Troop 79 prototype</title>
+<link rel="stylesheet" href="assets/health.css">
+<style>
+  .lHead { padding: var(--sp-4) var(--sp-4) var(--sp-2); }
+  .lHead h1 { margin: 0 0 var(--sp-3); font: 700 var(--fs-2xl) var(--font-display); color: var(--text-head); }
+  .lSearch { width: 100%; font: var(--fs-md) var(--font-ui); padding: 10px 12px; border: 1px solid var(--border-mid); border-radius: var(--rad-md); background: #fff; }
+  .lSeg { display: flex; margin-top: var(--sp-3); border: 1px solid var(--border-mid); border-radius: var(--rad-md); overflow: hidden; background: #fff; }
+  .lSeg button { flex: 1; border: 0; background: none; padding: 8px; font: 600 var(--fs-sm) var(--font-ui); color: var(--text-body); cursor: pointer; min-height: 40px; }
+  .lSeg button + button { border-left: 1px solid var(--border-mid); }
+  .lSeg button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+  .scope { margin: var(--sp-3) var(--sp-4) var(--sp-2); font: 600 var(--fs-sm) var(--font-ui); color: var(--text-meta); }
+  .plist { list-style: none; margin: 0 var(--sp-4) var(--sp-6); padding: 0; background: #fff; border-radius: var(--rad-md); box-shadow: var(--shadow-card); }
+  .plist li + li { border-top: 1px solid var(--rule); }
+  .plist button { display: flex; align-items: center; gap: var(--sp-2); width: 100%; min-height: 48px; padding: 6px var(--sp-4); border: 0; background: none; text-align: left; cursor: pointer; font: var(--fs-md) var(--font-ui); color: var(--text-head); }
+  .plist button:hover { background: var(--cream); }
+  .plist .k { font-size: var(--fs-xs); color: var(--text-meta); }
+  .plist .badge { margin-left: auto; }
+  .plist .chev { color: var(--text-meta); }
+  .none { padding: var(--sp-4); font: var(--fs-sm)/1.5 var(--font-ui); color: var(--text-meta); }
+  .back { display: inline-flex; align-items: center; gap: 4px; margin: var(--sp-3) var(--sp-4) 0; padding: 6px 0; border: 0; background: none; font: 600 var(--fs-sm) var(--font-ui); color: var(--navy); cursor: pointer; min-height: 36px; }
+  .who1 { padding: var(--sp-1) var(--sp-4) var(--sp-3); }
+  .who1 h1 { margin: 0; font: 700 var(--fs-2xl) var(--font-display); color: var(--text-head); }
+  .who1 p { margin: 2px 0 0; font: var(--fs-sm) var(--font-ui); color: var(--text-meta); }
+  .sec { margin: 0 var(--sp-4) var(--sp-4); }
+  .sec h2 { margin: 0 0 6px; font: 600 var(--fs-sm) var(--font-ui); color: var(--text-meta); }
+  .told { background: var(--status-warning-bg); border-radius: var(--rad-md); padding: var(--sp-3) var(--sp-4); font: var(--fs-md)/1.5 var(--font-ui); color: var(--text-head); }
+  .told small { display: block; margin-top: 4px; font-size: var(--fs-xs); color: var(--text-meta); }
+  .contact { display: flex; align-items: center; gap: var(--sp-2); background: #fff; border-radius: var(--rad-md); box-shadow: var(--shadow-card); padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-4); font: var(--fs-md) var(--font-ui); }
+  .contact span { flex: 1; }
+  .contact small { display: block; color: var(--text-meta); font-size: var(--fs-xs); }
+  .dlist { list-style: none; margin: 0; padding: 0; background: #fff; border-radius: var(--rad-md); box-shadow: var(--shadow-card); font-family: var(--font-ui); }
+  .dlist li { display: flex; align-items: center; gap: var(--sp-2); padding: 8px var(--sp-4); min-height: 52px; }
+  .dlist li + li { border-top: 1px solid var(--rule); }
+  .dlist .what { flex: 1; min-width: 0; font-size: var(--fs-md); color: var(--text-head); }
+  .dlist .what small { display: block; font-size: var(--fs-xs); color: var(--text-meta); }
+  .logged { margin: var(--sp-2) 0 0; font: var(--fs-xs) var(--font-ui); color: var(--text-meta); }
+  .logList { margin: 4px 0 0; padding-left: 16px; font-size: var(--fs-xs); color: #333; }
+</style>
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Flow 2 — leader on a campout, <code>/health</code>. Signed in as Karen Okafor (has health access). Ben’s family renewed his form Nov 8.</span><a href="index.html">All prototypes</a></div></div>
+
+<div class="devStage">
+  <div class="phone"><div class="screen" id="screen">
+    <div class="statusBar"><span>9:41</span><span id="sig">●●○○ LTE</span></div>
+    <div class="siteNav"><span class="brand">Troop 79</span><button class="menu" type="button">Menu</button></div>
+    <div class="scroll" id="view"></div>
+  </div></div>
+
+  <aside class="devBar" aria-label="Prototype controls">
+    <h2>Signed-in leader</h2>
+    <label><input type="radio" name="auth" value="yes" checked> Has health access</label>
+    <label><input type="radio" name="auth" value="no"> No health access (status only)</label>
+    <h2>Connection</h2>
+    <label><input type="radio" name="net" value="ok" checked> Good</label>
+    <label><input type="radio" name="net" value="file"> Files won’t load (one bar)</label>
+    <label><input type="radio" name="net" value="off"> Offline (page can’t load)</label>
+    <h2>Jump to</h2>
+    <button type="button" data-jump="ben">Ben Rivera — on file, has notes</button>
+    <button type="button" data-jump="sam">Sam Kowalczyk — missing</button>
+    <button type="button" data-jump="maya">Maya Thornton — expires soon</button>
+    <h2>Access log (this session)</h2>
+    <ol class="logList" id="log"><li style="list-style:none;margin-left:-16px;color:#666">Nothing viewed yet.</li></ol>
+    <p>Every View writes a row like these. The admin sees them on <a href="admin-roster.html#log">Access log</a>.</p>
+  </aside>
+</div>
+
+<script src="assets/common.js"></script>
+<script>
+(function () {
+  var fmt = HR.fmt, esc = HR.esc, TRIP = HR.TRIP;
+  var screenEl = document.getElementById('screen'), view = document.getElementById('view');
+  var scope = 'trip', q = '', current = null, logs = [];
+  function auth() { return document.querySelector('input[name=auth]:checked').value === 'yes'; }
+  function net() { return document.querySelector('input[name=net]:checked').value; }
+  function short(p) { return p.first + ' ' + p.last[0] + '.'; }
+  function st(p) { return HR.status(p.health, scope === 'trip' || p.going ? TRIP : null); }
+
+  function renderList(keepFocus) {
+    if (net() === 'off') return renderOffline();
+    var pool = HR.people.filter(function (p) { return scope === 'everyone' || p.going; });
+    var hits = pool.filter(function (p) { return !q || (p.first + ' ' + p.last).toLowerCase().indexOf(q.toLowerCase()) >= 0; })
+      .sort(function (a, b) { return a.first.localeCompare(b.first); });
+    var label = scope === 'trip' ? 'At ' + TRIP.name + ' (' + pool.length + ' going)' : 'Everyone (' + pool.length + ')';
+    var html = '<div class="lHead"><h1>Medical</h1><label class="sr" for="q">Search a name</label><input class="lSearch" id="q" type="search" placeholder="Search a name…" value="' + esc(q) + '" autocomplete="off">' +
+      '<div class="lSeg" role="group" aria-label="Who to show"><button type="button" data-scope="trip" aria-pressed="' + (scope === 'trip') + '">This trip</button><button type="button" data-scope="everyone" aria-pressed="' + (scope === 'everyone') + '">Everyone</button></div></div>' +
+      '<p class="scope" aria-live="polite">' + label + (q ? ' · ' + hits.length + ' match' + (hits.length === 1 ? '' : 'es') : '') + '</p>';
+    if (!hits.length) {
+      html += '<div class="plist"><p class="none">No one ' + (scope === 'trip' ? 'at ' + TRIP.name + ' ' : '') + 'named “' + esc(q) + '”.' + (scope === 'trip' ? ' <a href="#" data-scope="everyone">Search everyone</a>' : '') + '</p></div>';
+    } else {
+      html += '<ul class="plist">' + hits.map(function (p) {
+        var s = st(p);
+        return '<li><button type="button" data-open="' + p.id + '"><span>' + esc(short(p)) + ' <span class="k">' + (p.kind === 'adult' ? 'adult' : '') + '</span></span><span class="badge ' + s.tone + '">' + s.label + '</span><span class="chev" aria-hidden="true">›</span></button></li>';
+      }).join('') + '</ul>';
+    }
+    view.innerHTML = html;
+    var inp = document.getElementById('q');
+    inp.oninput = function () { q = inp.value; renderList(true); };
+    if (keepFocus) { var i2 = document.getElementById('q'); i2.focus(); i2.setSelectionRange(q.length, q.length); }
+  }
+  function renderOffline() {
+    view.innerHTML = '<div class="lHead"><h1>Medical</h1></div><div class="sec"><div class="notice error" role="alert">Can’t load. Use the paper binder.</div><p style="margin-top:12px"><button class="btn secondary" type="button" data-retrypage>Retry</button></p><p class="logged">Health files are never kept on this phone.</p></div>';
+  }
+
+  function renderPerson(id) {
+    if (net() === 'off') return renderOffline();
+    var p = HR.people.filter(function (x) { return x.id === id; })[0];
+    current = id;
+    var s = st(p), ok = auth();
+    var html = '<button class="back" type="button" data-back>‹ Back</button><div class="who1"><h1>' + esc(p.name) + '</h1><p>' + p.kind + ', ' + p.age + ' · <span class="badge ' + s.tone + '">' + s.label + '</span>' + (s.until ? ' good until ' + fmt(s.until) : '') + '</p></div>';
+    if (ok) {
+      html += '<section class="sec"><h2>Things the family told us</h2>' + (p.notes
+        ? '<div class="told">' + esc(p.notes.text) + '<small>Typed by family, ' + fmt(p.notes.on) + ' · not read from the form</small></div>'
+        : '<div class="told" style="background:#fff;box-shadow:var(--shadow-card);color:var(--text-meta)">Nothing typed by the family.</div>') + '</section>';
+    }
+    html += '<section class="sec"><h2>Emergency contact</h2><div class="contact"><span>' + esc(p.contact.name + ' ' + p.last) + ' (' + p.contact.rel + ')<small>' + p.contact.phone + '</small></span><a class="btn secondary sm" href="#" data-fake="Calls ' + p.contact.phone + '">Call</a><a class="btn secondary sm" href="#" data-fake="Texts ' + p.contact.phone + '">Text</a></div></section>';
+    html += '<section class="sec"><h2>Documents</h2>';
+    if (!ok) {
+      html += '<div class="notice info">Ask a leader with health access to open this.</div>';
+    } else if (!p.health) {
+      html += '<div class="notice warning">No health record on file. Check the paper binder.</div>';
+      if (p.insurance) html += docList(p, false);
+    } else {
+      html += docList(p, true) + '<p class="logged">Viewing is logged.</p>';
+    }
+    html += '</section>';
+    view.innerHTML = html;
+    view.scrollTop = 0;
+    view.querySelector('[data-back]').focus();
+  }
+  function docList(p, withHealth) {
+    var rows = '';
+    if (withHealth) rows += '<li><span class="what">Health record<small>Parts ' + p.health.parts + ' · signed ' + fmt(p.health.signed) + '</small></span><button class="btn secondary sm" type="button" data-v="health">View</button></li>';
+    if (p.insurance) rows += '<li><span class="what">Insurance card</span><button class="btn secondary sm" type="button" data-v="front">Front</button>' + (p.insurance.back ? '<button class="btn secondary sm" type="button" data-v="back">Back</button>' : '') + '</li>';
+    else rows += '<li><span class="what">Insurance card<small>Not on file</small></span></li>';
+    rows += p.immun ? '<li><span class="what">Immunizations<small>' + fmt(p.immun.date) + '</small></span><button class="btn secondary sm" type="button" data-v="immun">View</button></li>' : '<li><span class="what">Immunizations<small>Not on file</small></span></li>';
+    return '<ul class="dlist">' + rows + '</ul>';
+  }
+
+  function view1(what) {
+    var p = HR.people.filter(function (x) { return x.id === current; })[0];
+    var map = { health: { t: 'Health record', pages: p.health && p.health.parts === 'A+B+C' ? ['A', 'B', 'C'] : ['A', 'B'] }, front: { t: 'Insurance card, front', pages: ['front'] }, back: { t: 'Insurance card, back', pages: ['back'] }, immun: { t: 'Immunizations', pages: ['immun'] } };
+    var m = map[what];
+    var fail = net() === 'file';
+    if (!fail) addLog(p.name, m.t);
+    HR.openViewer({ host: screenEl, title: p.name + ' · ' + m.t, pages: m.pages, download: true, fail: fail, failAgain: false, onDownload: function () { addLog(p.name, m.t + ' (downloaded)'); } });
+  }
+  function addLog(whose, what) {
+    logs.unshift('Nov 12, \'26 · Karen Okafor · ' + whose + ' · ' + what + ' · ' + (scope === 'trip' ? TRIP.name : 'search'));
+    document.getElementById('log').innerHTML = logs.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+  }
+
+  view.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-scope],[data-open],[data-back],[data-v],[data-fake],[data-retrypage]');
+    if (!t) return;
+    e.preventDefault();
+    if (t.dataset.scope) { scope = t.dataset.scope; return renderList(); }
+    if (t.dataset.open) return renderPerson(t.dataset.open);
+    if ('back' in t.dataset) { current = null; return renderList(); }
+    if (t.dataset.v) return view1(t.dataset.v);
+    if (t.dataset.fake) { var was = t.textContent; t.textContent = was === 'Call' ? 'Calling…' : 'Opening…'; setTimeout(function () { t.textContent = was; }, 900); return; }
+    if ('retrypage' in t.dataset) { view.innerHTML = '<div class="lHead"><h1>Medical</h1></div><div class="sec"><div class="spinner"></div></div>'; setTimeout(function () { current ? renderPerson(current) : renderList(); }, 800); }
+  });
+  document.querySelectorAll('[data-jump]').forEach(function (b) { b.onclick = function () { var v = screenEl.querySelector('.viewer'); if (v) v.remove(); renderPerson(b.dataset.jump); }; });
+  document.querySelectorAll('input[name=auth],input[name=net]').forEach(function (r) {
+    r.onchange = function () {
+      document.getElementById('sig').textContent = net() === 'off' ? 'No service' : net() === 'file' ? '●○○○ 3G' : '●●○○ LTE';
+      current ? renderPerson(current) : renderList();
+    };
+  });
+  renderList();
+})();
+</script>
+</body>
+</html>

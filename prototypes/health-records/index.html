@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Health records prototypes — Troop 79</title>
+<link rel="stylesheet" href="assets/health.css">
+<style>
+  .idx { max-width: 860px; margin: 0 auto; padding: var(--sp-6) var(--sp-4) var(--sp-10); font-family: var(--font-ui); }
+  .idx h1 { font: 700 var(--fs-3xl)/1.15 var(--font-display); color: var(--text-head); margin: 0 0 var(--sp-2); }
+  .idx h2 { font: 700 var(--fs-xl) var(--font-ui); color: var(--text-head); margin: var(--sp-8) 0 var(--sp-3); }
+  .idx p { line-height: 1.55; color: var(--text-body); }
+  .links { list-style: none; margin: 0; padding: 0; background: #fff; border-radius: var(--rad-md); box-shadow: var(--shadow-card); }
+  .links li { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--rule); }
+  .links li:first-child { border-top: 0; }
+  .links a { font-weight: 700; font-size: var(--fs-lg); }
+  .links p { margin: 2px 0 0; font-size: var(--fs-sm); color: var(--text-meta); }
+  .qs { margin: 0; padding-left: 22px; line-height: 1.55; }
+  .qs li { margin-bottom: var(--sp-2); }
+  .qs .def { color: var(--text-meta); font-size: var(--fs-sm); }
+  .tag { font-size: var(--fs-xs); color: var(--text-meta); }
+</style>
+</head>
+<body>
+<div class="proto"><div class="protoInner"><span><strong>Prototype</strong> Health Records — static, clickable, invented people and fake scans. Today is pinned to Nov 12, ’26.</span><span>From Jenna’s UX spec</span></div></div>
+<main class="idx">
+  <h1>Health records</h1>
+  <p>Families upload the BSA health form, insurance card and immunizations from a phone. Leaders on a trip can open them; the admin sees who is missing, reminds families, prints a binder, and controls and audits who can look.</p>
+
+  <h2>Prototypes</h2>
+  <ul class="links">
+    <li><a href="parent.html">Flow 1 · Parent</a> <span class="tag">phone</span>
+      <p>The /member “Health forms” card and the event sign-up Notice as ways in; the household list; Add / Replace drawer with photo or file pages, reorder and remove, Front/Back card slots, date signed → “Good until”; view, remove with confirm. A dev bar simulates slow upload, page 2 failing, a 14 MB file and offline.</p></li>
+    <li><a href="leader.html">Flow 2 · Leader on a campout</a> <span class="tag">phone</span>
+      <p>/health: search first, This trip · Everyone, status badges; one person with what the family told us first, Call / Text, documents and a full-screen viewer with Download for printing. States: missing, no health access, file won’t load, offline.</p></li>
+    <li><a href="admin-medical.html">Flow 3a · Event Medical tab</a> <span class="tag">desktop</span>
+      <p>Fall Camp’s workbench with Medical beside Money: summary line, All · Needs attention, table and person panel, Remind families (two-step), Print binder → PDF preview with cover sheet and stub pages.</p></li>
+    <li><a href="admin-roster.html#forms">Flow 3b–3d · Roster, Access, Access log</a> <span class="tag">desktop</span>
+      <p>Troop-wide Health forms tab (worst first), the Access screen’s new Health column with a dirty-gated Save, and the read-only access log with filters.</p></li>
+  </ul>
+
+  <h2>Open questions for Patrick</h2>
+  <ol class="qs">
+    <li>Who gets health access, and is it tied to being at the event?</li>
+    <li>Do scouts 13 and older see their own forms? <span class="def">Default: no.</span></li>
+    <li>Keep insurance member IDs as typed fields? <span class="def">Default: no, photo only.</span></li>
+    <li>How long are files kept after a scout leaves? <span class="def">Default: erased 90 days after going inactive.</span></li>
+    <li>Is Part C per event (treks) or per person?</li>
+    <li>Can families see who viewed their records?</li>
+    <li>Confirm reversing the “medical not tracked” policy.</li>
+  </ol>
+
+  <h2>Raised while building</h2>
+  <ol class="qs" start="8">
+    <li>“Date the doctor signed” fits Part C only; Parts A and B are signed by the parent. Should the field say “Date signed”, and which date sets “Good until”?</li>
+    <li>Does “complete” on the event tab mean the health record only, or also insurance and immunizations? (Jonah has no card back and no immunizations but counts as complete here.)</li>
+    <li>Can a leader without health access still see “Things the family told us” (allergies) in an emergency? Here they see status and the emergency contact only.</li>
+    <li>What happens to a printed binder after the trip (returned, shredded), and should the cover sheet say so?</li>
+    <li>Remind families emails every adult in the household. Should scouts 13+ with a verified address get it too?</li>
+  </ol>
+</main>
+</body>
+</html>
