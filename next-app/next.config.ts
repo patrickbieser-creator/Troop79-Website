@@ -40,6 +40,24 @@ const nextConfig: NextConfig = {
         ]
       },
       {
+        // Health records (Plans/Health-Forms.md): the page that lists a family's documents is never cached, indexed
+        // or named in a Referer. The file route sets the same headers itself.
+        source: '/member/health-forms/:path*',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ]
+      },
+      {
+        source: '/member/health-forms',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
+        ]
+      },
+      {
         // A meeting invite's answer link carries its secret in the path (Plans/Matcher-Tune-Up.md T-5, qa-lead M5).
         source: '/i/:path*',
         headers: [

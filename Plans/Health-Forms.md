@@ -1,7 +1,12 @@
 # Health Records (BSA health form, insurance card, immunizations)
 
-**Status:** Parked for the night (2026-11-12) — all decisions answered. **Next: Brad updates the prototypes (the
-four changes below), starting 2026-11-13; then build, riskiest step first (binder merge with real scans).**
+**Status:** Release 1 BUILT 2026-11-13 (family upload: `/member/health-forms`, `lib/health-{files,store,records,
+access}`, `/api/health-files/[id]`, migration 20270103100000), waiting for Patrick's "ship" plus the Bunny zone and
+master key (step 2). Family access only. **Still to build:** `health_forms.view` + the trip window, the leader
+phone view, the event Medical tab, reminders, the binder (prove the merge with real scans first), the "Reviewed —
+complete" tick, things-we-should-know, the sign-up Notice, the retention job and orphan sweep. Open policy point
+from the qa review: a parent can add another adult to the household (`add_parent_to_household` writes a
+`parent_of` edge), and that adult then sees the children's records.
 **Parked:** 2026-08-20 · **Reopened:** 2026-11-12 (Patrick: "enable parents to upload the BSA medical health records,
 health insurance cards, immunization records … parents and adult leaders would be able to access it on demand … print
 out in bulk to fill up our binder before campouts")

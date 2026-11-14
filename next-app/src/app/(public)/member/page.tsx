@@ -73,6 +73,8 @@ const TEACHING_CARD: Card = {
   href: '/member/teaching'
 };
 
+import { healthFilesConfigured } from '@/lib/health-files';
+
 const CARDS: Card[] = [
   {
     title: 'Your household',
@@ -101,7 +103,7 @@ const CARDS: Card[] = [
   },
   {
     title: 'Health forms',
-    body: 'Which parts of the annual health form we have on file for each member of your household, and when they expire.'
+    body: 'Add the annual health form and insurance card for each member of your household, and see when they expire.'
   },
   {
     title: 'Wreath sale',
@@ -188,7 +190,10 @@ export default async function MemberPage({
   const teachingKind = !proxy && loadedKind === 'adult' && !isAdult ? 'none' : loadedKind;
   const after = CARDS.findIndex((c) => c.href === '/member/reimbursements') + 1;
   const meetingCard = await loadMeetingCard(proxy ? proxy.personId : session!.personId, !proxy && !isAdult, proxy != null, !proxy && teachingKind !== 'none');
-  const withTeaching = teachingKind === 'none' ? CARDS : [...CARDS.slice(0, after), TEACHING_CARD, ...CARDS.slice(after)];
+  // Health forms go live once uploads are switched on (lib/health-files), for the family's own sign-in only: a
+  // leader viewing as a scout never reaches another family's health records this way.
+  const baseCards = CARDS.map((c) => (c.title === 'Health forms' && !proxy && healthFilesConfigured() ? { ...c, href: '/member/health-forms', adultOnly: true } : c));
+  const withTeaching = teachingKind === 'none' ? baseCards : [...baseCards.slice(0, after), TEACHING_CARD, ...baseCards.slice(after)];
   // Family registration names children, so a revoked session (stale epoch) gets no lines, the same gate as /member/registration.
   const registrationLines =
     proxy || (await isEpochCurrent(createAdminClient(), session!))
