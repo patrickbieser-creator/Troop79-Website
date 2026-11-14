@@ -75,6 +75,34 @@ function renderForm(p: SignupPay | undefined, existing: HouseholdEntry[] = []) {
 const hidden = (name: string) => (document.querySelector(`input[name="${name}"]`) as HTMLInputElement | null)?.value;
 const going = (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Attending' }));
 
+describe('PersonFirstForm — pressing a chosen answer again takes it back', () => {
+  const pressed = (name: string) => screen.getByRole('button', { name }).getAttribute('aria-pressed');
+
+  it('Family_PressingAttendingTwice_ReturnsToNoAnswer_AndTheTotalCloses', async () => {
+    const user = userEvent.setup();
+    renderForm(pay());
+    await going(user);
+    await going(user);
+    expect([pressed('Attending'), screen.queryByText('Total owed'), JSON.parse(hidden('entries') ?? '[]').length]).toEqual(['false', null, 0]);
+  });
+
+  it('Family_WhoSaidCantMakeIt_ThenAttending_ThenAttendingAgain_IsBackToCantMakeIt', async () => {
+    const user = userEvent.setup();
+    renderForm(pay());
+    await user.click(screen.getByRole('button', { name: 'Can’t make it' }));
+    await going(user);
+    await going(user);
+    expect([pressed('Attending'), pressed('Can’t make it')]).toEqual(['false', 'true']);
+  });
+
+  it('Family_WithASavedYes_PressingAttending_ChangesNothing', async () => {
+    const user = userEvent.setup();
+    renderForm(pay({ due: 20 }), [saved()]);
+    await going(user);
+    expect([pressed('Attending'), (screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled]).toEqual(['true', true]);
+  });
+});
+
 describe('PersonFirstForm — how will you pay', () => {
   it('Family_WithNobodyAttending_SeesNoPaymentChoices', () => {
     renderForm(pay());

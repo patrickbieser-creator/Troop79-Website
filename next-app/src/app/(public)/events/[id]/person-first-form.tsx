@@ -2,7 +2,7 @@
 
 import { GuestRowsEditor, GuestCountField, GuestsLocked, type GuestRowValue } from './guest-rows';
 import { SavingOverlay, intentOf, type SaveIntent } from './save-feedback';
-import { memo, useCallback, useId, useMemo, useState } from 'react';
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react';
 import { Stepper } from '@/app/_components/stepper';
 import { SelectInput, TextInput } from '@/app/_components/form';
 import { DateField } from '@/app/_components/date-field';
@@ -942,11 +942,29 @@ export default function PersonFirstForm({
   // life, keyed by the id/key each row passes back in. Functional setState
   // means none of these need to close over anything that changes, so they
   // never invalidate a memoised row's props.
+  // Pressing the answer that is already chosen takes it back (Patrick, 2026-11-13: "a toggle off"): the person
+  // returns to what they were before that answer was picked (nothing yet, or the other answer), and the price
+  // and ride fields it opened close again. `before` is only read and written inside these handlers.
+  const before = useRef<Record<string, string>>({});
   const handleScoutChoice = useCallback((id: string, choice: ScoutChoice) => {
-    setScoutChoice((v) => ({ ...v, [id]: choice }));
+    setScoutChoice((v) => {
+      if (v[id] !== choice) {
+        before.current[`s:${id}`] = v[id];
+        return { ...v, [id]: choice };
+      }
+      const prior = before.current[`s:${id}`];
+      return prior === undefined ? v : { ...v, [id]: prior as ScoutChoice };
+    });
   }, []);
   const handleAdultChoice = useCallback((key: string, choice: AdultChoice) => {
-    setAdultChoice((v) => ({ ...v, [key]: choice }));
+    setAdultChoice((v) => {
+      if (v[key] !== choice) {
+        before.current[`a:${key}`] = v[key];
+        return { ...v, [key]: choice };
+      }
+      const prior = before.current[`a:${key}`];
+      return prior === undefined ? v : { ...v, [key]: prior as AdultChoice };
+    });
   }, []);
   const handleTierSelect = useCallback((key: string, priceId: number) => {
     setTier((v) => ({ ...v, [key]: priceId }));
