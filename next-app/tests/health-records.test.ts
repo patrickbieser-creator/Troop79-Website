@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
+  addDays,
+  healthStanding,
+  inTripWindow,
+  needsAttention,
   addMonths,
   effectiveOn,
   expiresOn,
@@ -83,6 +87,48 @@ describe('status', () => {
 
   it('Person_ReadsTheWorstOfWhatEveryOutingNeeds', () => {
     expect(personStatus([page('bsa_ab', 1, { expiresOn: '2026-01-01' }), page('insurance', 1)], TODAY)).toBe('missing');
+  });
+});
+
+describe('the trip window', () => {
+  it('TripLeader_CanView_FromSevenDaysBefore_ToTwoDaysAfter', () => {
+    const on = (today: string) => inTripWindow('2026-11-20', '2026-11-22', today);
+    expect([on('2026-11-12'), on('2026-11-13'), on('2026-11-24'), on('2026-11-25')]).toEqual([false, true, true, false]);
+  });
+
+  it('AOneDayEvent_EndsItsWindowTwoDaysAfterThatDay', () => {
+    expect([inTripWindow('2026-11-20', null, '2026-11-22'), inTripWindow('2026-11-20', null, '2026-11-23')]).toEqual([true, false]);
+  });
+
+  it('AddDays_CrossesMonthsAndYears', () => {
+    expect([addDays('2026-12-30', 3), addDays('2026-03-01', -1)]).toEqual(['2027-01-02', '2026-02-28']);
+  });
+});
+
+describe('standing for an outing', () => {
+  const base = [page('bsa_ab', 1), page('insurance', 1), page('insurance', 2)];
+  const stand = (pages: HealthPage[], over: Partial<{ reviewed: boolean; needsPartC: boolean; asOf: string }> = {}) =>
+    healthStanding(pages, { reviewed: false, needsPartC: false, today: TODAY, ...over });
+
+  it('Complete_RequiresBsaFormInsuranceAndAReview', () => {
+    expect([stand(base), stand(base, { reviewed: true })]).toEqual(['ready', 'complete']);
+  });
+
+  it('Complete_NeedsPartC_OnlyWhenTheEventNeedsIt', () => {
+    expect([stand(base, { reviewed: true, needsPartC: true }), stand([...base, page('bsa_c', 1)], { reviewed: true, needsPartC: true })]).toEqual(['missing', 'complete']);
+  });
+
+  it('AReview_NeverHidesAMissingFile', () => {
+    expect(stand([page('bsa_ab', 1)], { reviewed: true })).toBe('missing');
+  });
+
+  it('AFormThatRunsOutBeforeTheTripEnds_IsExpiredForThatTrip', () => {
+    const pages = [page('bsa_ab', 1, { expiresOn: '2027-03-01' }), page('insurance', 1), page('insurance', 2)];
+    expect([stand(pages, { reviewed: true }), stand(pages, { reviewed: true, asOf: '2027-03-02' })]).toEqual(['complete', 'expired']);
+  });
+
+  it('OnlyComplete_NeedsNoAttention', () => {
+    expect((['missing', 'expired', 'expires_soon', 'ready', 'complete'] as const).map(needsAttention)).toEqual([true, true, true, true, false]);
   });
 });
 

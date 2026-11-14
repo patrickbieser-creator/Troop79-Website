@@ -1,0 +1,53 @@
+/* /health — the leader side of health records, phone first. Public tokens only (AGENTS.md). */
+.wrap { max-width: 40rem; font-family: var(--font-ui); }
+.note { margin: 0 0 var(--sp-4); font-size: var(--fs-sm); line-height: 1.5; color: var(--text-meta); }
+.links { display: flex; flex-wrap: wrap; gap: var(--sp-4); margin: 0 0 var(--sp-4); font-size: var(--fs-sm); }
+
+.trips { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: 0 0 var(--sp-4); padding: 0; list-style: none; }
+.trip { display: inline-flex; flex-direction: column; min-height: 44px; justify-content: center; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--border-mid); border-radius: var(--rad-md); background: var(--warm-white); color: var(--text-head); font-size: var(--fs-sm); font-weight: 700; text-decoration: none; }
+.trip[aria-current='page'] { border-color: var(--navy); box-shadow: inset 0 -3px 0 var(--navy); }
+.tripWhen { font-size: var(--fs-xs); font-weight: 400; color: var(--text-meta); }
+
+.summary { margin: 0 0 var(--sp-3); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.tools { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.search { flex: 1 1 12rem; min-height: 44px; padding: 0 var(--sp-3); border: 1px solid var(--border-mid); border-radius: var(--rad-md); background: var(--warm-white); font-size: 16px; }
+.filter { display: inline-flex; gap: 2px; padding: 3px; background: var(--cream); border-radius: var(--rad-pill); }
+.filterBtn { min-height: 38px; padding: 0 var(--sp-3); border: none; border-radius: var(--rad-pill); background: none; font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: 600; color: var(--text-meta); cursor: pointer; }
+.filterBtn[aria-pressed='true'] { background: var(--warm-white); color: var(--navy); box-shadow: var(--shadow-card); }
+.filterBtn:focus-visible, .search:focus-visible, .rosterRow:focus-visible, .trip:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
+.count { margin: var(--sp-2) 0; font-size: var(--fs-xs); color: var(--text-meta); }
+.empty { margin: var(--sp-4) 0; font-size: var(--fs-sm); color: var(--text-meta); }
+
+.roster { list-style: none; margin: 0 0 var(--sp-6); padding: 0; border-radius: var(--rad-md); overflow: hidden; box-shadow: var(--shadow-card); }
+.roster > li + li { border-top: 1px solid var(--border-light); }
+.rosterRow { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 52px; padding: var(--sp-2) var(--sp-3); background: var(--warm-white); color: inherit; text-decoration: none; }
+.rosterRow:hover { background: var(--cream); }
+.rosterName { display: flex; flex-direction: column; font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.rosterKind { font-size: var(--fs-xs); font-weight: 400; color: var(--text-meta); }
+
+/* One person */
+.personHead { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp-3); margin: 0 0 var(--sp-2); }
+.block { margin: 0 0 var(--sp-5); padding: var(--sp-4); }
+.blockHead { margin: 0 0 var(--sp-2); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.told { margin: 0; font-size: var(--fs-md); line-height: 1.5; color: var(--text-body); white-space: pre-wrap; }
+.toldBy { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); color: var(--text-meta); }
+.contacts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.contact { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-md); }
+.contactActs { display: flex; gap: var(--sp-2); }
+.doc + .doc { margin-top: var(--sp-3); padding-top: var(--sp-3); border-top: 1px solid var(--border-light); }
+.docHead { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-2); font-size: var(--fs-md); font-weight: 700; color: var(--text-head); }
+.docMeta { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); color: var(--text-meta); }
+.pages { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
+.review { display: flex; align-items: flex-start; gap: var(--sp-3); font-size: var(--fs-md); color: var(--text-head); cursor: pointer; }
+.review input { flex: none; width: 22px; height: 22px; margin-top: 1px; accent-color: var(--forest); }
+.reviewBy { display: block; font-size: var(--fs-sm); color: var(--text-meta); }
+.error { margin: var(--sp-2) 0 0; padding: var(--sp-2) var(--sp-3); border: 1px solid var(--status-danger); border-radius: var(--rad-md); background: var(--status-danger-bg); color: var(--status-danger); font-size: var(--fs-sm); }
+
+/* Named list + log */
+.viewers { list-style: none; margin: 0 0 var(--sp-4); padding: 0; }
+.viewers li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); min-height: 44px; padding: var(--sp-2) 0; border-bottom: 1px solid var(--border-light); font-size: var(--fs-md); }
+.addRow { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; }
+.select { flex: 1 1 14rem; min-height: 44px; padding: 0 var(--sp-2); border: 1px solid var(--border-mid); border-radius: var(--rad-md); background: var(--warm-white); font-size: 16px; }
+.log { list-style: none; margin: 0; padding: 0; font-size: var(--fs-sm); color: var(--text-body); }
+.log li { padding: var(--sp-2) 0; border-bottom: 1px solid var(--border-light); line-height: 1.45; }
+.logWhen { display: block; font-size: var(--fs-xs); color: var(--text-meta); }

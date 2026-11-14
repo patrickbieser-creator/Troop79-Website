@@ -137,6 +137,64 @@ export function personStatus(pages: readonly HealthPage[], today: string): Healt
   return WORST.find((s) => each.includes(s)) ?? 'on_file';
 }
 
+/** A calendar day `days` later (or earlier). Pure string math, no time zone. */
+export function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
+}
+
+/** How long before a trip starts, and after it ends, an adult on it may open its attendees' records. */
+export const TRIP_DAYS_BEFORE = 7;
+export const TRIP_DAYS_AFTER = 2;
+
+/** The trip window (Patrick, 2026-11-12): from 7 days before the event starts until 2 days after it ends. */
+export function inTripWindow(entryDate: string, endDate: string | null | undefined, today: string): boolean {
+  return today >= addDays(entryDate, -TRIP_DAYS_BEFORE) && today <= addDays(endDate || entryDate, TRIP_DAYS_AFTER);
+}
+
+/**
+ * Where a person stands for an outing (answer 3): the BSA form and the insurance card, plus Part C when the trip
+ * needs it; then an authorized adult's review. Every required file on hand but no review reads "Ready for review".
+ */
+export type HealthStanding = 'missing' | 'expired' | 'expires_soon' | 'ready' | 'complete';
+
+export const HEALTH_STANDING_LABEL: Record<HealthStanding, string> = {
+  missing: 'Missing',
+  expired: 'Expired',
+  expires_soon: 'Expires soon',
+  ready: 'Ready for review',
+  complete: 'Complete'
+};
+
+/** The badge tone for each standing (a plain module: a server page and a client list both read it). */
+export const HEALTH_STANDING_TONE: Record<HealthStanding, 'danger' | 'warning' | 'info' | 'success'> = {
+  missing: 'danger',
+  expired: 'danger',
+  expires_soon: 'warning',
+  ready: 'info',
+  complete: 'success'
+};
+
+/** `asOf` is the day the forms must still be good on: today, or the last day of the trip being planned. */
+export function healthStanding(pages: readonly HealthPage[], opts: { reviewed: boolean; needsPartC: boolean; today: string; asOf?: string }): HealthStanding {
+  const kinds = HEALTH_KINDS.filter((k) => HEALTH_KIND[k].required || (k === 'bsa_c' && opts.needsPartC));
+  const each = kinds.map((k) => {
+    const s = kindStatus(k, pages, opts.today);
+    if (s === 'missing' || s === 'expired' || !opts.asOf) return s;
+    const expires = pages.filter((p) => p.kind === k).map((p) => p.expiresOn).filter((d): d is string => !!d).sort()[0];
+    return expires && expires < opts.asOf ? 'expired' : s;
+  });
+  const worst = WORST.find((s) => each.includes(s)) ?? 'on_file';
+  if (worst === 'missing' || worst === 'expired') return worst;
+  if (!opts.reviewed) return 'ready';
+  return worst === 'expires_soon' ? 'expires_soon' : 'complete';
+}
+
+/** Needs someone to do something before the trip: anything short of Complete. */
+export function needsAttention(s: HealthStanding): boolean {
+  return s !== 'complete';
+}
+
 /** The next free page of a document, or null when it is full. */
 export function nextPage(kind: HealthKind, pages: readonly HealthPage[]): number | null {
   const used = new Set(pages.filter((p) => p.kind === kind).map((p) => p.page));

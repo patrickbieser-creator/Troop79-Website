@@ -1,12 +1,16 @@
 # Health Records (BSA health form, insurance card, immunizations)
 
-**Status:** Release 1 BUILT 2026-11-13 (family upload: `/member/health-forms`, `lib/health-{files,store,records,
-access}`, `/api/health-files/[id]`, migration 20270103100000), waiting for Patrick's "ship" plus the Bunny zone and
-master key (step 2). Family access only. **Still to build:** `health_forms.view` + the trip window, the leader
-phone view, the event Medical tab, reminders, the binder (prove the merge with real scans first), the "Reviewed —
-complete" tick, things-we-should-know, the sign-up Notice, the retention job and orphan sweep. Open policy point
-from the qa review: a parent can add another adult to the household (`add_parent_to_household` writes a
-`parent_of` edge), and that adult then sees the children's records.
+**Status:** Release 1 LIVE 2026-11-13 (family upload: `/member/health-forms`, `lib/health-{files,store,records,
+access}`, `/api/health-files/[id]`, migration 20270103100000; Bunny zone `troop-79-health`, key in Vercel).
+Release 2 BUILT the same day (leader side: `/health`, `/health/[personId]`, `/health/access`, `/health/log`,
+migration 20270104100000): the named list, the trip window, standings, the Reviewed tick, the access log.
+**Changed from this plan:** the named group is its own table `health_viewers`, managed at `/health/access`, NOT a
+`health_forms.view` capability: every capability counts toward "is a leader / may enter admin / full admin", and
+a health officer is none of those by this grant. So there is no Health column on /admin/access, and the event
+list with standings lives at `/health?event=` rather than as an admin Medical tab.
+**Still to build:** the binder (prove the merge with real scans first), Remind families, the sign-up Notice,
+editing things-we-should-know from the parent screen, the retention job and orphan sweep.
+Patrick, 2026-11-13: an adult a parent adds to the household seeing the children's records is "fine as billed".
 **Parked:** 2026-08-20 · **Reopened:** 2026-11-12 (Patrick: "enable parents to upload the BSA medical health records,
 health insurance cards, immunization records … parents and adult leaders would be able to access it on demand … print
 out in bulk to fill up our binder before campouts")

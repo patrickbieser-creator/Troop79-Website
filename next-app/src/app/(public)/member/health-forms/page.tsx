@@ -8,7 +8,8 @@
  */
 import { createAdminClient } from '@/lib/supabase/server';
 import { getIdentitySessionIfValid } from '@/lib/family-access';
-import { healthFamilyAccess } from '@/lib/health-access';
+import Link from 'next/link';
+import { healthAccess, healthFamilyAccess } from '@/lib/health-access';
 import { healthFilesConfigured } from '@/lib/health-files';
 import { healthOpensFor, listHealthPages } from '@/lib/health-store';
 import { HEALTH_KIND, isHealthKind } from '@/lib/health-records';
@@ -72,6 +73,7 @@ export default async function HealthFormsPage() {
   }
 
   const supabase = createAdminClient();
+  const leader = await healthAccess();
   const [{ data: peopleRows }, { data: scoutRows }, pages, opens] = await Promise.all([
     supabase.from('people').select('id, display_name').in('id', access.personIds),
     supabase.from('scouts').select('person_id').in('person_id', access.personIds),
@@ -93,6 +95,11 @@ export default async function HealthFormsPage() {
         <p className={memberStyles.intro}>
           Add a photo or PDF of each page. Only you, and the few leaders who look after health records, can open them.
         </p>
+        {(leader?.named || (leader?.trips.length ?? 0) > 0) && (
+          <p className={memberStyles.note}>
+            <Link href="/health">Health records for a trip</Link>: for the leaders who look after them, and adults going on a trip.
+          </p>
+        )}
         <Notice tone="info" className={styles.list}>
           Every outing needs the BSA health form (Parts A and B) and an insurance card for each person going. The form is
           good for 12 months from the later signature date.

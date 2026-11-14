@@ -11,16 +11,34 @@ import { saveHealthPage, type HealthDeps, type HealthViewer } from '../src/lib/h
 const admin = adminClient();
 const storage = memoryHealthStorage();
 const deps: HealthDeps = { supabase: admin, storage, today: () => '2026-11-13' };
-const access = vi.hoisted(() => ({ current: null as null | { viewer: { personId: number; name: string; via: 'family' }; personIds: number[] } }));
+type Full = { me: { personId: number; name: string }; family: number[]; named: boolean; trips: { signupId: number; eventId: number; title: string; entryDate: string; endDate: string | null; needsPartC: boolean; attendeeIds: number[] }[] };
+const state = vi.hoisted(() => ({ full: null as unknown }));
+const access = {
+  /** The family view of the same sign-in, as lib/health-access derives it. */
+  get current() {
+    const f = state.full as Full | null;
+    return f ? { viewer: { personId: f.me.personId, name: f.me.name, via: 'family' as const }, personIds: f.family } : null;
+  },
+  set current(v: unknown) {
+    state.full = v;
+  }
+};
 
 vi.mock('../src/lib/health-access', () => ({
   healthFamilyAccess: async () => access.current,
+  healthAccess: async () => state.full,
   healthDeps: () => deps
 }));
+vi.mock('../src/lib/supabase/server', async () => {
+  const { adminClient: client } = await import('./helpers/admin-client');
+  return { createAdminClient: () => client() };
+});
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 import { GET } from '../src/app/api/health-files/[id]/route';
 import { removeHealthPageAction, saveHealthDatesAction, uploadHealthPageAction } from '../src/app/(public)/member/health-forms/actions';
+import { grantHealthViewerAction, revokeHealthViewerAction, setHealthReviewedAction } from '../src/app/(public)/health/actions';
+import { isHealthViewer } from '../src/lib/health-store';
 
 let mine: TestScout;
 let theirs: TestScout;
@@ -30,7 +48,12 @@ const PDF = Buffer.from('%PDF-1.7 form');
 
 const get = (id: string, query = '') => GET(new Request(`https://troop.test/api/health-files/${id}${query}`), { params: Promise.resolve({ id }) });
 const idOf = async (personId: number, kind = 'bsa_ab') => String((await admin.from('health_documents').select('id').eq('person_id', personId).eq('kind', kind).order('page').limit(1).single()).data!.id);
-const asFamily = () => (access.current = { viewer: { personId: viewer.personId, name: viewer.name, via: 'family' }, personIds: [mine.personId] });
+const me = () => ({ personId: viewer.personId, name: viewer.name });
+const signIn = (over: Partial<Full>) => (state.full = { me: me(), family: [], named: false, trips: [], ...over } satisfies Full);
+const asFamily = () => signIn({ family: [mine.personId] });
+const trip = (attendeeIds: number[]) => ({ signupId: 1, eventId: 77, title: 'Fall Camp', entryDate: '2026-11-14', endDate: '2026-11-15', needsPartC: false, attendeeIds });
+const lastLog = async (personId: number) =>
+  (await admin.from('health_access_log').select('action, via, event_id, kind').eq('person_id', personId).order('id', { ascending: false }).limit(1).single()).data as { action: string; via: string; event_id: number | null; kind: string };
 const count = async (personId: number) => (await admin.from('health_documents').select('id', { count: 'exact', head: true }).eq('person_id', personId)).count;
 
 beforeAll(async () => {
@@ -45,6 +68,7 @@ afterAll(async () => {
   for (const s of [mine, theirs]) {
     await admin.from('health_documents').delete().eq('person_id', s.personId);
     await admin.from('health_access_log').delete().eq('person_id', s.personId);
+    await admin.from('health_access_log').delete().eq('viewer_person_id', s.personId);
     await deleteTestScout(admin, s);
   }
 });
@@ -90,6 +114,64 @@ describe('GET /api/health-files/[id]', () => {
     await get(await idOf(theirs.personId));
     const { count: views } = await admin.from('health_access_log').select('id', { count: 'exact', head: true }).eq('person_id', theirs.personId).eq('action', 'view');
     expect(views).toBe(0);
+  });
+});
+
+describe('GET /api/health-files/[id] — the leader side', () => {
+  it('Leader_CanViewRecords_WhenOnTheNamedList', async () => {
+    signIn({ named: true });
+    const res = await get(await idOf(theirs.personId));
+    expect([res.status, (await lastLog(theirs.personId)).via]).toEqual([200, 'named']);
+  });
+
+  it('TripLeader_CanView_AnAttendee_AndTheLogNamesTheTrip', async () => {
+    signIn({ trips: [trip([theirs.personId])] });
+    const res = await get(await idOf(theirs.personId));
+    const log = await lastLog(theirs.personId);
+    expect([res.status, log.via, log.event_id]).toEqual([200, 'trip', 77]);
+  });
+
+  it('TripLeader_IsRefused_ForSomeoneNotOnTheirEvent', async () => {
+    signIn({ trips: [trip([mine.personId])] });
+    expect((await get(await idOf(theirs.personId))).status).toBe(404);
+  });
+
+  it('Leader_CannotViewRecords_WithNoWayIn', async () => {
+    signIn({});
+    expect((await get(await idOf(theirs.personId))).status).toBe(404);
+  });
+
+  it('AParentOnTheNamedList_OpeningTheirOwnChild_IsLoggedAsFamily', async () => {
+    signIn({ family: [mine.personId], named: true });
+    await get(await idOf(mine.personId));
+    expect((await lastLog(mine.personId)).via).toBe('family');
+  });
+});
+
+describe('leader actions', () => {
+  it('Review_ByAnAdultWhoIsOnlyOnTheTrip_IsRefused', async () => {
+    signIn({ trips: [trip([theirs.personId])] });
+    const res = await setHealthReviewedAction(theirs.personId, true);
+    const { count: reviews } = await admin.from('health_reviews').select('person_id', { count: 'exact', head: true }).eq('person_id', theirs.personId);
+    expect([res.ok, reviews]).toEqual([false, 0]);
+  });
+
+  it('Review_ByANamedLeader_IsRecordedWithTheirName', async () => {
+    signIn({ named: true });
+    const res = await setHealthReviewedAction(theirs.personId, true);
+    const { data } = await admin.from('health_reviews').select('reviewed_by_name').eq('person_id', theirs.personId).single();
+    expect([res.ok, data?.reviewed_by_name]).toEqual([true, 'ZZVITEST Parent']);
+  });
+
+  it('Grant_ByAnyoneNotOnTheNamedList_IsRefused', async () => {
+    signIn({ family: [mine.personId] });
+    const res = await grantHealthViewerAction(viewer.personId);
+    expect([res.ok, await isHealthViewer(admin, viewer.personId)]).toEqual([false, false]);
+  });
+
+  it('Revoke_ByAnyoneNotOnTheNamedList_IsRefused', async () => {
+    signIn({});
+    expect((await revokeHealthViewerAction(82)).ok).toBe(false);
   });
 });
 

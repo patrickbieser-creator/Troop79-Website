@@ -3,6 +3,9 @@ import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { openHealthFile, sealHealthFile, type HealthStorage } from '@/lib/health-files';
 import {
+  TRIP_DAYS_AFTER,
+  addDays,
+  inTripWindow,
   effectiveOn,
   expiresOn,
   healthFileProblem,
@@ -36,8 +39,10 @@ export interface HealthDeps {
 export interface HealthViewer {
   personId: number;
   name: string;
-  /** Which way in (lib/health-access): this release only 'family'. */
+  /** Which way in (lib/health-access): their own family, the named list, or an adult on the same trip. */
   via: 'family' | 'named' | 'trip';
+  /** The trip (calendar entry) that let them in, when via is 'trip'. */
+  eventId?: number | null;
 }
 
 const COLS = 'id, person_id, kind, page, object_path, key_version, wrapped_key, content_type, bytes, uploaded_at, effective_on, expires_on';
@@ -77,9 +82,22 @@ async function log(deps: HealthDeps, viewer: HealthViewer, row: { person_id: num
     page: row.page,
     document_id: row.id,
     action,
-    via: viewer.via
+    via: viewer.via,
+    event_id: viewer.via === 'trip' ? (viewer.eventId ?? null) : null
   });
   if (error) throw new Error(`health access log: ${error.message}`);
+}
+
+/** A leader opened one person's record page (what the family told us, contacts, the document list). Logged
+ *  like a file: the caller shows nothing when this throws. */
+export async function logHealthRecordOpen(personId: number, viewer: HealthViewer, deps: HealthDeps): Promise<void> {
+  await log(deps, viewer, { person_id: personId, kind: 'record', page: null, id: null }, 'view');
+}
+
+/** A changed document set is no longer "Reviewed, complete": it gets looked at again. */
+async function clearReview(sb: SupabaseClient, personId: number): Promise<void> {
+  const { error } = await sb.from('health_reviews').delete().eq('person_id', personId);
+  if (error) throw new Error(error.message);
 }
 
 /** Every page on file for these people, by person, document and page. */
@@ -149,6 +167,7 @@ export async function saveHealthPage(
     const { error } = await sb.from('health_documents').update({ effective_on: effective, expires_on: expiresOn(effective) }).eq('person_id', input.personId).eq('kind', input.kind);
     if (error) throw new Error(error.message);
   }
+  await clearReview(sb, input.personId);
   return { ok: true, id };
 }
 
@@ -184,6 +203,7 @@ export async function removeHealthPage(id: string, personIds: readonly number[],
   await deps.storage.delete(row.object_path);
   const { error } = await deps.supabase.from('health_documents').delete().eq('id', row.id);
   if (error) throw new Error(error.message);
+  await clearReview(deps.supabase, Number(row.person_id));
   return { ok: true };
 }
 
@@ -252,4 +272,190 @@ export async function healthOpensFor(sb: SupabaseClient, personIds: number[], li
     action: r.action,
     via: r.via
   }));
+}
+
+/* ── The leader side (release 2) ─────────────────────────────────────────────────────────────────────────────── */
+
+/** An event whose attendees' records an adult may open. */
+export interface HealthTrip {
+  signupId: number;
+  /** calendar_entries.id: what the access log records. */
+  eventId: number;
+  title: string;
+  entryDate: string;
+  endDate: string | null;
+  /** The sign-up asks for Part C (summer camp, treks). */
+  needsPartC: boolean;
+  /** Everyone going (status yes): scouts, adults and guests. */
+  attendeeIds: number[];
+}
+
+interface SignupRow {
+  id: number;
+  calendar_entry_id: number;
+  needs_ahmr_c: boolean;
+  calendar_entries: { title: string; entry_date: string; end_date: string | null };
+}
+
+async function tripsFor(sb: SupabaseClient, signups: SignupRow[]): Promise<HealthTrip[]> {
+  if (signups.length === 0) return [];
+  const { data, error } = await sb.from('signup_entries').select('event_signup_id, person_id').in('event_signup_id', signups.map((s) => s.id)).eq('status', 'yes').not('person_id', 'is', null);
+  if (error) throw new Error(error.message);
+  const going = new Map<number, number[]>();
+  for (const e of (data ?? []) as { event_signup_id: number; person_id: number }[]) going.set(Number(e.event_signup_id), [...(going.get(Number(e.event_signup_id)) ?? []), Number(e.person_id)]);
+  return signups
+    .map((s) => ({
+      signupId: Number(s.id),
+      eventId: Number(s.calendar_entry_id),
+      title: s.calendar_entries.title,
+      entryDate: s.calendar_entries.entry_date,
+      endDate: s.calendar_entries.end_date,
+      needsPartC: s.needs_ahmr_c === true,
+      attendeeIds: [...new Set(going.get(Number(s.id)) ?? [])]
+    }))
+    .sort((a, b) => (a.entryDate < b.entryDate ? -1 : a.entryDate > b.entryDate ? 1 : a.signupId - b.signupId));
+}
+
+const SIGNUP_COLS = 'id, calendar_entry_id, needs_ahmr_c, calendar_entries!inner(title, entry_date, end_date)';
+
+/**
+ * The trips this ADULT is attending that are inside their window today (7 days before the start to 2 days after
+ * the end). Computed on every request from the sign-up: there is no grant to remember or revoke (answer 1).
+ */
+export async function loadTripsForAdult(sb: SupabaseClient, personId: number, today: string): Promise<HealthTrip[]> {
+  // Going on the trip, not only driving to it; and an adult by the roster, never by what the sign-up row says.
+  if (await isYouthOnRoster(sb, personId)) return [];
+  const { data: mine, error } = await sb.from('signup_entries').select('event_signup_id').eq('person_id', personId).eq('status', 'yes').eq('participation', 'full');
+  if (error) throw new Error(error.message);
+  const ids = [...new Set(((mine ?? []) as { event_signup_id: number }[]).map((e) => Number(e.event_signup_id)))];
+  if (ids.length === 0) return [];
+  const { data, error: sigError } = await sb.from('event_signups').select(SIGNUP_COLS).in('id', ids);
+  if (sigError) throw new Error(sigError.message);
+  const open = ((data ?? []) as unknown as SignupRow[]).filter((s) => inTripWindow(s.calendar_entries.entry_date, s.calendar_entries.end_date, today));
+  return tripsFor(sb, open);
+}
+
+/** Every event with a sign-up that hasn't ended more than two days ago, out to `daysAhead`: what a named leader
+ *  picks from. */
+export async function loadUpcomingTrips(sb: SupabaseClient, today: string, daysAhead = 90): Promise<HealthTrip[]> {
+  const { data, error } = await sb
+    .from('event_signups')
+    .select(SIGNUP_COLS)
+    .gte('calendar_entries.entry_date', addDays(today, -30))
+    .lte('calendar_entries.entry_date', addDays(today, daysAhead));
+  if (error) throw new Error(error.message);
+  const live = ((data ?? []) as unknown as SignupRow[]).filter((s) => addDays(s.calendar_entries.end_date || s.calendar_entries.entry_date, TRIP_DAYS_AFTER) >= today);
+  return tripsFor(sb, live);
+}
+
+export async function isHealthViewer(sb: SupabaseClient, personId: number): Promise<boolean> {
+  const { data, error } = await sb.from('health_viewers').select('person_id').eq('person_id', personId).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data != null;
+}
+
+export interface HealthViewerRow {
+  personId: number;
+  name: string;
+  grantedAt: string;
+}
+
+export async function listHealthViewers(sb: SupabaseClient): Promise<HealthViewerRow[]> {
+  const { data, error } = await sb.from('health_viewers').select('person_id, granted_at');
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as { person_id: number; granted_at: string }[];
+  const { data: people } = rows.length ? await sb.from('people').select('id, display_name').in('id', rows.map((r) => r.person_id)) : { data: [] };
+  const nameOf = new Map(((people ?? []) as { id: number; display_name: string }[]).map((p) => [Number(p.id), p.display_name]));
+  return rows
+    .map((r) => ({ personId: Number(r.person_id), name: nameOf.get(Number(r.person_id)) ?? `#${r.person_id}`, grantedAt: r.granted_at }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Adds an adult to the named list. Scouts are never added (answer 7). */
+export async function grantHealthViewer(sb: SupabaseClient, personId: number, grantedBy: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  const [{ data: person }, youth] = await Promise.all([
+    sb.from('people').select('id, merged_into_person_id, guest_host_household_id').eq('id', personId).maybeSingle(),
+    isYouthOnRoster(sb, personId)
+  ]);
+  const p = person as { merged_into_person_id: number | null; guest_host_household_id: number | null } | null;
+  // A merged-away record and a sign-up guest are not people who can sign in.
+  if (!p || p.merged_into_person_id != null || p.guest_host_household_id != null) return { ok: false, error: 'That person isn’t on the roster.' };
+  if (youth) return { ok: false, error: 'Scouts can’t open health records.' };
+  const { error } = await sb.from('health_viewers').upsert({ person_id: personId, granted_by_person_id: grantedBy }, { onConflict: 'person_id', ignoreDuplicates: true });
+  if (error) throw new Error(error.message);
+  return { ok: true };
+}
+
+/** Takes an adult off the named list. The last name can't be removed: someone must be able to add the next. */
+export async function revokeHealthViewer(sb: SupabaseClient, personId: number): Promise<{ ok: true } | { ok: false; error: string }> {
+  // One locked statement in the database: two removals at once can't both pass the "not the last" check.
+  const { data, error } = await sb.rpc('health_revoke_viewer', { p_person_id: personId });
+  if (error) throw new Error(error.message);
+  if (data === 'last') return { ok: false, error: 'Add someone else first: the list can’t be left empty.' };
+  if (data === 'absent') return { ok: false, error: 'That person is already off the list.' };
+  return { ok: true };
+}
+
+export interface HealthReview {
+  personId: number;
+  byName: string;
+  at: string;
+}
+
+export async function listHealthReviews(sb: SupabaseClient, personIds: number[]): Promise<Map<number, HealthReview>> {
+  if (personIds.length === 0) return new Map();
+  const { data, error } = await sb.from('health_reviews').select('person_id, reviewed_by_name, reviewed_at').in('person_id', personIds);
+  if (error) throw new Error(error.message);
+  return new Map(((data ?? []) as { person_id: number; reviewed_by_name: string; reviewed_at: string }[]).map((r) => [Number(r.person_id), { personId: Number(r.person_id), byName: r.reviewed_by_name, at: r.reviewed_at }]));
+}
+
+/** "Reviewed, complete" on or off for one person. */
+export async function setHealthReviewed(sb: SupabaseClient, personId: number, on: boolean, by: { personId: number; name: string }): Promise<void> {
+  const { error } = on
+    ? await sb.from('health_reviews').upsert({ person_id: personId, reviewed_by_person_id: by.personId, reviewed_by_name: by.name.slice(0, 120) || 'A leader', reviewed_at: new Date().toISOString() }, { onConflict: 'person_id' })
+    : await sb.from('health_reviews').delete().eq('person_id', personId);
+  if (error) throw new Error(error.message);
+}
+
+/** The whole log, newest first: for the named list only. */
+export async function healthLogRecent(sb: SupabaseClient, limit = 200): Promise<(HealthLogLine & { personName: string })[]> {
+  const { data, error } = await sb.from('health_access_log').select('at, viewer_name, person_id, kind, page, action, via').order('at', { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as { at: string; viewer_name: string; person_id: number; kind: string; page: number | null; action: string; via: string }[];
+  const ids = [...new Set(rows.map((r) => Number(r.person_id)))];
+  const { data: people } = ids.length ? await sb.from('people').select('id, display_name').in('id', ids) : { data: [] };
+  const nameOf = new Map(((people ?? []) as { id: number; display_name: string }[]).map((p) => [Number(p.id), p.display_name]));
+  return rows.map((r) => ({ at: r.at, viewerName: r.viewer_name, personId: Number(r.person_id), personName: nameOf.get(Number(r.person_id)) ?? 'Someone no longer on the roster', kind: r.kind, page: r.page, action: r.action, via: r.via }));
+}
+
+/** Everything one signed-in adult may open, resolved per request by lib/health-access. */
+export interface HealthAccess {
+  me: { personId: number; name: string };
+  /** Themselves and their children. */
+  family: number[];
+  /** On the health_viewers list. */
+  named: boolean;
+  /** Events they are attending that are inside their window today. */
+  trips: HealthTrip[];
+}
+
+/** How this adult may open that person's records, or null when they may not. Family first, then the named
+ *  list, then a trip: the log records the narrowest reason that applies. */
+export function healthViewerFor(access: HealthAccess, personId: number): HealthViewer | null {
+  const base = { personId: access.me.personId, name: access.me.name };
+  if (access.family.includes(personId)) return { ...base, via: 'family' };
+  if (access.named) return { ...base, via: 'named' };
+  const trip = access.trips.find((t) => t.attendeeIds.includes(personId));
+  return trip ? { ...base, via: 'trip', eventId: trip.eventId } : null;
+}
+
+/**
+ * A current scout or a Webelos: a minor, who never opens health records whatever their session says (answer 7).
+ * Asked of the roster, not of the sign-in or a sign-up row: `person_kind` on an entry is typed by the family.
+ * An aged-out scout (an inactive scout row, now an adult) is not one.
+ */
+export async function isYouthOnRoster(sb: SupabaseClient, personId: number): Promise<boolean> {
+  const { data, error } = await sb.from('scouts').select('active, is_webelos').eq('person_id', personId);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { active: boolean; is_webelos: boolean }[]).some((s) => s.active === true || s.is_webelos === true);
 }

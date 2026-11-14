@@ -1,5 +1,5 @@
-import { healthDeps, healthFamilyAccess } from '@/lib/health-access';
-import { healthPageOwner, openHealthPage } from '@/lib/health-store';
+import { healthAccess, healthDeps } from '@/lib/health-access';
+import { healthPageOwner, healthViewerFor, openHealthPage } from '@/lib/health-store';
 
 /**
  * The only way a health file leaves the site (Plans/Health-Forms.md): who is asking is resolved from the session,
@@ -26,13 +26,15 @@ const notFound = () => new Response('Not found', { status: 404, headers: HEADERS
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const access = await healthFamilyAccess();
+    const access = await healthAccess();
     if (!access) return notFound();
     const deps = healthDeps();
     const owner = await healthPageOwner(deps.supabase, id);
-    if (!owner || !access.personIds.includes(owner.personId)) return notFound();
+    // Family, the named list, or an adult on the same trip inside its window: otherwise the page doesn't exist.
+    const viewer = owner ? healthViewerFor(access, owner.personId) : null;
+    if (!owner || !viewer) return notFound();
     const download = owner.contentType === 'application/pdf' || new URL(request.url).searchParams.get('download') === '1';
-    const res = await openHealthPage(id, access.viewer, download ? 'download' : 'view', deps);
+    const res = await openHealthPage(id, viewer, download ? 'download' : 'view', deps);
     if (!res.ok) return new Response(res.status === 404 ? 'Not found' : 'This file could not be opened.', { status: res.status, headers: HEADERS });
     return new Response(new Uint8Array(res.bytes), {
       status: 200,
