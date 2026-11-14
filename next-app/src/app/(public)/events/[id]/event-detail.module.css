@@ -474,6 +474,25 @@
 .owedAmt { font-weight: 700; color: var(--forest); white-space: nowrap; }
 .owedZero { font-weight: 700; color: var(--text-meta); white-space: nowrap; }
 .owedTotal { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border-mid); font-size: 15px; font-weight: 700; color: var(--text-head); }
+/* How will you pay? (payment-options.tsx): one row per method, the chosen one opened. */
+.payOptions { border: none; margin: var(--sp-4) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); font-family: var(--font-ui); }
+.payLegend { font-size: var(--fs-xs); font-weight: 700; color: var(--navy); padding: 0; margin-bottom: var(--sp-2); }
+.payOpt { background: var(--warm-white); border: 1px solid var(--border-light); border-radius: var(--rad-md); }
+.payOptOn { border-color: var(--navy); box-shadow: inset 3px 0 0 var(--navy); }
+.payOptHead { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); cursor: pointer; min-height: 44px; }
+.payOptHead input { flex: none; width: 18px; height: 18px; accent-color: var(--navy); }
+.payOptHead:focus-within { outline: var(--focus-ring); outline-offset: 1px; border-radius: var(--rad-md); }
+.payOptName { flex: 1; display: flex; flex-direction: column; gap: 1px; font-size: var(--fs-sm); font-weight: 700; color: var(--text-head); min-width: 0; }
+.payOptSub { font-size: var(--fs-xs); font-weight: 400; color: var(--text-meta); overflow-wrap: anywhere; }
+.payOptAmt { font-size: var(--fs-sm); font-weight: 700; color: var(--text-head); white-space: nowrap; }
+.payOptDetail { padding: 0 var(--sp-3) var(--sp-3) calc(var(--sp-3) * 2 + 18px); font-size: var(--fs-sm); line-height: 1.5; color: var(--text-body); display: flex; flex-direction: column; gap: var(--sp-1); }
+.payFrom select { font-size: 16px; padding: var(--sp-1) var(--sp-2); border: 1px solid var(--border-mid); border-radius: var(--rad-sm); background: var(--warm-white); max-width: 100%; }
+.payStatus { display: flex; justify-content: space-between; gap: var(--sp-3); font-size: var(--fs-sm); color: var(--text-body); margin-top: var(--sp-1); }
+.payStatusPaid { font-weight: 700; color: var(--forest); }
+.payMethods { list-style: none; display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); font-family: var(--font-ui); font-size: var(--fs-sm); line-height: 1.5; color: var(--text-body); }
+.payMethods li { display: grid; grid-template-columns: 9.5em 1fr; gap: var(--sp-2); }
+.payMethods strong { color: var(--text-head); }
+@media (max-width: 480px) { .payMethods li { grid-template-columns: 1fr; gap: 0; } }
 .qaGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 4px; }
 .qaField { display: block; }
 .numInputWide { width: 100%; padding: 7px 10px; border: 1px solid var(--border-mid); border-radius: 3px; background: var(--warm-white); font-size: 14px; }

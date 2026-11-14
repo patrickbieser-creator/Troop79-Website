@@ -21,6 +21,8 @@ import menuMonsterS from '@/app/(public)/library/menu-monster/menus/_components/
 import { AccountControlView } from '@/app/_components/account-control';
 import { Drawer } from '@/app/_components/drawer';
 import type { SessionStatus } from '@/app/api/session-status/route';
+import { PaymentOptions } from '@/app/(public)/events/[id]/payment-options';
+import type { PayChoice } from '@/lib/event-pay/options';
 
 export function PublicTabStripSpecimen() {
   const [active, setActive] = useState('week');
@@ -42,6 +44,27 @@ export function PublicTabStripScrollSpecimen() {
   const [active, setActive] = useState('build');
   const tabs = ['Who’s coming', 'Build a Plan', 'Invite', 'Rotations', 'Focus sets', 'Has/Needs'];
   return <TabStrip ariaLabel="Scrolling TabStrip specimen" activeKey={active} scroll items={tabs.map((label, i) => ({ key: i === 0 ? 'build' : label, label, onSelect: () => setActive(i === 0 ? 'build' : label) }))} />;
+}
+
+/** "How will you pay?" on an event sign-up, live: one row per method, the chosen one opened; a short scout account. */
+export function PublicPaymentOptionsSpecimen() {
+  const [value, setValue] = useState<PayChoice | null>('scout_account');
+  const [from, setFrom] = useState<number | null>(1);
+  return (
+    <PaymentOptions
+      payTo={{ venmoHandle: '@Troop-Treasurer', venmoHint: 'last 4 of phone 0000', venmoUrl: '', paypalEmail: 'treasurer@example.org', checkPayableTo: 'Troop 79', checkMailTo: '1 Main St, Milwaukee WI' }}
+      cardLive
+      due={20}
+      scouts={[
+        { personId: 1, name: 'Sam Example', balance: 12 },
+        { personId: 2, name: 'Riley Example', balance: 0 }
+      ]}
+      value={value}
+      onChange={setValue}
+      payFrom={from}
+      onPayFrom={setFrom}
+    />
+  );
 }
 
 /** The shared compact dialer, live: a labelled Stepper (Label: − n +), a bare one at its minimum, and the framed cents box. */

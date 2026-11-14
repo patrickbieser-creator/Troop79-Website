@@ -55,6 +55,7 @@ export const LOOKUP_GROUPS: LookupGroup[] = [
       { id: 'categories', title: 'Categories', blurb: 'The one taxonomy for events, albums and news' },
       { id: 'article-typography', title: 'Article Typography', blurb: 'How markdown stories are set' },
       { id: 'event-reminder', title: 'Event reminder email', blurb: 'The “Chase the non-responders” wording' },
+      { id: 'payment-details', title: 'Payment details', blurb: 'Where families send event fees: Venmo, PayPal, checks' },
       { id: 'email-templates', title: 'Email templates', blurb: 'Confirmation emails the signup builder picks from' },
       { id: 'search-visibility', title: 'Search & AI visibility', blurb: 'robots.txt, the sitemap, what search engines are told' }
     ]

@@ -22,6 +22,9 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { listSharedMenusWith } from '@/lib/menu-monster/menus-store';
 import { OUTING_CATEGORIES } from '@/lib/menu-monster/menus-data';
 import { menuViewer } from '../../library/menu-monster/menus/_components/scout-menus';
+import { PaymentMethodsList } from './payment-options';
+import { payToFrom } from '@/lib/event-pay/options';
+import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
 import styles from './event-detail.module.css';
 
 /*
@@ -351,6 +354,7 @@ export default async function EventDetailPage({
                   </li>
                 ))}
               </ul>
+              <PaymentMethodsList payTo={payToFrom(seoSettings)} cardLive={cardCheckoutLive()} />
               {signup.payment_instructions && (
                 <p className={styles.payNote}>{signup.payment_instructions}</p>
               )}

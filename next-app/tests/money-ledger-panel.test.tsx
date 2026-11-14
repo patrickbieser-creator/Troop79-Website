@@ -45,6 +45,7 @@ function person(over: Partial<EventMoneyPerson> & { entryId: number; name: strin
     tierAmount: 25,
     amountOverride: null,
     amountOverrideReason: null,
+    planToPay: null,
     owed: 25,
     paid: 0,
     balance: 25,

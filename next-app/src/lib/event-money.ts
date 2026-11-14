@@ -46,7 +46,8 @@ export const PAY_METHOD_LABEL: Record<PayMethod, string> = {
   bank: 'Bank transfer',
   other: 'Other'
 };
-export const methodLabel = (m: string | null | undefined): string => (m ? (PAY_METHOD_LABEL[m as PayMethod] ?? m) : '—');
+/** 'card' is never recorded by hand (only Stripe's webhook writes it), so it is a label, not a PayMethod. */
+export const methodLabel = (m: string | null | undefined): string => (m ? (m === 'card' ? 'Card' : (PAY_METHOD_LABEL[m as PayMethod] ?? m)) : '—');
 
 /** The four methods the Money tab offers directly (Plans/Event-Money-Ledger-Redesign.md); the rest sit under Other ▾. */
 export const PRIMARY_PAY_METHODS = ['venmo', 'paypal', 'cash', 'check'] as const satisfies readonly PayMethod[];

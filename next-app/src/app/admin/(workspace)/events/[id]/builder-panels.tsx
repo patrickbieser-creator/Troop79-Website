@@ -430,9 +430,10 @@ export function BuilderPanels({
           </label>
         </div>
         <label className={styles.fullField}>
-          <span className={`adminLabel ${styles.fieldLabel}`}>Payment instructions</span>
+          <span className={`adminLabel ${styles.fieldLabel}`}>Payment note (optional)</span>
           <textarea
             rows={2}
+            placeholder="Only what is different for this event. Venmo, PayPal, check, cash, scout account and card are listed for every event."
             defaultValue={s(signup.payment_instructions)}
             onBlur={(e) => save({ payment_instructions: e.target.value || null })}
           />

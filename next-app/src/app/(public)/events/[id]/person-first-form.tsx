@@ -28,7 +28,23 @@ import {
   type Leg,
   type RideStatus
 } from '@/lib/transport';
+import { PaymentOptions, type ScoutAccountOption } from './payment-options';
+import { cardTotalFor, isPayChoice, payMoney, type PayChoice, type PayTo } from '@/lib/event-pay/options';
 import styles from './event-detail.module.css';
+
+/** Everything "How will you pay?" needs (Patrick, 2026-11-13). Absent = the event has no fee, or a caller that
+ *  predates it: the recap then shows only the event's own payment note. */
+export interface SignupPay {
+  payTo: PayTo;
+  /** Stripe is configured: the card choice is offered. */
+  cardLive: boolean;
+  /** The household's scouts and their account balances. */
+  scouts: ScoutAccountOption[];
+  /** What this party's saved entries have paid and still owe, from the ledger. */
+  paid: number;
+  due: number;
+  payByCardAction: (fd: FormData) => void;
+}
 
 /*
  * PERSON-FIRST signup — campouts, ski outings, summer camp.
@@ -662,8 +678,10 @@ export default function PersonFirstForm({
   householdGuests = [],
   submitAction,
   cancelAction,
+  pay,
   renderProbe
 }: {
+  pay?: SignupPay;
   eventId: number;
   signup: EventSignup;
   household: Household;
@@ -1025,6 +1043,18 @@ export default function PersonFirstForm({
 
   const total = lines.reduce((n, l) => n + l.amount, 0);
 
+  // How the family will pay: a request saved with the signup. What is still due is the draft's total less what the
+  // ledger says this party has paid; the server recomputes it before any card is charged.
+  const [payMethod, setPayMethod] = useState<PayChoice | null>(() => {
+    const saved = existing.find((e) => isPayChoice(e.pay_method))?.pay_method;
+    return isPayChoice(saved) ? saved : null;
+  });
+  const [payFrom, setPayFrom] = useState<number | null>(
+    () => existing.find((e) => e.pay_from_person_id != null)?.pay_from_person_id ?? pay?.scouts[0]?.personId ?? null
+  );
+  const paidSoFar = pay?.paid ?? 0;
+  const stillDue = Math.max(0, Math.round((total - paidSoFar) * 100) / 100);
+
   const entries = useMemo(() => {
     const out: Record<string, unknown>[] = [];
     for (const s of scouts) {
@@ -1133,7 +1163,7 @@ export default function PersonFirstForm({
   // (which is what is saved — the page reloads after every save). Save
   // changes is greyed out and reads "Saved" otherwise (Patrick, 2026-08-23:
   // "gray it out when it will do nothing") — the same rule the job board has.
-  const draftKey = JSON.stringify({ entries, picks, claims, newAdults, guestRows, guestCount });
+  const draftKey = JSON.stringify({ entries, picks, claims, newAdults, guestRows, guestCount, payMethod, payFrom: payMethod === 'scout_account' ? payFrom : null });
   const [savedKey] = useState(() => draftKey); // captured once, on mount
   const hasExisting = existing.length > 0;
   const dirty = draftKey !== savedKey;
@@ -1145,6 +1175,8 @@ export default function PersonFirstForm({
       <input type="hidden" name="signupId" value={signup.id} />
       <input type="hidden" name="householdKey" value={household.key} />
       <input type="hidden" name="entries" value={JSON.stringify(entries)} />
+      {pay && <input type="hidden" name="payMethod" value={payMethod ?? ''} />}
+      {pay && <input type="hidden" name="payFrom" value={payMethod === 'scout_account' && payFrom != null ? payFrom : ''} />}
       <input type="hidden" name="placements" value={JSON.stringify(picks)} />
       <input
         type="hidden"
@@ -1479,7 +1511,7 @@ export default function PersonFirstForm({
           <p className={styles.dayHead}>Your household total</p>
           {lines.length === 0 ? (
             <p className={styles.recapEmpty}>
-              Mark someone “Yes” and the math shows up here — nothing is charged online.
+              Mark someone “Yes” and the math shows up here.
             </p>
           ) : (
             <>
@@ -1500,6 +1532,30 @@ export default function PersonFirstForm({
                 <span>Total owed</span>
                 <span>{money(total)}</span>
               </p>
+              {paidSoFar > 0 && (
+                <>
+                  <p className={styles.payStatus}>
+                    <span>Paid so far</span>
+                    <span className={styles.payStatusPaid}>{money(paidSoFar)}</span>
+                  </p>
+                  <p className={styles.payStatus}>
+                    <span>Still due</span>
+                    <span>{money(stillDue)}</span>
+                  </p>
+                </>
+              )}
+              {pay && stillDue > 0 && (
+                <PaymentOptions
+                  payTo={pay.payTo}
+                  cardLive={pay.cardLive}
+                  due={stillDue}
+                  scouts={pay.scouts}
+                  value={payMethod}
+                  onChange={setPayMethod}
+                  payFrom={payFrom}
+                  onPayFrom={setPayFrom}
+                />
+              )}
               {signup.payment_instructions && (
                 <p className={styles.payNote}>{signup.payment_instructions}</p>
               )}
@@ -1515,8 +1571,18 @@ export default function PersonFirstForm({
           disabled={hasExisting ? !dirty : !anyChoice}
           title={hasExisting && !dirty ? 'No changes to save yet' : undefined}
         >
-          {hasExisting ? (dirty ? 'Save changes' : 'Saved') : 'Submit family signup'}
+          {(() => {
+            const byCard = pay?.cardLive && payMethod === 'card' && stillDue > 0 ? ` and pay ${payMoney(cardTotalFor(stillDue).total)} by card` : '';
+            if (!hasExisting) return byCard ? `Submit${byCard}` : 'Submit family signup';
+            return dirty ? (byCard ? `Save${byCard}` : 'Save changes') : 'Saved';
+          })()}
         </button>
+        {/* A saved signup that chose card and still owes: the way back to Stripe (a closed tab, a declined card). */}
+        {pay?.cardLive && hasExisting && !dirty && payMethod === 'card' && pay.due > 0 && (
+          <button type="submit" formAction={pay.payByCardAction} className={styles.gateBtn}>
+            Pay {payMoney(cardTotalFor(pay.due).total)} by card
+          </button>
+        )}
       </div>
 
       {existing.length > 0 && (

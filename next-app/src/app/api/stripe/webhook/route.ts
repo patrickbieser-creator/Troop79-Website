@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { cardDeps, stripeClient, stripeSecretKey, stripeWebhookSecret } from '@/lib/wreaths/stripe-client';
-import { handleStripeEvent, type StripeEventLike } from '@/lib/wreaths/card-payments';
+import type { StripeEventLike } from '@/lib/wreaths/card-payments';
+import { handleAnyStripeEvent } from '@/lib/event-pay/card';
 
 /**
- * Stripe webhook for the wreath sale's card payments (Plans/Wreath-Stripe-Checkout.md, 2026-10-15).
+ * Stripe webhook for card payments: the wreath sale (Plans/Wreath-Stripe-Checkout.md, 2026-10-15) and event
+ * sign-up fees (lib/event-pay/card, 2026-11-13). Same endpoint, same six events.
  *
  * Every request must carry a valid Stripe signature over the RAW body; with no webhook secret configured the route
  * refuses everything (503) rather than trusting unsigned events. A handler error answers 500 so Stripe retries —
@@ -33,7 +35,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const outcome = await handleStripeEvent(event, cardDeps());
+    const outcome = await handleAnyStripeEvent(event, cardDeps());
     console.info(`[stripe] ${event.type} ${event.id}: ${outcome}`);
     return NextResponse.json({ received: true });
   } catch (e) {

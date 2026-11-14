@@ -17,8 +17,16 @@ import {
   familyGateAction,
   familySignOutAction,
   submitSignupAction,
-  cancelSignupAction
+  cancelSignupAction,
+  payEventByCardAction
 } from '../actions';
+import type { SignupPay } from '../person-first-form';
+import { CardReturnRefresh } from '../payment-options';
+import { payToFrom } from '@/lib/event-pay/options';
+import { loadPartyMoney } from '@/lib/event-pay/card';
+import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
+import { loadSiteSettings } from '@/lib/site-settings';
+import { createAdminClient } from '@/lib/supabase/server';
 import HouseholdPicker from '../household-picker';
 import { SignInToSignUpPanel, AskAParentPanel } from '../signup-panels';
 import { SignupStatusBar } from '../signup-status-bar';
@@ -98,6 +106,8 @@ export default async function EventSignupPage({
     saved?: string;
     cancelled?: string;
     signedout?: string;
+    /** Back from Stripe's card page: 'return' (paid, the webhook may still be landing) or 'cancelled'. */
+    card?: string;
     view?: string;
     m?: string;
     category?: string;
@@ -144,6 +154,25 @@ export default async function EventSignupPage({
 
   // The one-time passkey offer moved to the public layout (2026-08-27) — it
   // now follows any code/link sign-in, not only one that began here.
+
+  // "How will you pay?" (lib/event-pay): only for a household that may write, on an event with a fee. The scout
+  // balances are the household's own, the same figures /member/scout-account shows them.
+  let pay: SignupPay | undefined;
+  if (signup && household && verdict === 'ok' && !slotFirst && prices.length > 0) {
+    const scouts = household.scouts.filter((s): s is typeof s & { personId: number } => s.personId != null);
+    const [settings, money] = await Promise.all([
+      loadSiteSettings(),
+      loadPartyMoney(createAdminClient(), scouts.map((s) => s.personId), existing.map((e) => e.id))
+    ]);
+    pay = {
+      payTo: payToFrom(settings),
+      cardLive: cardCheckoutLive(),
+      scouts: scouts.map((s) => ({ personId: s.personId, name: s.displayName, balance: money.balances.get(s.personId) ?? 0 })),
+      paid: money.paid,
+      due: money.due,
+      payByCardAction: payEventByCardAction
+    };
+  }
 
   const back = calendarReturn(sp);
   /* Two ways out, and they mean different things: back to the event (what this
@@ -287,6 +316,20 @@ export default async function EventSignupPage({
               Your signup was cancelled and your spots went back to the pool.
             </Notice>
           )}
+          {sp.card === 'return' &&
+            (pay && pay.due > 0 ? (
+              <Notice tone="info" className={styles.noticeGapBottom}>
+                Recording your card payment…
+                <CardReturnRefresh />
+              </Notice>
+            ) : (
+              <Notice tone="success" className={styles.noticeGapBottom}>✓ Paid by card. Thank you!</Notice>
+            ))}
+          {sp.card === 'cancelled' && (
+            <Notice tone="info" className={styles.noticeGapBottom}>
+              Your signup is saved and your card wasn&rsquo;t charged. You can pay by card below, or pick another way.
+            </Notice>
+          )}
           {sp.err && <Notice tone="error" className={styles.noticeGapBottom}>{sp.err}</Notice>}
           {/* The family's own car/tent/patrol placements — moved here from the event page when its "Signing up"
               section folded into the deadline card (Patrick, 2026-10-13: "it's just a click away"). Own household
@@ -411,6 +454,7 @@ export default async function EventSignupPage({
                   householdGuests={ctx.householdGuests}
                   submitAction={submitSignupAction}
                   cancelAction={cancelSignupAction}
+                  pay={pay}
                 />
               </>
             )

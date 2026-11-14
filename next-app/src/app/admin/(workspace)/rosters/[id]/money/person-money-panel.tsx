@@ -85,6 +85,8 @@ export function PersonMoneyPanel({
       <p className={styles.status}>
         Owes {money(p.owed)} · paid {money(p.paid)} · <StandingWords person={p} />
       </p>
+      {/* The family's own words on the sign-up form: a request, not a payment. */}
+      {p.planToPay && p.balance > 0 && <p className={styles.status}>Plans to pay by: {p.planToPay}</p>}
       <AmountCard person={p} signupId={signupId} busy={busy} act={act} />
       <PaymentCard person={p} signupId={signupId} today={today} busy={busy} act={act} />
       <HistoryCard person={p} signupId={signupId} busy={busy} act={act} />

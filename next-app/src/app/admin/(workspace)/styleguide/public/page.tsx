@@ -33,7 +33,7 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { GoalBar } from '@/app/_components/goal-bar';
 import { goalProgress } from '@/lib/wreaths/scout-entry';
 import cardS from '@/app/_components/card.module.css';
-import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen, PublicTabStripScrollSpecimen } from './specimens';
+import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicPaymentOptionsSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen, PublicTabStripScrollSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -565,6 +565,17 @@ export default function PublicStyleguidePage() {
               <code>Stepper</code> / <code>NumberBox</code> / <code>AmountInput</code> from <code>_components/stepper</code> &mdash; 32px tall,
               16px number (iOS floor), 28px buttons, commit-on-blur. Label sits left and ends in a colon. Dollars-and-cents is a framed
               AmountInput, not a dial.
+            </p>
+          </div>
+
+          {/* Payment options — "How will you pay?" on an event sign-up (2026-11-13) */}
+          <div className={sg.specimenBlock}>
+            <PublicPaymentOptionsSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>PaymentOptions</code> from <code>events/[id]/payment-options</code> &mdash; a radio group: one row per method with its
+              amount on the right, the chosen row opened with what to do. A scout account is always listed with its balance, even at $0.
+              Card shows its total with the fee. The choice is a request; only card is paid on the site. The public event page lists the
+              same methods as plain reading (<code>PaymentMethodsList</code>).
             </p>
           </div>
 

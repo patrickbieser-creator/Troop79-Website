@@ -159,6 +159,10 @@ export interface HouseholdEntry {
   guest_note: string | null;
   notes: string | null;
   permission_slip_received: boolean;
+  /** How the family said they will pay (lib/event-pay/options PayChoice), and whose scout account when that is the
+   *  choice. A request only; absent on entries saved before the choice existed. */
+  pay_method?: string | null;
+  pay_from_person_id?: number | null;
   /** Transportation (Plans/Event-Logistics.md §A): per-leg driving with seats
    *  INCLUDING the driver, and a ride status for legs not driven. Prefills the
    *  family form so an edit shows what was offered last time. */
@@ -196,7 +200,8 @@ export interface PartyIdentities {
 const ENTRY_COLUMNS =
   'id, person_kind, person_id, participant_class, host_entry_id, status, participation, ' +
   'price_id, days, guest_count, guest_note, notes, permission_slip_received, ' +
-  'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, out_departs_at, back_departs_at';
+  'drives_out, drives_back, vehicle_seats_out, vehicle_seats_back, ride_out, ride_back, out_departs_at, back_departs_at, ' +
+  'pay_method, pay_from_person_id';
 
 /**
  * One signup party's live entries for an event. GATE-ONLY — this returns names

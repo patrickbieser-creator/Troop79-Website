@@ -23,6 +23,8 @@ import { renderMarkdownEmail } from '@/lib/email-markdown';
 import { siteUrl } from '@/lib/site-url';
 import { GUEST_CLASSES } from '@/lib/participant-class';
 import type { Household } from '@/lib/households';
+import { loadSeoSettings } from '@/lib/seo';
+import { isPayChoice, payEmailLine, payToFrom } from '@/lib/event-pay/options';
 import {
   applyBlocks,
   blocksFromSignup,
@@ -280,6 +282,16 @@ export async function buildConfirmation(
   const bal = (balances ?? []) as { entry_id: number; owed: number; paid: number }[];
   const owed = bal.reduce((n, b) => n + Number(b.owed), 0);
   const paid = bal.reduce((n, b) => n + Number(b.paid), 0);
+  // How the family said they will pay (lib/event-pay/options), and the troop's pay-to details.
+  const [{ data: payRows }, settings] = await Promise.all([
+    snap.entries.length
+      ? supabase.from('signup_entries').select('pay_method').in('id', snap.entries.map((r) => r.id)).not('pay_method', 'is', null).limit(1)
+      : Promise.resolve({ data: [] as { pay_method: string | null }[] }),
+    loadSeoSettings(supabase)
+  ]);
+  const chosen = ((payRows ?? []) as { pay_method: string | null }[])[0]?.pay_method;
+  const payChoice = isPayChoice(chosen) ? chosen : null;
+  const payTo = payToFrom(settings);
 
   const submitter =
     (submitterPersonId ? snap.names.get(submitterPersonId) : undefined) ??
@@ -316,7 +328,7 @@ export async function buildConfirmation(
       prices: priceLines,
       amountDue: Math.max(0, Math.round((owed - paid) * 100) / 100),
       paid: Math.round(paid * 100) / 100,
-      payment: (signup.payment_instructions as string | null) ?? null
+      payment: payEmailLine(payChoice, payTo, Math.max(0, Math.round((owed - paid) * 100) / 100), (signup.payment_instructions as string | null) ?? null) || null
     },
     change,
     changes:

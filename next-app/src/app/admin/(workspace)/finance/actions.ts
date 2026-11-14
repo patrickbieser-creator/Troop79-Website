@@ -2,6 +2,7 @@
 
 import { feeAmount, isNotionalAccount, money, uncreditedOverpayment, type PayMethod } from '@/lib/event-money';
 import { GUEST_CLASSES } from '@/lib/participant-class';
+import { PAY_CHOICE_LABEL, isPayChoice } from '@/lib/event-pay/options';
 import {
   loadFamilyScoutAccounts,
   resolveScoutAccountPayer,
@@ -940,6 +941,9 @@ export interface EventMoneyPerson {
   amountOverride: number | null;
   /** Why a custom amount (optional); null on the tier. */
   amountOverrideReason: string | null;
+  /** How the family said they will pay, in words ("Scout account (Anjali’s)"); null when they didn't say. A
+   *  request only: recording the payment is still the treasurer's (or Stripe's) job. */
+  planToPay: string | null;
   owed: number;
   paid: number;
   balance: number;
@@ -1060,7 +1064,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   ] = await Promise.all([
       supabase
         .from('signup_entries')
-        .select('id, person_id, person_kind, status, participation, price_id, amount_override, amount_override_reason')
+        .select('id, person_id, person_kind, status, participation, price_id, amount_override, amount_override_reason, pay_method, pay_from_person_id')
         .eq('event_signup_id', signupId)
         .neq('status', 'cancelled'),
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance, settled').eq('event_signup_id', signupId),
@@ -1136,6 +1140,11 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       tierAmount: tier ? Number(tier.amount) : 0,
       amountOverride: e.amount_override != null ? Number(e.amount_override) : null,
       amountOverrideReason: (e.amount_override_reason as string | null) ?? null,
+      planToPay: isPayChoice(e.pay_method)
+        ? e.pay_method === 'scout_account' && e.pay_from_person_id != null && nameOf.has(Number(e.pay_from_person_id))
+          ? `Scout account (${nameOf.get(Number(e.pay_from_person_id))!.split(' ')[0]}’s)`
+          : PAY_CHOICE_LABEL[e.pay_method]
+        : null,
       amountChanges: (changesByEntry.get(id) ?? []).map((c) => ({
         oldAmount: Number(c.old_amount),
         newAmount: Number(c.new_amount),

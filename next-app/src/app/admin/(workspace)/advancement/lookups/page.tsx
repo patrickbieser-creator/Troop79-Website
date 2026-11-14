@@ -100,8 +100,11 @@ import {
   deleteCalendarCategory,
   saveArticleTokens,
   saveSiteText,
-  saveSeoSettings
+  saveSeoSettings,
+  savePayTo
 } from './actions';
+import { PayToEditor } from './pay-to-editor';
+import { PAY_TO_KEYS } from '@/lib/event-pay/options';
 import { createStore, renameStore, retireStore, restoreStore, deleteStore, moveStore } from './store-actions';
 import { listStoresWith } from '@/lib/menu-monster/stores';
 import { PageTitle } from '../../_components/page-title';
@@ -485,9 +488,16 @@ async function cardContent(id: string): Promise<{ sub: string; body: React.React
         sub: 'how markdown stories are set — news posts, event write-ups and library narratives share it · blank means the built-in default · values only, so a typo can’t break the page',
         body: <ArticleTokensEditor values={await loadArticleTokens()} onSave={saveArticleTokens} />
       };
+    case 'payment-details':
     case 'event-reminder':
     case 'search-visibility': {
       const siteTextMap = await loadSiteText(createAdminClient());
+      if (id === 'payment-details') {
+        return {
+          sub: 'where families send event fees · listed on every event sign-up as “How will you pay?” · cash, check, scout account and card are always offered',
+          body: <PayToEditor values={Object.fromEntries(PAY_TO_KEYS.map((k) => [k, siteTextMap.get(k) ?? '']))} onSave={savePayTo} />
+        };
+      }
       if (id === 'event-reminder') {
         const siteText: Partial<Record<SiteTextKey, string>> = {};
         for (const def of SITE_TEXT_KEYS) {

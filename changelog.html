@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>November 12, 2026</strong> &nbsp;&middot;&nbsp; v1.266.0</p>
+      <p>Last updated: <strong>November 13, 2026</strong> &nbsp;&middot;&nbsp; v1.267.0</p>
     </div>
   </div>
 
@@ -494,6 +494,25 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.267.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.267.0</span>
+        <span class="release-date">November 13, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event sign-up: how will you pay?</p>
+        <ul class="change-list">
+          <li><span>Every sign-up with a fee now lists the ways to pay as separate choices: <strong>Venmo, PayPal, check, cash, scout account</strong> and <strong>credit or debit card</strong>. The chosen one opens with exactly what to do, in place of one long sentence.</span></li>
+          <li><span><strong>Scout account</strong> is always listed and shows each scout&rsquo;s balance. At $0 it explains that accounts are funded by the Can Drive and the Wreath Sale; when the balance is short it says how much is left to pay another way. Choosing it is a request: the treasurer still draws the money.</span></li>
+          <li><span><strong>Card</strong> (also Apple Pay and Google Pay) takes the family to Stripe&rsquo;s secure page right after they submit. The card fee is added and shown first, for example $20.91 for a $20 fee. A paid sign-up shows &ldquo;Paid so far&rdquo;, and one left unfinished keeps a &ldquo;Pay by card&rdquo; button.</span></li>
+          <li><span>The public event page lists the same ways to pay, and the confirmation email says how to pay by the method the family chose.</span></li>
+          <li><span>For leaders: Venmo, PayPal and check details are entered once under Lookups &rsaquo; <strong>Payment details</strong> and used on every event. Each event&rsquo;s own field is now an optional &ldquo;Payment note&rdquo;. The event&rsquo;s Money tab shows how each family plans to pay, and card payments are recorded there automatically, with Stripe&rsquo;s fee as its own line.</span></li>
+        </ul>
       </div>
     </div>
 

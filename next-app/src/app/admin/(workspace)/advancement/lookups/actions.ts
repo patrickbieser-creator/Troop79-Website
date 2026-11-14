@@ -17,6 +17,7 @@ import {
 } from '@/lib/calendar-categories';
 import { ARTICLE_TOKENS, isValidTokenValue } from '@/lib/article-tokens';
 import { SITE_TEXT_KEYS } from '@/lib/site-text';
+import { PAY_TO_KEYS } from '@/lib/event-pay/options';
 import { SEO_KEYS } from '@/lib/seo';
 import { saveTeachingSkills, undoTeachingSkillChange, markTeachingSkillChangeReviewed } from '@/lib/teaching-skills';
 import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
@@ -1499,6 +1500,37 @@ export async function saveSiteText(formData: FormData): Promise<Result> {
     const raw = String(formData.get(def.key) ?? '').trim();
     if (raw === '') clears.push(def.key);
     else upserts.push({ key: def.key, value: raw.slice(0, 2000), updated_by: session.label });
+  }
+  if (clears.length) {
+    const { error } = await supabase.from('site_settings').delete().in('key', clears);
+    if (error) return { ok: false, error: error.message };
+  }
+  if (upserts.length) {
+    const { error } = await supabase.from('site_settings').upsert(upserts, { onConflict: 'key' });
+    if (error) return { ok: false, error: error.message };
+  }
+  updateTag('site-settings');
+  revalidatePath('/admin/advancement/lookups');
+  return { ok: true };
+}
+
+// ── Payment details (where families send event fees) ────────────────────────
+// Patrick, 2026-11-13: one troop-wide setting instead of a sentence typed per event. Blank deletes the row; a
+// blank Venmo or PayPal value takes that method off every sign-up (lib/event-pay/options offeredChoices).
+export async function savePayTo(formData: FormData): Promise<Result> {
+  let session;
+  try {
+    session = await requireCapability('roster.manage');
+  } catch {
+    return { ok: false, error: 'Not authenticated' };
+  }
+  const supabase = createAdminClient();
+  const upserts: { key: string; value: string; updated_by: string }[] = [];
+  const clears: string[] = [];
+  for (const key of PAY_TO_KEYS) {
+    const raw = String(formData.get(key) ?? '').trim();
+    if (raw === '') clears.push(key);
+    else upserts.push({ key, value: raw.slice(0, 200), updated_by: session.label });
   }
   if (clears.length) {
     const { error } = await supabase.from('site_settings').delete().in('key', clears);

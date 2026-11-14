@@ -1,6 +1,10 @@
 'use server';
 
-import { normalizeGuestRows, guestEntriesFor, guestHostKey, staleClaims, groupStaleClaimsByEntry } from '@/lib/event-signup';
+import { normalizeGuestRows, guestEntriesFor, guestHostKey, staleClaims, groupStaleClaimsByEntry, loadPartySignup } from '@/lib/event-signup';
+import { headers } from 'next/headers';
+import { isPayChoice } from '@/lib/event-pay/options';
+import { closeOpenEventCheckouts, startEventCardCheckout, type EventCardStart } from '@/lib/event-pay/card';
+import { cardCheckoutLive, cardDeps } from '@/lib/wreaths/stripe-client';
 import { placementPayloadFromForm } from '@/lib/group-sets';
 import { checkLegTimes } from '@/lib/leg-times';
 import { cookies } from 'next/headers';
@@ -246,6 +250,21 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   // People the RPC owns them — see the payload build above.)
   const partyEntryIds = writtenRows.map((r) => r.entry_id);
 
+  // How the family will pay (lib/event-pay/options): a request the treasurer reads on the Money tab. Only when the
+  // form carried the field, and whose scout account is checked against the party, never trusted from the post.
+  const payRaw = formData.get('payMethod');
+  const payChoice = isPayChoice(payRaw) ? payRaw : null;
+  if (formData.has('payMethod') && partyEntryIds.length > 0) {
+    const scoutIds = party?.scouts.map((s) => s.personId).filter((v): v is number => v != null) ?? [];
+    const asked = Number(formData.get('payFrom'));
+    const payFrom = payChoice === 'scout_account' ? (scoutIds.includes(asked) ? asked : (scoutIds[0] ?? null)) : null;
+    const { error: payError } = await supabase
+      .from('signup_entries')
+      .update({ pay_method: payChoice, pay_from_person_id: payFrom })
+      .in('id', partyEntryIds);
+    if (payError) console.error('[events] saving the payment choice failed:', payError.code ?? payError.message);
+  }
+
   // Slot claims resolve per person, so they need the entry ids the RPC just
   // returned. Each claim goes through claim_signup_slot, which holds its own
   // lock and re-checks eligibility.
@@ -360,7 +379,67 @@ export async function submitSignupAction(formData: FormData): Promise<void> {
   // Not `/events`: the list shows no signup data, and it is the one ISR page
   // (Plans/Performance-Review-2026-08-27.md #9).
   revalidatePath(`/events/${eventId}`);
+
+  // Card: the signup is saved either way; then straight to Stripe for what is owed. Nothing owed = just saved.
+  if (payChoice === 'card' && cardCheckoutLive()) {
+    const start = await startCard({ signupId, eventId, householdKey, entryIds: partyEntryIds, startedByPersonId: session?.personId ?? null });
+    if (start.ok) redirect(start.url);
+    if (start.error !== NOTHING_OWED) redirect(`${back}&saved=1&err=${encodeURIComponent(start.error)}`);
+  }
   redirect(`${back}&saved=1`);
+}
+
+const NOTHING_OWED = 'Nothing is owed on this signup.';
+
+async function clientIp(): Promise<string | null> {
+  const h = await headers();
+  const first = (v: string | null) => v?.split(',')[0].trim() || null;
+  return first(h.get('x-vercel-forwarded-for')) ?? first(h.get('x-real-ip')) ?? first(h.get('x-forwarded-for'));
+}
+
+/** Starts the card page for a party's open balance. Never throws: a failure reads as "pay another way". */
+async function startCard(input: { signupId: number; eventId: number; householdKey: string; entryIds: number[]; startedByPersonId: number | null }): Promise<EventCardStart> {
+  try {
+    const supabase = createAdminClient();
+    const { data: payer } = input.startedByPersonId
+      ? await supabase.from('people').select('primary_email').eq('id', input.startedByPersonId).maybeSingle()
+      : { data: null };
+    return await startEventCardCheckout(
+      { ...input, payerEmail: (payer as { primary_email: string | null } | null)?.primary_email ?? null },
+      { ...cardDeps(), ip: await clientIp() }
+    );
+  } catch (e) {
+    console.error('[events] card checkout start failed:', e instanceof Error ? e.message : e);
+    return { ok: false, error: 'Card payment isn’t working right now. Please try again, or pay another way.' };
+  }
+}
+
+/** "Pay $X by card" on a saved signup: the way back to Stripe after a closed tab or a declined card. The same two
+ *  guards as a submit; what is owed comes from the party's saved entries, never from the post. */
+export async function payEventByCardAction(formData: FormData): Promise<void> {
+  const eventId = Number(formData.get('eventId'));
+  const signupId = Number(formData.get('signupId'));
+  const requestedHouseholdKey = String(formData.get('householdKey') ?? '');
+  const back = `/events/${eventId}/signup?household=${encodeURIComponent(requestedHouseholdKey)}`;
+  let audience;
+  let householdKey: string;
+  try {
+    audience = await requireVerifiedSignupAccess();
+    householdKey = await requireWritableHouseholdKey(requestedHouseholdKey, audience);
+  } catch (e) {
+    redirect(`${back}&err=${encodeURIComponent(e instanceof Error ? e.message : 'Please sign in to pay.')}`);
+  }
+  const party = await loadHouseholdByKey(householdKey);
+  const existing = await loadPartySignup(signupId, storedHouseholdId(householdKey), {
+    personIds: [
+      ...(party?.scouts.map((s) => s.personId).filter((v): v is number => v != null) ?? []),
+      ...(party?.adults.map((a) => a.personId) ?? [])
+    ]
+  });
+  const session = audience === 'household' ? await getIdentitySessionIfValid() : null;
+  const start = await startCard({ signupId, eventId, householdKey, entryIds: existing.map((e) => e.id), startedByPersonId: session?.personId ?? null });
+  if (start.ok) redirect(start.url);
+  redirect(`${back}&err=${encodeURIComponent(start.error)}`);
 }
 
 export async function cancelSignupAction(formData: FormData): Promise<void> {
@@ -387,6 +466,8 @@ export async function cancelSignupAction(formData: FormData): Promise<void> {
   // that key resolves to.
   const party = await loadHouseholdByKey(householdKey);
   const cancelHouseholdId = storedHouseholdId(householdKey);
+  // A card page left open must not take money for a signup that is being cancelled.
+  if (cardCheckoutLive()) await closeOpenEventCheckouts(signupId, householdKey, cardDeps()).catch(() => undefined);
   // What is about to be dropped — the cancel receipt is built from this.
   const before = await loadHouseholdSnapshot(supabase, signupId, party, cancelHouseholdId).catch(() => null);
   const { error } = await supabase.rpc('cancel_party_signup', {

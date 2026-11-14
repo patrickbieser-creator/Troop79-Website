@@ -250,7 +250,7 @@ export async function closeCheckoutForCancel(orderId: number, deps: Pick<CardDep
   return 'clear';
 }
 
-async function settledFee(stripe: StripeLike, paymentIntent: string): Promise<number | null> {
+export async function settledFee(stripe: StripeLike, paymentIntent: string): Promise<number | null> {
   try {
     const pi = await stripe.paymentIntents.retrieve(paymentIntent, { expand: ['latest_charge.balance_transaction'] });
     const charge = pi.latest_charge as { balance_transaction?: { fee?: number } | string | null } | null;
