@@ -12,6 +12,7 @@ import {
   creditOverpaymentAction,
   getScoutAccountBalanceForEntryAction,
   recordEventFeePaymentAction,
+  refundEventCardPaymentAction,
   refundEventFeeAction,
   setAmountOverrideAction,
   voidEventFeePaymentAction,
@@ -585,6 +586,8 @@ function txnTitle(t: Txn): string {
 
 function HistoryCard({ person: p, signupId, busy, act }: { person: EventMoneyPerson; signupId: number; busy: boolean; act: Act }) {
   const [voiding, setVoiding] = useState<Txn | null>(null);
+  const [refunding, setRefunding] = useState<NonNullable<Txn['card']> | null>(null);
+  const [refundSent, setRefundSent] = useState<string | null>(null);
   const items: Item[] = [
     ...p.transactions.map((t): Item => ({ kind: 'txn', day: t.occurredOn, at: t.createdAt, t })),
     ...p.amountChanges.map((c): Item => ({ kind: 'change', day: instantToCentral(c.changedAt).date, at: c.changedAt, c }))
@@ -593,6 +596,7 @@ function HistoryCard({ person: p, signupId, busy, act }: { person: EventMoneyPer
   return (
     <div className={styles.card}>
       <h3>History</h3>
+      {refundSent && <Notice variant="success">{refundSent}</Notice>}
       {items.length === 0 ? (
         <p className={styles.hint}>No payments yet.</p>
       ) : (
@@ -621,6 +625,11 @@ function HistoryCard({ person: p, signupId, busy, act }: { person: EventMoneyPer
                           .join(' · ')}
                   </span>
                 </span>
+                {!it.t.voidedAt && it.t.kind === 'event_fee' && it.t.amount > 0 && it.t.card?.refundable && (
+                  <button type="button" className={styles.voidBtn} disabled={busy} onClick={() => setRefunding(it.t.card)}>
+                    Refund to card
+                  </button>
+                )}
                 {!it.t.voidedAt && it.t.kind === 'event_fee' && (
                   <button type="button" className={styles.voidBtn} disabled={busy} onClick={() => setVoiding(it.t)}>
                     Void
@@ -650,6 +659,21 @@ function HistoryCard({ person: p, signupId, busy, act }: { person: EventMoneyPer
             )
           )}
         </ul>
+      )}
+      {refunding && (
+        <RefundCardDialog
+          card={refunding}
+          busy={busy}
+          onCancel={() => setRefunding(null)}
+          onRefund={async () => {
+            const res = await act(() => refundEventCardPaymentAction(refunding.paymentId, signupId, newKey()));
+            if (res.ok) {
+              setRefunding(null);
+              setRefundSent(`Refund of ${money(refunding.total)} sent to Stripe. The history shows it once Stripe confirms, usually within a minute; reload to see it.`);
+            }
+            return res;
+          }}
+        />
       )}
       {voiding && (
         <VoidDialog
@@ -715,6 +739,63 @@ function VoidDialog({
           }}
         >
           {busy ? 'Voiding…' : `Void ${t.amount < 0 ? 'refund' : 'payment'}`}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** "Refund to card": the whole card payment goes back through Stripe; the webhook books the reversal. One payment can
+ *  cover several people, so the dialog names them all — it never refunds one person's share. */
+function RefundCardDialog({
+  card,
+  busy,
+  onCancel,
+  onRefund
+}: {
+  card: NonNullable<Txn['card']>;
+  busy: boolean;
+  onCancel: () => void;
+  onRefund: () => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+  const many = card.covers.length > 1;
+  return (
+    <Dialog ref={ref} danger aria-labelledby={titleId} onClose={onCancel}>
+      <DialogHeader title={<span id={titleId}>Refund {money(card.total)} to the card?</span>} />
+      <DialogBody>
+        {many && (
+          <p>
+            This one card payment covered {card.covers.map(firstName).join(', ')}. All of it goes back. To return only one
+            person&rsquo;s share, refund that amount in the Stripe Dashboard and record it here with Refund.
+          </p>
+        )}
+        <p>
+          {cents(card.fee) > 0 ? `It includes the ${money(card.fee)} card fee the family paid. ` : ''}Stripe keeps its own
+          processing fee, so the troop is out that amount.
+        </p>
+        <p>This can&rsquo;t be undone. The money reaches the card in 5–10 days.</p>
+        {error && <Notice>{error}</Notice>}
+      </DialogBody>
+      <DialogActions>
+        <Button disabled={busy} onClick={() => ref.current?.close()}>
+          Cancel
+        </Button>
+        <Button
+          variant="dangerSolid"
+          disabled={busy}
+          onClick={async () => {
+            const res = await onRefund();
+            if (!res.ok) setError(res.error ?? 'Couldn’t refund it.');
+          }}
+        >
+          {busy ? 'Refunding…' : `Refund ${money(card.total)}`}
         </Button>
       </DialogActions>
     </Dialog>

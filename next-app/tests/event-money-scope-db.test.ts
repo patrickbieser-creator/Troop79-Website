@@ -4,8 +4,8 @@ import { createTestEvent, deleteTestEvent, createTestScout, deleteTestScout, TES
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 vi.mock('@/lib/require-capability', () => ({
-  requireCapability: async () => ({ personId: null }),
-  requireAnyOf: async () => ({ personId: null })
+  requireCapability: async () => ({ personId: null, capabilities: new Set(['finance.manage']) }),
+  requireAnyOf: async () => ({ personId: null, capabilities: new Set(['finance.manage']) })
 }));
 vi.mock('@/lib/supabase/server', async () => {
   const { adminClient: make } = await import('./helpers/admin-client');

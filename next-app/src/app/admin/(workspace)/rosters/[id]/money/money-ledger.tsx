@@ -15,7 +15,7 @@ import { ledgerStatus, methodLabel, money, paymentSummary, type MilestoneStandin
 import { Badge } from '../../../_components/badge';
 import styles from './money.module.css';
 
-const STATUS_CHIP: Record<string, string> = { no: 'Not going', maybe: 'maybe', waitlist: 'waitlist' };
+const STATUS_CHIP: Record<string, string> = { no: 'Not going', maybe: 'maybe', waitlist: 'waitlist', cancelled: 'Cancelled' };
 
 export function statusChip(status: string): string | null {
   return status === 'yes' ? null : (STATUS_CHIP[status] ?? status);

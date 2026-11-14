@@ -58,6 +58,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await admin.from('financial_transactions').delete().eq('signup_entry_id', entryId);
+  await admin.from('event_card_payments').delete().eq('event_signup_id', event.eventSignupId);
   await deleteTestEvent(admin, event);
   await admin.from('leaders').delete().eq('code', 'ZQKP');
   await admin.from('people').delete().in('id', [attendee, treasurer]);
@@ -179,5 +180,101 @@ describe('The Money tab’s history for one person', () => {
       reason: 'Sibling discount',
       changes: [{ oldAmount: 25, newAmount: 20, oldMode: 'tier', newMode: 'custom', reason: 'Sibling discount', by: 'Kara P.', changedAt: undefined }]
     });
+  });
+});
+
+describe('A cancelled sign-up that still has money', () => {
+  it('CancelledEntryWithAPayment_StaysOnTheMoneyTab', async () => {
+    await recordEventFeePaymentAction({ signupEntryId: entryId, amount: 25, method: 'venmo' });
+    await admin.from('signup_entries').update({ status: 'cancelled' }).eq('id', entryId);
+    const data = await getEventMoneyAction(event.eventSignupId);
+    expect(data!.people.map((p) => p.status)).toEqual(['cancelled']);
+  });
+
+  it('CancelledEntry_OwesNothing_SoWhatTheyPaidReadsAsOverpaid', async () => {
+    await recordEventFeePaymentAction({ signupEntryId: entryId, amount: 25, method: 'venmo' });
+    await admin.from('signup_entries').update({ status: 'cancelled' }).eq('id', entryId);
+    const p = (await getEventMoneyAction(event.eventSignupId))!.people[0];
+    expect({ owed: p.owed, paid: p.paid, balance: p.balance, settled: p.settled }).toEqual({ owed: 0, paid: 25, balance: -25, settled: false });
+  });
+
+  it('CancelledEntryWithOnlyVoidedRows_StaysOff', async () => {
+    await recordEventFeePaymentAction({ signupEntryId: entryId, amount: 25, method: 'venmo' });
+    const [{ id }] = await fees();
+    await voidEventFeePaymentAction(id, event.eventSignupId, 'Entered twice');
+    await admin.from('signup_entries').update({ status: 'cancelled' }).eq('id', entryId);
+    expect((await getEventMoneyAction(event.eventSignupId))!.people).toEqual([]);
+  });
+
+  it('CancelledEntry_WithAnAmountOverride_DoesNotCountAsNotPaying', async () => {
+    await recordEventFeePaymentAction({ signupEntryId: entryId, amount: 25, method: 'venmo' });
+    await admin.from('signup_entries').update({ status: 'cancelled', amount_override: 20 }).eq('id', entryId);
+    expect((await getEventMoneyAction(event.eventSignupId))!.people[0].amountOverride).toBeNull();
+  });
+
+  it('CancelledEntryWithNoMoney_StaysOff', async () => {
+    await admin.from('signup_entries').update({ status: 'cancelled' }).eq('id', entryId);
+    expect((await getEventMoneyAction(event.eventSignupId))!.people).toEqual([]);
+  });
+});
+
+describe('A payment made by card', () => {
+  async function cardPayment(status: 'paid' | 'refunded'): Promise<number> {
+    const { data, error } = await admin
+      .from('event_card_payments')
+      .insert({
+        event_signup_id: event.eventSignupId,
+        calendar_entry_id: event.calendarEntryId,
+        household_key: 'vitest-ledger',
+        lines: [{ entry_id: entryId, person_id: attendee, cents: 2500 }],
+        due_cents: 2500,
+        fee_cents: 103,
+        total_cents: 2603,
+        status,
+        stripe_payment_intent_id: `pi_vitest_ledger_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      })
+      .select('id')
+      .single();
+    if (error || !data) throw new Error(`fixture card payment: ${error?.message}`);
+    await admin.from('financial_transactions').insert({
+      occurred_on: '2026-11-13',
+      account: 'checking',
+      amount: 25,
+      kind: 'event_fee',
+      method: 'card',
+      person_id: attendee,
+      signup_entry_id: entryId,
+      calendar_entry_id: event.calendarEntryId,
+      source: 'app',
+      ledger_role: 'payment',
+      event_card_payment_id: data.id
+    });
+    return data.id as number;
+  }
+
+  it('History_CarriesTheCardPayment_ItCameFrom', async () => {
+    const id = await cardPayment('paid');
+    const t = (await getEventMoneyAction(event.eventSignupId))!.people[0].transactions[0];
+    expect(t.card).toEqual({ paymentId: id, refundable: true, total: 26.03, fee: 1.03, covers: [`${TEST_PREFIX} Edie Pasek`] });
+  });
+
+  it('History_ACardPayment_IsNotRefundable_WithoutFinanceManage', async () => {
+    await cardPayment('paid');
+    actor.value = { ...actor.value, capabilities: new Set(['calendar.write']) };
+    const t = (await getEventMoneyAction(event.eventSignupId))!.people[0].transactions[0];
+    actor.value = { ...actor.value, capabilities: new Set(['finance.manage']) };
+    expect(t.card?.refundable).toBe(false);
+  });
+
+  it('History_ARefundedCardPayment_IsNotRefundableAgain', async () => {
+    await cardPayment('refunded');
+    const t = (await getEventMoneyAction(event.eventSignupId))!.people[0].transactions[0];
+    expect(t.card?.refundable).toBe(false);
+  });
+
+  it('History_APaymentRecordedByHand_HasNoCardPayment', async () => {
+    await recordEventFeePaymentAction({ signupEntryId: entryId, amount: 25, method: 'venmo' });
+    const t = (await getEventMoneyAction(event.eventSignupId))!.people[0].transactions[0];
+    expect(t.card).toBeNull();
   });
 });

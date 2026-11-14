@@ -3,7 +3,7 @@ import { adminClient } from './helpers/admin-client';
 import { bucketIdsNow, deleteNewEmptyBuckets } from './helpers/bucket-cleanup';
 import { createTestEvent, createTestScout, deleteTestEvent, deleteTestScout, type TestEvent, type TestScout } from './helpers/signup-fixtures';
 import type { StripeEventLike, StripeLike } from '../src/lib/wreaths/card-payments';
-import { cardLinesFor, closeOpenEventCheckouts, handleEventStripeEvent, loadPartyMoney, startEventCardCheckout } from '../src/lib/event-pay/card';
+import { cardLinesFor, closeOpenEventCheckouts, handleEventStripeEvent, loadPartyMoney, refundEventCardPayment, startEventCardCheckout } from '../src/lib/event-pay/card';
 
 /**
  * Event fees by card against the real local database (lib/event-pay/card, 2026-11-13). Stripe is a fake at the
@@ -420,5 +420,97 @@ describe('handleEventStripeEvent — refund', () => {
 describe('loadPartyMoney', () => {
   it('Balance_OfAScoutWithNoHistory_IsZero', async () => {
     expect((await loadPartyMoney(admin, [scouts[0].personId], [])).balances.get(scouts[0].personId)).toBe(0);
+  });
+});
+
+describe('refundEventCardPayment — the Money tab button', () => {
+  const KEYS = () => `k${Math.random().toString(36).slice(2, 10)}`;
+  /** A paid card payment, with Stripe's refunds.create recorded. */
+  async function paid() {
+    const s = await makeSignup();
+    const stripe = fakeStripe();
+    const calls: { params: { payment_intent: string; reason?: string }; key: string }[] = [];
+    stripe.refunds.create = async (params, o) => {
+      calls.push({ params, key: o.idempotencyKey });
+      return { id: 're_test_1' };
+    };
+    const session = await opened(s, stripe);
+    await handleEventStripeEvent(completed(session), deps(stripe));
+    const pay = (await payments(s.event))[0];
+    return { s, stripe, calls, pay, session };
+  }
+
+  it('Refund_AsksStripeToReturnThePayment_ByItsIntent', async () => {
+    const { s, stripe, calls, pay } = await paid();
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect([r.ok, calls.map((c) => c.params)]).toEqual([true, [{ payment_intent: pay.stripe_payment_intent_id, reason: 'requested_by_customer' }]]);
+  });
+
+  it('Refund_PassesTheClicksIdempotencyKeyToStripe', async () => {
+    const { s, stripe, calls, pay } = await paid();
+    await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: 'click-1' }, deps(stripe));
+    expect(calls.map((c) => c.key)).toEqual([`event-refund-${pay.stripe_payment_intent_id}-click-1`]);
+  });
+
+  it('Refund_WhenStripeAlreadyRefundedPartOfIt_Refuses', async () => {
+    const { s, stripe, calls, pay } = await paid();
+    const retrieve = stripe.paymentIntents.retrieve;
+    stripe.paymentIntents.retrieve = async (id, o) => ({ ...(await retrieve(id, o)), latest_charge: { id: 'ch_x', amount_refunded: 1000 } });
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect([r.ok, calls.length]).toEqual([false, 0]);
+  });
+
+  it('Refund_WhenOneOfItsRowsWasVoided_Refuses', async () => {
+    const { s, stripe, calls, pay } = await paid();
+    await admin.from('financial_transactions').update({ voided_at: new Date().toISOString() }).eq('signup_entry_id', s.entryIds[0]).eq('ledger_role', 'payment');
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect([r.ok, calls.length]).toEqual([false, 0]);
+  });
+
+  it('Refund_ReportsTheAmountReturned', async () => {
+    const { s, stripe, pay } = await paid();
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect(r.ok && r.total).toBe(pay.total_cents / 100);
+  });
+
+  it('Refund_OfAPaymentAlreadyRefunded_Refuses', async () => {
+    const { s, stripe, calls, pay, session } = await paid();
+    await handleEventStripeEvent(
+      { id: EVT(), type: 'charge.refunded', data: { object: { payment_intent: `pi_test_${session.id}`, amount_refunded: pay.total_cents } } },
+      deps(stripe)
+    );
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect([r.ok, calls.length]).toEqual([false, 0]);
+  });
+
+  it('Refund_OfAPaymentNotYetMade_Refuses', async () => {
+    const s = await makeSignup();
+    const stripe = fakeStripe();
+    await opened(s, stripe);
+    const pay = (await payments(s.event))[0];
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect(r.ok).toBe(false);
+  });
+
+  it('Refund_ThroughAnotherEventsMoneyTab_Refuses', async () => {
+    const { stripe, calls, pay } = await paid();
+    const other = await makeSignup();
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: other.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect([r.ok, calls.length]).toEqual([false, 0]);
+  });
+
+  it('Refund_WhenStripeFails_SaysToUseTheDashboard', async () => {
+    const { s, stripe, pay } = await paid();
+    stripe.refunds.create = async () => {
+      throw new Error('card_declined');
+    };
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe));
+    expect(!r.ok && r.error).toMatch(/Stripe Dashboard/);
+  });
+
+  it('Refund_WhenCardPaymentIsNotLive_Refuses', async () => {
+    const { s, stripe, calls, pay } = await paid();
+    const r = await refundEventCardPayment({ cardPaymentId: pay.id, signupId: s.event.eventSignupId, idempotencyKey: KEYS() }, deps(stripe, false));
+    expect([r.ok, calls.length]).toEqual([false, 0]);
   });
 });

@@ -27,6 +27,9 @@ import { moneyScope } from '@/lib/event-money-scope';
 import { bucketNameOf } from '@/lib/buckets';
 import { signedReceiptMediaUrl } from '@/lib/receipt-media';
 import { centralToday } from '@/lib/dates';
+import { recordAudit } from '@/lib/audit';
+import { cardCheckoutLive, cardDeps } from '@/lib/wreaths/stripe-client';
+import { refundEventCardPayment } from '@/lib/event-pay/card';
 import { isValidISODate } from '@/lib/date-entry';
 import { signOffName, type AmountMode } from '@/lib/event-money';
 import {
@@ -767,6 +770,33 @@ export async function refundEventFeeAction(input: {
   return { ok: true };
 }
 
+/** "Refund to card" on the Money tab (Patrick, 2026-11-14): returns one card payment in full through Stripe.
+ *  finance.manage only, as the wreath refund (qa-lead): it moves real money and can't be undone, unlike the hand
+ *  Refund, which only writes a row. Nothing is booked here: the charge.refunded webhook reverses the payment and the
+ *  card fee on the ledger a few seconds later. `idempotencyKey` is per click (a retry after a failure is a new key). */
+export async function refundEventCardPaymentAction(cardPaymentId: number, signupId: number, idempotencyKey?: string): Promise<Result> {
+  await requireCapability('finance.manage');
+  if (!Number.isSafeInteger(cardPaymentId) || !Number.isSafeInteger(signupId)) return { ok: false, error: 'Pick a card payment.' };
+  if (!cardCheckoutLive()) return { ok: false, error: 'Card payments aren’t configured, so there is nothing to refund here.' };
+  const key = typeof idempotencyKey === 'string' && /^[\w-]{1,64}$/.test(idempotencyKey) ? idempotencyKey : crypto.randomUUID();
+  const res = await refundEventCardPayment({ cardPaymentId, signupId, idempotencyKey: key }, cardDeps());
+  if (!res.ok) return { ok: false, error: res.error };
+  // The money has moved: a failed audit write must not read as a failed refund.
+  await recordAudit({
+    area: 'calendar',
+    action: 'refund_card',
+    entityType: 'event_card_payment',
+    entityId: cardPaymentId,
+    summary: 'Refunded an event card payment',
+    details: [
+      { field: 'Refund', from: '—', to: `${money(res.total)} to the card` },
+      { field: 'Stripe refund', from: '—', to: res.refundId }
+    ]
+  }).catch((e) => console.error('[events] refund audit failed', e instanceof Error ? e.message : e));
+  revalidateEventMoney(signupId);
+  return { ok: true };
+}
+
 /** Overpayment → scout-account credit (Patrick: "a perfect place to put it").
  *  The fee money already sits in checking; the credit is the NOTIONAL
  *  scout_account +X (kind adjustment, linked to the entry and the event),
@@ -977,6 +1007,9 @@ export interface EventMoneyPerson {
     voidedBy: string | null;
     voidReason: string | null;
     createdAt: string;
+    /** The card payment this row was booked from (by the Stripe webhook); null for a payment recorded by hand. One
+     *  card payment can cover several people — `covers` names them, `total` includes the card fee. */
+    card: { paymentId: number; refundable: boolean; total: number; fee: number; covers: string[] } | null;
   }[];
 }
 
@@ -1029,6 +1062,7 @@ type Tx = {
   voided_by_person_id: number | null;
   void_reason: string | null;
   created_at: string;
+  event_card_payment_id: number | null;
 };
 type AmountChangeRow = {
   signup_entry_id: number;
@@ -1042,7 +1076,8 @@ type AmountChangeRow = {
 };
 
 export async function getEventMoneyAction(signupId: number): Promise<EventMoneyData | null> {
-  await requireAnyOf(['calendar.write', 'finance.manage']);
+  const viewer = await requireAnyOf(['calendar.write', 'finance.manage']);
+  const canRefundCard = viewer.capabilities.has('finance.manage');
   const supabase = createAdminClient();
   const { data: sig } = await supabase.from('event_signups').select('id, calendar_entry_id').eq('id', signupId).maybeSingle();
   if (!sig) return null;
@@ -1060,13 +1095,14 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
     { data: ms },
     { data: allEntries },
     { data: codes },
-    { data: changeRows }
+    { data: changeRows },
+    { data: cardRows }
   ] = await Promise.all([
       supabase
         .from('signup_entries')
         .select('id, person_id, person_kind, status, participation, price_id, amount_override, amount_override_reason, pay_method, pay_from_person_id')
-        .eq('event_signup_id', signupId)
-        .neq('status', 'cancelled'),
+        // Cancelled entries too: one with money on it stays on the tab (filtered below) so it can be refunded.
+        .eq('event_signup_id', signupId),
       supabase.from('signup_entry_balances').select('entry_id, owed, paid, balance, settled').eq('event_signup_id', signupId),
       supabase.from('event_prices').select('id, label, amount, per').eq('event_signup_id', signupId),
       supabase.from('people').select('id, display_name, first_name, last_name'),
@@ -1074,7 +1110,7 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
         supabase
           .from('financial_transactions')
           .select(
-            'id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, entered_by_person_id, voided_by_person_id, void_reason, created_at'
+            'id, occurred_on, amount, kind, method, memo, person_id, signup_entry_id, voided_at, account, entered_by_person_id, voided_by_person_id, void_reason, created_at, event_card_payment_id'
           )
           .or(scope.filter)
           .order('occurred_on')
@@ -1096,7 +1132,9 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
         .select('signup_entry_id, old_amount, new_amount, old_mode, new_mode, reason, changed_by_person_id, changed_at, signup_entries!inner(event_signup_id)')
         .eq('signup_entries.event_signup_id', signupId)
         .order('changed_at')
-        .order('id')
+        .order('id'),
+      // Card payments made through this sign-up: the history's "Refund to card".
+      supabase.from('event_card_payments').select('id, status, total_cents, fee_cents, lines').eq('event_signup_id', signupId).in('status', ['paid', 'refunded'])
     ]);
 
   const personRows = (people ?? []) as { id: number; display_name: string; first_name: string | null; last_name: string | null }[];
@@ -1121,9 +1159,29 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
   const txByEntry = new Map<number, Tx[]>();
   for (const t of txRows) if (t.signup_entry_id != null) txByEntry.set(t.signup_entry_id, [...(txByEntry.get(t.signup_entry_id) ?? []), t]);
 
-  const peopleRows: EventMoneyPerson[] = ((entries ?? []) as Record<string, unknown>[]).map((e) => {
+  const cardById = new Map(
+    ((cardRows ?? []) as { id: number; status: string; total_cents: number; fee_cents: number; lines: { person_id: number | null }[] }[]).map((c) => [
+      Number(c.id),
+      {
+        paymentId: Number(c.id),
+        refundable: c.status === 'paid' && canRefundCard,
+        total: Number(c.total_cents) / 100,
+        fee: Number(c.fee_cents) / 100,
+        covers: (c.lines ?? []).map((l) => (l.person_id != null ? (nameOf.get(Number(l.person_id)) ?? 'Unknown') : 'Unknown'))
+      }
+    ])
+  );
+
+  // A cancelled entry shows only while it has money on it, and then owes nothing: what it paid reads as overpaid,
+  // to refund or credit (Patrick, 2026-11-14: Anjali cancelled after paying by card and vanished from the tab).
+  const shown = ((entries ?? []) as Record<string, unknown>[]).filter(
+    (e) => e.status !== 'cancelled' || (txByEntry.get(Number(e.id)) ?? []).some((t) => !t.voided_at)
+  );
+  const peopleRows: EventMoneyPerson[] = shown.map((e) => {
     const id = Number(e.id);
-    const b = balById.get(id);
+    const cancelled = e.status === 'cancelled';
+    const raw = balById.get(id);
+    const b = raw && cancelled ? { ...raw, owed: 0, balance: Number(raw.balance) - Number(raw.owed), settled: false } : raw;
     const tier = e.price_id ? priceById.get(Number(e.price_id)) : undefined;
     const mine = txByEntry.get(id) ?? [];
     const credited = mine
@@ -1138,8 +1196,9 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
       participation: String(e.participation),
       tierLabel: tier?.label ?? null,
       tierAmount: tier ? Number(tier.amount) : 0,
-      amountOverride: e.amount_override != null ? Number(e.amount_override) : null,
-      amountOverrideReason: (e.amount_override_reason as string | null) ?? null,
+      // A cancelled person owes nothing, so a stored override is moot (and would count them as "Not paying").
+      amountOverride: !cancelled && e.amount_override != null ? Number(e.amount_override) : null,
+      amountOverrideReason: cancelled ? null : ((e.amount_override_reason as string | null) ?? null),
       planToPay: isPayChoice(e.pay_method)
         ? e.pay_method === 'scout_account' && e.pay_from_person_id != null && nameOf.has(Number(e.pay_from_person_id))
           ? `Scout account (${nameOf.get(Number(e.pay_from_person_id))!.split(' ')[0]}’s)`
@@ -1177,7 +1236,8 @@ export async function getEventMoneyAction(signupId: number): Promise<EventMoneyD
         enteredBy: signer(t.entered_by_person_id),
         voidedBy: t.voided_at ? signer(t.voided_by_person_id) : null,
         voidReason: t.void_reason,
-        createdAt: t.created_at
+        createdAt: t.created_at,
+        card: t.event_card_payment_id != null ? (cardById.get(Number(t.event_card_payment_id)) ?? null) : null
       }))
     };
   });

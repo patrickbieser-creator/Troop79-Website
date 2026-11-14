@@ -18,6 +18,7 @@ const actions = vi.hoisted(() => ({
   refundEventFeeAction: vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; error?: string }>>(async () => ({ ok: true })),
   creditOverpaymentAction: vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; error?: string }>>(async () => ({ ok: true })),
   setAmountOverrideAction: vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; error?: string }>>(async () => ({ ok: true })),
+  refundEventCardPaymentAction: vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; error?: string }>>(async () => ({ ok: true })),
   voidEventFeePaymentAction: vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; error?: string }>>(async () => ({ ok: true })),
   addEventExpenseAction: vi.fn<(...args: unknown[]) => Promise<{ ok: boolean; error?: string }>>(async () => ({ ok: true })),
   getScoutAccountBalanceForEntryAction: vi.fn(async () => ({ personId: 1, balance: 50, scholarshipBalance: 100, family: [] }))
@@ -70,6 +71,7 @@ const pay = (id: number, amount: number, method = 'venmo', over: Partial<EventMo
   voidedBy: null,
   voidReason: null,
   createdAt: '2026-11-12T15:00:00Z',
+  card: null,
   ...over
 });
 
@@ -341,5 +343,51 @@ describe('History', () => {
     nav.search = 'person=2';
     renderPanel();
     expect(within(panel()).getByText('No payments yet.')).toBeTruthy();
+  });
+});
+
+describe('Refund to card', () => {
+  const card = (over: Partial<NonNullable<EventMoneyPerson['transactions'][number]['card']>> = {}) => ({
+    paymentId: 77,
+    refundable: true,
+    total: 25.93,
+    fee: 0.93,
+    covers: ['Adam Gabbard'],
+    ...over
+  });
+  const withCard = (c: ReturnType<typeof card> | null) =>
+    data([person({ entryId: 1, name: 'Adam Gabbard', paid: 25, balance: 0, settled: true, transactions: [pay(11, 25, 'card', { card: c })] })]);
+
+  it('CardPayment_OffersRefundToCard', () => {
+    renderPanel(withCard(card()));
+    expect(within(panel()).getByRole('button', { name: 'Refund to card' })).toBeTruthy();
+  });
+
+  it('PaymentRecordedByHand_HasNoRefundToCard', () => {
+    renderPanel(withCard(null));
+    expect(within(panel()).queryByRole('button', { name: 'Refund to card' })).toBeNull();
+  });
+
+  it('RefundedCardPayment_HasNoRefundToCard', () => {
+    renderPanel(withCard(card({ refundable: false })));
+    expect(within(panel()).queryByRole('button', { name: 'Refund to card' })).toBeNull();
+  });
+
+  it('Leader_RefundsToCard_SendsThatCardPayment', async () => {
+    renderPanel(withCard(card()));
+    await userEvent.click(within(panel()).getByRole('button', { name: 'Refund to card' }));
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Refund $25.93' }));
+    expect(actions.refundEventCardPaymentAction.mock.calls[0].slice(0, 2)).toEqual([77, 9]);
+  });
+
+  it('RefundDialog_NamesEveryoneTheCardPaymentCovered', async () => {
+    renderPanel(withCard(card({ covers: ['Adam Gabbard', 'Edie Pasek'] })));
+    await userEvent.click(within(panel()).getByRole('button', { name: 'Refund to card' }));
+    expect(within(screen.getByRole('dialog')).getByText(/covered Adam, Edie/)).toBeTruthy();
+  });
+
+  it('CancelledPerson_IsMarkedCancelled_InTheLedger', () => {
+    renderPanel(data([person({ entryId: 1, name: 'Adam Gabbard', status: 'cancelled', owed: 0, paid: 25, balance: -25 })]));
+    expect(screen.getByText('Cancelled')).toBeTruthy();
   });
 });

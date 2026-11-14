@@ -324,3 +324,60 @@ export async function loadPartyMoney(
     due: fromCents(lines.reduce((n, l) => n + l.cents, 0))
   };
 }
+
+export type EventCardRefund = { ok: true; refundId: string; total: number } | { ok: false; error: string };
+
+const BY_HAND = 'Refund the rest in the Stripe Dashboard and record it here with Refund.';
+
+/**
+ * The Money tab's "Refund to card" (Patrick, 2026-11-14): asks Stripe to return one paid card payment in full. The
+ * PaymentIntent and amount come from the database, never the click; the payment must belong to the sign-up whose
+ * Money tab asked. Nothing is booked here: Stripe's charge.refunded webhook reverses the ledger
+ * (event_record_card_refund), the one writer for that.
+ *
+ * Refused (qa-lead, 2026-11-14) whenever the webhook's full reversal would leave the ledger wrong: Stripe already
+ * returned part of the charge (a partial refund booked by hand would be reversed twice), or a row this payment booked
+ * was voided (the money would go back but that row would not reverse). The idempotency key is per click, so a
+ * failed attempt can be retried; a second click after success is refused by the amount_refunded check.
+ */
+export async function refundEventCardPayment(
+  input: { cardPaymentId: number; signupId: number; idempotencyKey: string },
+  deps: Pick<EventCardDeps, 'supabase' | 'stripe' | 'live'>
+): Promise<EventCardRefund> {
+  if (!deps.live) return { ok: false, error: 'Card payments aren’t configured, so there is nothing to refund here.' };
+  const { data, error } = await deps.supabase
+    .from('event_card_payments')
+    .select('id, event_signup_id, status, total_cents, stripe_payment_intent_id')
+    .eq('id', input.cardPaymentId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const pay = data as { event_signup_id: number; status: string; total_cents: number; stripe_payment_intent_id: string | null } | null;
+  if (!pay || Number(pay.event_signup_id) !== input.signupId) return { ok: false, error: 'We couldn’t find that card payment on this event.' };
+  if (pay.status === 'refunded') return { ok: false, error: 'That card payment was already refunded.' };
+  if (pay.status !== 'paid' || !pay.stripe_payment_intent_id) return { ok: false, error: 'Only a completed card payment can be refunded.' };
+  const pi = pay.stripe_payment_intent_id;
+
+  const { count, error: voidError } = await deps.supabase
+    .from('financial_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('event_card_payment_id', input.cardPaymentId)
+    .not('voided_at', 'is', null);
+  if (voidError) throw new Error(voidError.message);
+  if ((count ?? 0) > 0) return { ok: false, error: `Part of this card payment was voided on the Money tab, so it can’t be refunded in one step. ${BY_HAND}` };
+
+  try {
+    const intent = await deps.stripe.paymentIntents.retrieve(pi, { expand: ['latest_charge'] });
+    const charge = intent.latest_charge as { amount_refunded?: number } | string | null;
+    if (charge && typeof charge === 'object' && Number(charge.amount_refunded ?? 0) > 0) {
+      return { ok: false, error: `Stripe has already refunded part of this card payment. ${BY_HAND}` };
+    }
+    const r = await deps.stripe.refunds.create(
+      { payment_intent: pi, reason: 'requested_by_customer' },
+      { idempotencyKey: `event-refund-${pi}-${input.idempotencyKey}` }
+    );
+    return { ok: true, refundId: r.id, total: fromCents(Number(pay.total_cents)) };
+  } catch (e) {
+    console.error('[events] Stripe refund failed', input.cardPaymentId, stripeErrorText(e));
+    return { ok: false, error: 'Stripe couldn’t make the refund. Try again, or refund it in the Stripe Dashboard.' };
+  }
+}

@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>November 13, 2026</strong> &nbsp;&middot;&nbsp; v1.268.0</p>
+      <p>Last updated: <strong>November 14, 2026</strong> &nbsp;&middot;&nbsp; v1.269.0</p>
     </div>
   </div>
 
@@ -494,6 +494,23 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.269.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.269.0</span>
+        <span class="release-date">November 14, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Event Money tab: refunds to a card</p>
+        <ul class="change-list">
+          <li><span>A payment made by card on a sign-up now has <strong>Refund to card</strong> in the person&rsquo;s history. It sends the whole card payment, card fee included, back through Stripe. Once Stripe confirms, usually within a minute, the history shows the refund and the person&rsquo;s balance goes back.</span></li>
+          <li><span>If one card payment covered several people, the confirmation names them all. To return just one person&rsquo;s share, refund that amount in the Stripe Dashboard and record it with Refund.</span></li>
+          <li><span>Someone who cancels after paying no longer disappears from the Money tab. They are marked <strong>Cancelled</strong>, owe nothing, and what they paid shows as overpaid, ready to refund or credit to their scout account.</span></li>
+        </ul>
       </div>
     </div>
 
