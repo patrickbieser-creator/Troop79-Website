@@ -12,7 +12,10 @@ import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { healthAccess } from '@/lib/health-access';
 import { healthFilesConfigured } from '@/lib/health-files';
 import { listHealthPages, listHealthReviews, loadUpcomingTrips, type HealthTrip } from '@/lib/health-store';
-import { healthStanding, needsAttention, TRIP_DAYS_AFTER, TRIP_DAYS_BEFORE } from '@/lib/health-records';
+import { healthNeeds, healthStanding, needsAttention, TRIP_DAYS_AFTER, TRIP_DAYS_BEFORE } from '@/lib/health-records';
+import { PrintBinder } from './print-binder';
+import { RemindFamilies } from './remind-families';
+import { remindFamiliesAction } from './actions';
 import { fetchAllRows } from '@/lib/supabase/paginate';
 import { centralToday } from '@/lib/dates';
 import { fmtRange } from '@/lib/format-date';
@@ -157,6 +160,16 @@ export default async function HealthPage({ searchParams }: { searchParams: Promi
             {people.length} {trip ? 'going' : 'people'} · {people.length - attention} complete · {attention} need attention
             {trip?.needsPartC ? ' · Part C required' : ''}
           </p>
+          {access.named && trip && (
+            <div className={styles.tripActs}>
+              <PrintBinder signupId={trip.signupId} title={trip.title} when={fmtRange(trip.entryDate, trip.endDate ?? trip.entryDate)} people={people} />
+              <RemindFamilies
+                signupId={trip.signupId}
+                count={people.filter((p) => healthNeeds(pages.filter((x) => x.personId === p.personId), { needsPartC: trip.needsPartC, today, asOf }).length > 0).length}
+                remind={remindFamiliesAction}
+              />
+            </div>
+          )}
           <HealthRoster people={people} query={trip ? `?event=${trip.signupId}` : '?event=everyone'} />
         </div>
       </PageShell>

@@ -190,6 +190,29 @@ export function healthStanding(pages: readonly HealthPage[], opts: { reviewed: b
   return worst === 'expires_soon' ? 'expires_soon' : 'complete';
 }
 
+/**
+ * What a FAMILY still has to hand in for an outing, one plain phrase per document: the sign-up notice and the
+ * reminder email. Only what the family can fix (a missing or run-out file); the leader's review is not theirs.
+ * `fmt` turns a date into words (lib/format-date in the app).
+ */
+export function healthNeeds(pages: readonly HealthPage[], opts: { needsPartC: boolean; today: string; asOf?: string }, fmt: (iso: string) => string = (d) => d): string[] {
+  const kinds = HEALTH_KINDS.filter((k) => HEALTH_KIND[k].required || (k === 'bsa_c' && opts.needsPartC));
+  const out: string[] = [];
+  for (const k of kinds) {
+    const mine = pages.filter((p) => p.kind === k);
+    const label = HEALTH_KIND[k].label;
+    const names = HEALTH_KIND[k].pageNames;
+    if (mine.length === 0) out.push(`${label}: missing`);
+    else if (names && mine.length < names.length) out.push(`${label}: the ${names.find((_, i) => !mine.some((p) => p.page === i + 1))!.toLowerCase()} is missing`);
+    else {
+      const expires = mine.map((p) => p.expiresOn).filter((d): d is string => !!d).sort()[0];
+      if (expires && expires < opts.today) out.push(`${label}: ran out ${fmt(expires)}`);
+      else if (expires && opts.asOf && expires < opts.asOf) out.push(`${label}: runs out ${fmt(expires)}, before the trip ends`);
+    }
+  }
+  return out;
+}
+
 /** Needs someone to do something before the trip: anything short of Complete. */
 export function needsAttention(s: HealthStanding): boolean {
   return s !== 'complete';

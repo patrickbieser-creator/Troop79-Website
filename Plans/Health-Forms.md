@@ -8,8 +8,11 @@ migration 20270104100000): the named list, the trip window, standings, the Revie
 `health_forms.view` capability: every capability counts toward "is a leader / may enter admin / full admin", and
 a health officer is none of those by this grant. So there is no Health column on /admin/access, and the event
 list with standings lives at `/health?event=` rather than as an admin Medical tab.
-**Still to build:** the binder (prove the merge with real scans first), Remind families, the sign-up Notice,
-editing things-we-should-know from the parent screen, the retention job and orphan sweep.
+Release 3 BUILT 2026-11-13: Print binder (`lib/health-binder`, `/api/health-binder/[personId]`, joined in the
+browser with `@cantoo/pdf-lib` 2.11.1; named leaders only, one 'print' log line per person), Remind families
+(`lib/health-reminders`, one email per family, two-step), and the sign-up Notice (outings only).
+NOT yet proven with real scans: the binder was tested with generated images and PDFs only.
+**Still to build:** editing things-we-should-know from the parent screen, the retention job and orphan sweep.
 Patrick, 2026-11-13: an adult a parent adds to the household seeing the children's records is "fine as billed".
 **Parked:** 2026-08-20 · **Reopened:** 2026-11-12 (Patrick: "enable parents to upload the BSA medical health records,
 health insurance cards, immunization records … parents and adult leaders would be able to access it on demand … print

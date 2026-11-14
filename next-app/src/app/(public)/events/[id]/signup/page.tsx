@@ -26,6 +26,13 @@ import { payToFrom } from '@/lib/event-pay/options';
 import { loadPartyMoney } from '@/lib/event-pay/card';
 import { cardCheckoutLive } from '@/lib/wreaths/stripe-client';
 import { loadSiteSettings } from '@/lib/site-settings';
+import { OUTING_CATEGORIES } from '@/lib/menu-monster/menus-data';
+import { healthFamilyAccess } from '@/lib/health-access';
+import { healthFilesConfigured } from '@/lib/health-files';
+import { listHealthPages } from '@/lib/health-store';
+import { healthNeeds } from '@/lib/health-records';
+import { centralToday } from '@/lib/dates';
+import { fmtDate } from '@/lib/format-date';
 import { createAdminClient } from '@/lib/supabase/server';
 import HouseholdPicker from '../household-picker';
 import { SignInToSignUpPanel, AskAParentPanel } from '../signup-panels';
@@ -172,6 +179,28 @@ export default async function EventSignupPage({
       due: money.due,
       payByCardAction: payEventByCardAction
     };
+  }
+
+  // Health forms (Plans/Health-Forms.md): one line per person in this parent's own family with a form missing or
+  // run out before the trip. Outings only (overnight categories, or a sign-up that asks for a permission slip or
+  // Part C). It is a nudge, never a gate: the sign-up works either way.
+  let healthLines: { name: string; needs: string[] }[] = [];
+  const isOuting = signup && ((OUTING_CATEGORIES as readonly string[]).includes(entry.category) || signup.needs_ahmr_c || signup.needs_permission_slip);
+  if (isOuting && household && verdict === 'ok' && !slotFirst && healthFilesConfigured()) {
+    const family = await healthFamilyAccess();
+    const names = new Map<number, string>([
+      ...household.scouts.filter((s) => s.personId != null).map((s) => [s.personId as number, s.displayName] as [number, string]),
+      ...household.adults.map((a) => [a.personId, a.name] as [number, string])
+    ]);
+    // Their own records and their children's only: never another adult's in the same household.
+    const ids = (family?.personIds ?? []).filter((id) => names.has(id));
+    if (ids.length > 0) {
+      const pages = await listHealthPages(createAdminClient(), ids);
+      const opts = { needsPartC: signup.needs_ahmr_c, today: centralToday(), asOf: entry.end_date ?? entry.entry_date };
+      healthLines = ids
+        .map((id) => ({ name: names.get(id)!, needs: healthNeeds(pages.filter((p) => p.personId === id), opts, fmtDate) }))
+        .filter((l) => l.needs.length > 0);
+    }
   }
 
   const back = calendarReturn(sp);
@@ -344,6 +373,20 @@ export default async function EventSignupPage({
                   </li>
                 ))}
               </ul>
+            </Notice>
+          )}
+
+          {healthLines.length > 0 && (
+            <Notice tone="info" className={styles.noticeGapBottom}>
+              <strong>Health forms for this trip</strong>
+              <ul className={styles.placementList}>
+                {healthLines.map((l) => (
+                  <li key={l.name}>
+                    <strong>{l.name.split(' ')[0]}</strong>: {l.needs.join('; ')}
+                  </li>
+                ))}
+              </ul>
+              <Link href="/member/health-forms">Add them under Members › Health forms</Link>. You can sign up first.
             </Notice>
           )}
 

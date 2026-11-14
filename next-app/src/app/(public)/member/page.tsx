@@ -94,7 +94,7 @@ const CARDS: Card[] = [
   },
   {
     title: 'Pay for a campout',
-    body: 'Settle up for an event online instead of remembering a cheque on the night.'
+    body: 'Settle up for an event online instead of remembering a check on the night.'
   },
   {
     title: 'Registration',

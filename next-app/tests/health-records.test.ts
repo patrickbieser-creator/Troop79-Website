@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   addDays,
+  healthNeeds,
   healthStanding,
   inTripWindow,
   needsAttention,
@@ -129,6 +130,37 @@ describe('standing for an outing', () => {
 
   it('OnlyComplete_NeedsNoAttention', () => {
     expect((['missing', 'expired', 'expires_soon', 'ready', 'complete'] as const).map(needsAttention)).toEqual([true, true, true, true, false]);
+  });
+});
+
+describe('what a family still has to hand in', () => {
+  const opts = { needsPartC: false, today: TODAY };
+
+  it('NothingOnFile_NeedsTheFormAndTheCard', () => {
+    expect(healthNeeds([], opts)).toEqual(['BSA health form, Parts A and B: missing', 'Insurance card: missing']);
+  });
+
+  it('EverythingIn_NeedsNothing_WhetherOrNotItWasReviewed', () => {
+    expect(healthNeeds([page('bsa_ab', 1), page('insurance', 1), page('insurance', 2)], opts)).toEqual([]);
+  });
+
+  it('OneSideOfTheCard_NamesTheOtherSide', () => {
+    expect(healthNeeds([page('bsa_ab', 1), page('insurance', 1)], opts)).toEqual(['Insurance card: the back is missing']);
+  });
+
+  it('PartC_IsAskedFor_OnlyWhenTheTripNeedsIt', () => {
+    const pages = [page('bsa_ab', 1), page('insurance', 1), page('insurance', 2)];
+    expect(healthNeeds(pages, { ...opts, needsPartC: true })).toEqual(['BSA health form, Part C: missing']);
+  });
+
+  it('AFormThatRanOut_SaysWhen', () => {
+    const pages = [page('bsa_ab', 1, { expiresOn: '2026-10-01' }), page('insurance', 1), page('insurance', 2)];
+    expect(healthNeeds(pages, opts, (d) => `<${d}>`)).toEqual(['BSA health form, Parts A and B: ran out <2026-10-01>']);
+  });
+
+  it('AFormThatRunsOutDuringTheTrip_IsFlaggedForThatTrip', () => {
+    const pages = [page('bsa_ab', 1, { expiresOn: '2026-11-21' }), page('insurance', 1), page('insurance', 2)];
+    expect([healthNeeds(pages, opts).length, healthNeeds(pages, { ...opts, asOf: '2026-11-22' })[0]]).toEqual([0, 'BSA health form, Parts A and B: runs out 2026-11-21, before the trip ends']);
   });
 });
 

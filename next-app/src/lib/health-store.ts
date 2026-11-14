@@ -6,6 +6,7 @@ import {
   TRIP_DAYS_AFTER,
   addDays,
   inTripWindow,
+  healthNeeds,
   effectiveOn,
   expiresOn,
   healthFileProblem,
@@ -83,7 +84,8 @@ async function log(deps: HealthDeps, viewer: HealthViewer, row: { person_id: num
     document_id: row.id,
     action,
     via: viewer.via,
-    event_id: viewer.via === 'trip' ? (viewer.eventId ?? null) : null
+    // The trip that let them in, or the trip a named leader was printing for.
+    event_id: viewer.eventId ?? null
   });
   if (error) throw new Error(`health access log: ${error.message}`);
 }
@@ -458,4 +460,86 @@ export async function isYouthOnRoster(sb: SupabaseClient, personId: number): Pro
   const { data, error } = await sb.from('scouts').select('active, is_webelos').eq('person_id', personId);
   if (error) throw new Error(error.message);
   return ((data ?? []) as { active: boolean; is_webelos: boolean }[]).some((s) => s.active === true || s.is_webelos === true);
+}
+
+/* ── The binder and reminders (release 3) ────────────────────────────────────────────────────────────────────── */
+
+export interface PrintedPage {
+  kind: HealthKind;
+  page: number;
+  contentType: string;
+  /** null when the file is gone from storage or fails to open: the binder says so instead of skipping it. */
+  bytes: Buffer | null;
+  expiresOn: string | null;
+}
+
+/**
+ * Every page on file for one person, opened for the binder. ONE 'print' line is written to the access log first
+ * (who, whose, which trip); if that fails nothing is read.
+ */
+export async function openHealthPagesForPrint(personId: number, viewer: HealthViewer, deps: HealthDeps): Promise<PrintedPage[]> {
+  await log(deps, viewer, { person_id: personId, kind: 'record', page: null, id: null }, 'print');
+  const { data, error } = await deps.supabase.from('health_documents').select(COLS).eq('person_id', personId).order('kind').order('page');
+  if (error) throw new Error(error.message);
+  const out: PrintedPage[] = [];
+  for (const row of (data ?? []) as unknown as Row[]) {
+    let bytes: Buffer | null = null;
+    try {
+      const blob = await deps.storage.get(row.object_path);
+      bytes = blob ? openHealthFile(row.object_path, blob, row.key_version, row.wrapped_key) : null;
+    } catch (e) {
+      console.error('[health] a file failed to open for the binder:', row.id, e instanceof Error ? e.message : e);
+    }
+    out.push({ kind: row.kind, page: row.page, contentType: row.content_type, bytes, expiresOn: row.expires_on });
+  }
+  return out;
+}
+
+/** One upcoming trip by its sign-up id, or null: what a named leader's link names. */
+export async function loadUpcomingTrip(sb: SupabaseClient, signupId: number, today: string): Promise<HealthTrip | null> {
+  if (!Number.isInteger(signupId) || signupId <= 0) return null;
+  return (await loadUpcomingTrips(sb, today)).find((t) => t.signupId === signupId) ?? null;
+}
+
+export interface HealthReminderGroup {
+  /** One family's addresses: a scout's parents, or the adult themselves. */
+  to: string[];
+  people: { name: string; needs: string[] }[];
+}
+
+/**
+ * Who to remind before a trip, and about what: every attendee with a file missing or run out, grouped by the
+ * addresses that answer for them so each family gets ONE email that names only its own people. `emailsFor` gives
+ * the addresses for one person (lib/email-recipients for a scout's parents; the adult's own for an adult).
+ */
+export async function buildHealthReminders(
+  sb: SupabaseClient,
+  trip: HealthTrip,
+  today: string,
+  emailsFor: (personId: number) => Promise<string[]>,
+  fmt: (iso: string) => string
+): Promise<{ groups: HealthReminderGroup[]; noEmail: string[] }> {
+  const ids = trip.attendeeIds;
+  if (ids.length === 0) return { groups: [], noEmail: [] };
+  const [{ data: people, error }, pages] = await Promise.all([sb.from('people').select('id, display_name, guest_host_household_id').in('id', ids), listHealthPages(sb, ids)]);
+  if (error) throw new Error(error.message);
+  const byKey = new Map<string, HealthReminderGroup>();
+  const noEmail: string[] = [];
+  const rows = ((people ?? []) as { id: number; display_name: string; guest_host_household_id: number | null }[]).sort((a, b) => a.display_name.localeCompare(b.display_name));
+  for (const p of rows) {
+    // A sign-up guest has no account to upload to: their host family is asked in person, not by this email.
+    if (p.guest_host_household_id != null) continue;
+    const needs = healthNeeds(pages.filter((x) => x.personId === Number(p.id)), { needsPartC: trip.needsPartC, today, asOf: trip.endDate ?? trip.entryDate }, fmt);
+    if (needs.length === 0) continue;
+    const to = [...new Set((await emailsFor(Number(p.id))).map((e) => e.trim().toLowerCase()).filter(Boolean))].sort();
+    if (to.length === 0) {
+      noEmail.push(p.display_name);
+      continue;
+    }
+    const key = to.join(',');
+    const group = byKey.get(key) ?? { to, people: [] };
+    group.people.push({ name: p.display_name, needs });
+    byKey.set(key, group);
+  }
+  return { groups: [...byKey.values()], noEmail };
 }

@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { healthAccess } from '@/lib/health-access';
 import { createAdminClient } from '@/lib/supabase/server';
-import { grantHealthViewer, revokeHealthViewer, setHealthReviewed } from '@/lib/health-store';
+import { grantHealthViewer, loadUpcomingTrip, revokeHealthViewer, setHealthReviewed } from '@/lib/health-store';
+import { remindFamilies, type HealthReminderOutcome } from '@/lib/health-reminders';
+import { sendEmail } from '@/lib/email';
+import { siteUrl } from '@/lib/site-url';
+import { centralToday } from '@/lib/dates';
 
 /**
  * The leader side's writes (Plans/Health-Forms.md, release 2). All three belong to the NAMED list only: an adult
@@ -63,4 +67,26 @@ export async function revokeHealthViewerAction(personId: number): Promise<Health
   }
   revalidatePath('/health', 'layout');
   return { ok: true };
+}
+
+export type HealthRemindResult = { ok: true; outcome: HealthReminderOutcome } | { ok: false; error: string };
+
+/**
+ * Remind families (named leaders only). `confirm: false` is the preview: who would be written to, nothing sent.
+ */
+export async function remindFamiliesAction(signupId: number, confirm: boolean): Promise<HealthRemindResult> {
+  const access = await named();
+  const id = idOf(signupId);
+  if (!access || id == null) return { ok: false, error: NOT_NAMED };
+  try {
+    const supabase = createAdminClient();
+    const today = centralToday();
+    const trip = await loadUpcomingTrip(supabase, id, today);
+    if (!trip) return { ok: false, error: 'That trip is over, or its sign-up is gone.' };
+    const outcome = await remindFamilies(trip, confirm === true, { supabase, send: sendEmail, siteUrl: siteUrl(), today });
+    return { ok: true, outcome };
+  } catch (e) {
+    console.error('[health] reminders failed:', e instanceof Error ? e.message : e);
+    return { ok: false, error: FAILED };
+  }
 }
