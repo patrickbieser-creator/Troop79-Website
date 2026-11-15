@@ -19,7 +19,7 @@ import { resolveAdminActor } from '@/lib/admin-actor';
 import { createAdminClient } from '@/lib/supabase/server';
 import { expirePeopleLists } from '@/lib/people-lists';
 import { loadPersonRecord } from './load-person-record';
-import { diffDraft, draftProblems, type RecordDraft } from './record-draft';
+import { diffDraft, draftFromRecord, draftKey, draftProblems, PERSON_FIELD_KEYS, type RecordDraft } from './record-draft';
 import type { FamilyRow, PersonRecord } from './record-types';
 
 export interface LinkChange {
@@ -62,25 +62,46 @@ async function schoolNames(supabase: Db, record: PersonRecord, draft: RecordDraf
   return names;
 }
 
+const FAMILY_CHOICES = new Set(['', 'parent_of>', 'guardian_of>', 'parent_of<', 'guardian_of<', 'sibling_of']);
+const EMAIL_LABELS = new Set(['home', 'work', 'other']);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isId = (v: unknown) => typeof v === 'number' && Number.isSafeInteger(v) && v > 0;
+
 /** The draft's shape is checked before anything is read from it — a server action takes whatever is posted. */
 function wellFormed(draft: unknown): draft is RecordDraft {
   if (!draft || typeof draft !== 'object') return false;
   const d = draft as Record<string, unknown>;
+  const f = d.f as Record<string, unknown> | null;
+  if (!f || typeof f !== 'object' || !PERSON_FIELD_KEYS.every((k) => isStr(f[k]))) return false;
+  if (d.scout != null) {
+    const sc = d.scout as Record<string, unknown>;
+    if (!['patrol', 'school_id', 'grade', 'swim_class', 'junior_leader_override'].every((k) => isStr(sc[k]))) return false;
+    if (sc.grade !== '' && !/^(?:[0-9]|1[0-2])$/.test(sc.grade as string)) return false;
+    if (sc.school_id !== '' && !/^\d+$/.test(sc.school_id as string)) return false;
+  }
+  const family = d.family as Record<string, unknown> | null;
   return (
-    typeof d.f === 'object' &&
-    d.f != null &&
     Array.isArray(d.emails) &&
-    typeof d.primary === 'string' &&
-    typeof d.householdId === 'string' &&
-    typeof d.family === 'object' &&
-    d.family != null &&
+    d.emails.every((e) => e && typeof e === 'object' && isStr((e as DraftEmailIn).email) && EMAIL_LABELS.has(String((e as DraftEmailIn).label))) &&
+    isStr(d.primary) &&
+    isStr(d.householdId) &&
+    (d.householdId === '' || /^\d+$/.test(d.householdId)) &&
+    !!family &&
+    typeof family === 'object' &&
+    Object.entries(family).every(([k, v]) => /^\d+$/.test(k) && isStr(v) && FAMILY_CHOICES.has(v)) &&
     Array.isArray(d.roles) &&
+    d.roles.every(isStr) &&
     Array.isArray(d.addMembers) &&
-    typeof d.initials === 'string' &&
+    d.addMembers.every((m) => m && typeof m === 'object' && isId((m as { personId?: unknown }).personId)) &&
+    isStr(d.initials) &&
+    typeof d.initialsRetired === 'boolean' &&
+    typeof d.endLinks === 'boolean' &&
     typeof d.active === 'boolean' &&
-    typeof d.reason === 'string'
+    isStr(d.reason)
   );
 }
+
+type DraftEmailIn = { email?: unknown; label?: unknown } & Record<string, unknown>;
 
 async function prepare(personId: number, draft: unknown) {
   if (!Number.isSafeInteger(personId) || personId <= 0 || !wellFormed(draft)) return { error: 'Nothing to save.' } as const;
@@ -103,11 +124,22 @@ function refusal(error: { code?: string; message: string }): string {
   return GENERIC;
 }
 
-export async function savePersonRecord(personId: number, draft: RecordDraft): Promise<SaveRecordResult> {
+/**
+ * `baseKey` is draftKey() of the record as the page loaded it. If the record has changed
+ * since (another leader saved), the save is refused rather than writing this page's stale
+ * copy of every untouched field back over theirs.
+ */
+export async function savePersonRecord(personId: number, draft: RecordDraft, baseKey: string): Promise<SaveRecordResult> {
   if (!(await guard())) return { ok: false, error: 'Not authenticated' };
   const prep = await prepare(personId, draft);
   if ('error' in prep) return { ok: false, error: prep.error ?? GENERIC };
   const { record, diff, supabase } = prep;
+  if (typeof baseKey !== 'string' || baseKey !== draftKey(draftFromRecord(record))) {
+    return {
+      ok: false,
+      error: 'Someone else changed this record since you opened it. Copy anything you need, then reload the page.'
+    };
+  }
 
   const problems = draftProblems(draft, record);
   if (problems.length > 0) {

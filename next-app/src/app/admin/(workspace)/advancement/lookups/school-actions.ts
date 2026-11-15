@@ -57,6 +57,14 @@ async function scoutsUsing(id: number): Promise<number> {
   return count ?? 0;
 }
 
+const GENERIC_FAIL = 'Couldn’t save that change to the school. Try again.';
+
+/** Never hand a raw database error to the page; log its code for us instead. */
+function failed(what: string, error: { code?: string }): Result {
+  console.error(`school ${what} failed:`, error.code ?? 'unknown');
+  return { ok: false, error: GENERIC_FAIL };
+}
+
 export async function addSchool(name: string): Promise<Result & { school?: School }> {
   const denied = await guard();
   if (denied) return denied;
@@ -98,7 +106,7 @@ export async function renameSchool(id: number, rawName: string, rawShort: string
     return { ok: false, error: `There is already a school called "${clash.name}". To combine them, use Merge.` };
   }
   const { error } = await sb.from('schools').update({ name, short_name: shortName }).eq('id', id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return failed('rename', error);
 
   const details = [];
   if (was.name !== name) details.push({ field: 'Name', from: was.name, to: name });
@@ -117,9 +125,11 @@ export async function mergeSchool(loserId: number, survivorId: number): Promise<
 
   const sb = createAdminClient();
   const { data: moved, error: moveErr } = await sb.from('scouts').update({ school_id: survivorId }).eq('school_id', loserId).select('id');
-  if (moveErr) return { ok: false, error: moveErr.message };
+  if (moveErr) return failed('merge', moveErr);
+  // Two writes, not one transaction: if the delete fails the scouts have already moved, which
+  // leaves an unused school behind (harmless, and Delete then works) rather than a half-moved one.
   const { error } = await sb.from('schools').delete().eq('id', loserId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return failed('merge', error);
 
   const count = moved?.length ?? 0;
   await recordAudit({
@@ -140,7 +150,7 @@ export async function setSchoolActive(id: number, active: boolean): Promise<Resu
   const was = await loadOne(id);
   if (!was) return { ok: false, error: 'School not found.' };
   const { error } = await createAdminClient().from('schools').update({ active }).eq('id', id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return failed('update', error);
   await recordAudit({
     area: 'roster',
     action: 'update',
@@ -166,7 +176,7 @@ export async function deleteSchool(id: number): Promise<Result> {
     };
   }
   const { error } = await createAdminClient().from('schools').delete().eq('id', id);
-  if (error) return { ok: false, error: error.code === '23503' ? `Can't delete "${was.name}": a scout still uses it.` : error.message };
+  if (error) return { ok: false, error: error.code === '23503' ? `Can't delete "${was.name}": a scout still uses it.` : GENERIC_FAIL };
   await recordAudit({ area: 'roster', action: 'delete', entityType: 'school', entityId: id, summary: `Deleted school "${was.name}"` });
   revalidate();
   return { ok: true };

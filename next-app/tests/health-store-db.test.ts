@@ -248,28 +248,45 @@ describe('what the family sees', () => {
 /**
  * A shared household grants nothing; a parent with no parent_of link to a scout in their own household can't add
  * that scout's forms, and used to see no sign the scout existed (Kevin Greene, 2026-11-14). The page names them.
+ * Since the household rule (Plans/Person-Record-One-Save.md, 2026-11-15) a parent of ONE scout in a household is
+ * linked to every scout in it, so only an adult with no parent link there (a grandparent) is left unlinked.
  */
 describe('scouts in my household I am not linked to', () => {
   let householdId: number;
+  let grandparentId: number;
   beforeAll(async () => {
+    const { data: g, error: gError } = await admin.from('people').insert({ display_name: 'ZZVITEST Health Grandparent' }).select('id').single();
+    if (gError) throw new Error(gError.message);
+    grandparentId = g!.id;
     const { data, error } = await admin.from('households').insert({ label: 'ZZVITEST Health Household' }).select('id').single();
     if (error) throw new Error(error.message);
     householdId = data!.id;
     const { error: memberError } = await admin.from('household_members').insert([
       { household_id: householdId, person_id: parentId },
       { household_id: householdId, person_id: scout.personId },
-      { household_id: householdId, person_id: other.personId }
+      { household_id: householdId, person_id: other.personId },
+      { household_id: householdId, person_id: grandparentId }
     ]);
     if (memberError) throw new Error(memberError.message);
   });
   afterAll(async () => {
+    // The household rule added links (parent -> HealthB, the two scouts as siblings); keep only the fixture's own.
+    const ids = [parentId, scout.personId, other.personId];
+    await admin.from('relationships').delete().in('person_id', ids).in('related_person_id', ids).neq('id', relationshipId);
     await admin.from('household_members').delete().eq('household_id', householdId);
     await admin.from('households').delete().eq('id', householdId);
+    await admin.from('audit_log').delete().in('entity_id', ids.map(String)).like('summary', 'Linked automatically%');
+    await admin.from('people').delete().eq('id', grandparentId);
   });
 
-  it('Parent_InAHouseholdWithAnUnlinkedScout_IsToldTheirName', async () => {
+  it('Adult_InAHouseholdWithScoutsTheyAreNotLinkedTo_IsToldTheirNames', async () => {
+    const scope = await resolveFamilyScope(admin, grandparentId, 'adult');
+    expect(await unlinkedHouseholdScouts(admin, grandparentId, scope)).toEqual(['ZZVITEST Scout HealthA', 'ZZVITEST Scout HealthB']);
+  });
+
+  it('Parent_OfOneScoutInTheHousehold_IsLinkedToEveryScout', async () => {
     const scope = await resolveFamilyScope(admin, parentId, 'adult');
-    expect(await unlinkedHouseholdScouts(admin, parentId, scope)).toEqual(['ZZVITEST Scout HealthB']);
+    expect(await unlinkedHouseholdScouts(admin, parentId, scope)).toEqual([]);
   });
 
   it('Parent_LinkedToEveryScoutInTheHousehold_IsToldNothing', async () => {

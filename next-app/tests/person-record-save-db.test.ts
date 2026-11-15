@@ -15,7 +15,7 @@ vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => adminClient()
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined, updateTag: () => undefined, revalidateTag: () => undefined }));
 
 import { loadPersonRecord } from '../src/app/admin/(workspace)/advancement/roster/[personId]/load-person-record';
-import { draftFromRecord, type RecordDraft } from '../src/app/admin/(workspace)/advancement/roster/[personId]/record-draft';
+import { draftFromRecord, draftKey, type RecordDraft } from '../src/app/admin/(workspace)/advancement/roster/[personId]/record-draft';
 import {
   previewPersonRecordSave,
   savePersonRecord
@@ -64,9 +64,9 @@ async function record(personId: number): Promise<PersonRecord> {
   return res.record;
 }
 
-async function draftOf(personId: number): Promise<{ rec: PersonRecord; draft: RecordDraft }> {
+async function draftOf(personId: number): Promise<{ rec: PersonRecord; draft: RecordDraft; key: string }> {
   const rec = await record(personId);
-  return { rec, draft: structuredClone(draftFromRecord(rec)) };
+  return { rec, draft: structuredClone(draftFromRecord(rec)), key: draftKey(draftFromRecord(rec)) };
 }
 
 async function linkTypes(a: number, b: number): Promise<string[]> {
@@ -104,14 +104,14 @@ describe('savePersonRecord', () => {
     const hhB = await household('B');
     const id = await adult('Everything');
     await join(hhA, id);
-    const { draft } = await draftOf(id);
+    const { draft, key } = await draftOf(id);
     draft.f.last_name = 'Everything Renamed';
     draft.emails.push({ email: 'zzvitest-everything@example.com', label: 'home' });
     draft.primary = 'zzvitest-everything@example.com';
     draft.roles = ['committee_member'];
     draft.householdId = String(hhB);
 
-    const res = await savePersonRecord(id, draft);
+    const res = await savePersonRecord(id, draft, key);
     const after = await record(id);
     expect([
       res.ok,
@@ -125,27 +125,28 @@ describe('savePersonRecord', () => {
   it('Leader_LosesNothing_WhenSaveFailsMidway', async () => {
     const id = await adult('Rollback');
     const other = await adult('RollbackOther');
-    const taken = `ZZ${String(other).slice(-3)}`;
+    const taken = `ZY${String.fromCharCode(65 + (other % 26))}${String.fromCharCode(65 + (Math.floor(other / 26) % 26))}`;
     leaderCodes.push(taken);
     const { error } = await admin.from('leaders').insert({ code: taken, name: 'ZZVITEST RollbackOther', person_id: other, can_login: false });
     if (error) throw new Error(error.message);
 
-    const { draft } = await draftOf(id);
+    const { draft, key } = await draftOf(id);
     draft.f.last_name = 'Rollback Renamed';
     draft.roles = ['adult_leader'];
     draft.initials = taken; // refused by add_leader_initials: someone else has it
 
-    const res = await savePersonRecord(id, draft);
+    const res = await savePersonRecord(id, draft, key);
     const after = await record(id);
-    expect([res.ok, after.detail.fields.last_name, after.detail.roles.length]).toEqual([false, 'Rollback', 0]);
+    // Refused by the database (add_leader_initials, T7901) after the name and role were written: all rolled back.
+    expect([res.ok, res.ok ? null : res.problems ?? null, after.detail.fields.last_name, after.detail.roles.length]).toEqual([false, null, 'Rollback', 0]);
   });
 
   it('Leader_MustPickReason_WhenMarkingScoutInactive', async () => {
     const id = await scout('SaveReason');
-    const { draft } = await draftOf(id);
+    const { draft, key } = await draftOf(id);
     draft.active = false;
     draft.reason = '';
-    const res = await savePersonRecord(id, draft);
+    const res = await savePersonRecord(id, draft, key);
     expect(res.ok ? [] : res.problems?.map((p) => p.fieldId)).toEqual(['pr-reason']);
   });
 
@@ -155,9 +156,9 @@ describe('savePersonRecord', () => {
     const kid = await scout('FromAdultKid');
     await join(hh, mom);
     await join(hh, kid);
-    const { draft } = await draftOf(mom);
+    const { draft, key } = await draftOf(mom);
     draft.family[String(kid)] = 'parent_of>';
-    await savePersonRecord(mom, draft);
+    await savePersonRecord(mom, draft, key);
     const kidRecord = await record(kid);
     expect(draftFromRecord(kidRecord).family[String(mom)]).toBe('parent_of<');
   });
@@ -169,9 +170,9 @@ describe('savePersonRecord', () => {
     await join(hh, mom);
     await join(hh, kid);
     await admin.from('relationships').insert({ person_id: mom, related_person_id: kid, type: 'parent_of', is_guardian: false });
-    const { draft } = await draftOf(kid);
+    const { draft, key } = await draftOf(kid);
     draft.family[String(mom)] = '';
-    await savePersonRecord(kid, draft);
+    await savePersonRecord(kid, draft, key);
     const momRecord = await record(mom);
     expect(draftFromRecord(momRecord).family[String(kid)]).toBe('');
   });
@@ -182,10 +183,10 @@ describe('savePersonRecord', () => {
     const b = await scout('SibB');
     await join(hh, a);
     await join(hh, b);
-    const { draft } = await draftOf(a);
+    const { draft, key } = await draftOf(a);
     draft.householdId = '';
     draft.endLinks = true;
-    await savePersonRecord(a, draft);
+    await savePersonRecord(a, draft, key);
     expect([...(await linkTypes(a, b)), ...(await linkTypes(b, a))]).toEqual([]);
   });
 
@@ -224,10 +225,10 @@ describe('savePersonRecord', () => {
     const b = await scout('HistoryB');
     for (const p of [mom, a, b]) await join(hh, p);
     await admin.from('audit_log').delete().in('entity_id', [mom, a, b].map(String));
-    const { draft } = await draftOf(mom);
+    const { draft, key } = await draftOf(mom);
     draft.family[String(a)] = 'parent_of>';
     draft.f.nickname = 'Mo';
-    await savePersonRecord(mom, draft);
+    await savePersonRecord(mom, draft, key);
     const { data } = await admin.from('audit_log').select('entity_id').in('entity_id', [mom, a, b].map(String));
     const perPerson = ((data ?? []) as { entity_id: string }[]).map((r) => Number(r.entity_id)).sort((x, y) => x - y);
     expect(perPerson).toEqual([mom, a, b].sort((x, y) => x - y));
@@ -243,5 +244,87 @@ describe('savePersonRecord', () => {
     draft.family[String(a)] = 'parent_of>';
     const preview = await previewPersonRecordSave(mom, draft);
     expect(preview.also.map((l) => [l.person_id, l.type, l.related_person_id])).toEqual([[mom, 'parent_of', b]]);
+  });
+});
+
+describe('savePersonRecord — review fixes', () => {
+  async function withEmails(last: string, emails: string[], primary: string): Promise<number> {
+    const id = await adult(last);
+    for (const email of emails) {
+      const { error } = await admin.from('person_emails').insert({ person_id: id, email, label: 'home', is_primary: email === primary });
+      if (error) throw new Error(error.message);
+    }
+    return id;
+  }
+
+  it('Leader_SwitchesPrimary_WhenTheNewPrimaryHasTheLowerId', async () => {
+    const id = await withEmails('PrimaryLow', ['zzvitest-low@example.com', 'zzvitest-high@example.com'], 'zzvitest-high@example.com');
+    const { draft, key } = await draftOf(id);
+    draft.primary = 'zzvitest-low@example.com';
+    const res = await savePersonRecord(id, draft, key);
+    const after = await record(id);
+    expect([res.ok, after.emails.find((e) => e.isPrimary)?.email]).toEqual([true, 'zzvitest-low@example.com']);
+  });
+
+  it('Leader_SwitchesPrimary_WhenTheNewPrimaryHasTheHigherId', async () => {
+    const id = await withEmails('PrimaryHigh', ['zzvitest-a@example.com', 'zzvitest-b@example.com'], 'zzvitest-a@example.com');
+    const { draft, key } = await draftOf(id);
+    draft.primary = 'zzvitest-b@example.com';
+    const res = await savePersonRecord(id, draft, key);
+    const after = await record(id);
+    expect([res.ok, after.emails.find((e) => e.isPrimary)?.email]).toEqual([true, 'zzvitest-b@example.com']);
+  });
+
+  it('Leader_IsRefused_WhenTheRecordChangedSinceOpened', async () => {
+    const id = await adult('Stale');
+    const { draft, key } = await draftOf(id);
+    await admin.from('people').update({ primary_phone: '414-555-0101' }).eq('id', id);
+    draft.f.nickname = 'Stale Nick';
+    const res = await savePersonRecord(id, draft, key);
+    const after = await record(id);
+    expect([res.ok, after.detail.fields.primary_phone, after.detail.fields.nickname ?? null]).toEqual([false, '414-555-0101', null]);
+  });
+
+  it('Leader_IsRefused_WhenUnlinkingAParentTheHouseholdWouldRelink', async () => {
+    const hh = await household('Relink');
+    const mom = await adult('RelinkMom');
+    const a = await scout('RelinkA');
+    const b = await scout('RelinkB');
+    for (const p of [mom, a, b]) await join(hh, p);
+    await admin.from('relationships').insert({ person_id: mom, related_person_id: a, type: 'parent_of', is_guardian: false });
+    const { draft, key } = await draftOf(mom);
+    draft.family[String(b)] = '';
+    const res = await savePersonRecord(mom, draft, key);
+    expect([res.ok, await linkTypes(mom, b)]).toEqual([false, ['parent_of']]);
+  });
+
+  it('Leader_SavesInitials_AddRenameAndRetire', async () => {
+    const id = await adult('Initials');
+    // Initials are letters only (2–5): derive four from the test-owned id so reruns don't collide.
+    const code = `Z${String.fromCharCode(65 + (id % 26))}${String.fromCharCode(65 + (Math.floor(id / 26) % 26))}Q`;
+    leaderCodes.push(code, `${code}X`);
+    const first = await draftOf(id);
+    first.draft.initials = code;
+    await savePersonRecord(id, first.draft, first.key);
+    const second = await draftOf(id);
+    second.draft.initials = `${code}X`;
+    second.draft.initialsRetired = true;
+    await savePersonRecord(id, second.draft, second.key);
+    const { data } = await admin.from('leaders').select('code, retired_at').eq('person_id', id).maybeSingle();
+    const row = data as { code: string; retired_at: string | null } | null;
+    expect([row?.code, row?.retired_at != null]).toEqual([`${code}X`, true]);
+  });
+
+  it('Preview_NamesTheMissingHalfOfAOneWaySiblingLink', async () => {
+    const hh = await household('OneWay');
+    const a = await scout('OneWayA');
+    const b = await scout('OneWayB');
+    await join(hh, a);
+    await admin.from('relationships').delete().eq('person_id', a);
+    await admin.from('relationships').insert({ person_id: a, related_person_id: b, type: 'sibling_of', is_guardian: false });
+    const { draft } = await draftOf(b);
+    draft.householdId = String(hh);
+    const preview = await previewPersonRecordSave(b, draft);
+    expect(preview.also.map((l) => [l.person_id, l.type, l.related_person_id, l.change])).toEqual([[b, 'sibling_of', a, 'added']]);
   });
 });

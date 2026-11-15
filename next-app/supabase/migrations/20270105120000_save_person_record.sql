@@ -76,8 +76,9 @@ declare
   v_old_household bigint;
   v_new_household bigint;
   v_scope bigint[];
-  v_before jsonb;
-  v_after jsonb;
+  v_before text[];
+  v_after text[];
+  v_unlinked text[] := '{}';
   v_today date := (now() at time zone 'America/Chicago')::date;
   r record;
   v_code text;
@@ -108,7 +109,9 @@ begin
            where rr.id in (select (j #>> '{}')::bigint from jsonb_array_elements(coalesce(v_rels->'remove', '[]')) j)
   ) s where x is not null;
 
-  select coalesce(jsonb_agg(jsonb_build_array(person_id, related_person_id, type)), '[]'::jsonb) into v_before
+  -- Link snapshots as 'person>related:type' text: jsonb array containment ignores element order, so
+  -- [2,1,'sibling_of'] would count as present when only [1,2,'sibling_of'] is.
+  select coalesce(array_agg(person_id || '>' || related_person_id || ':' || type), '{}') into v_before
     from relationships where person_id = any(v_scope) or related_person_id = any(v_scope);
 
   -- 1. Demographics and the adult's status (people).
@@ -184,8 +187,12 @@ begin
       if not exists (select 1 from person_emails where person_id = v_pid and lower(btrim(email)) = v_primary) then
         raise exception using errcode = 'T7902', message = 'The primary address must be one of the addresses on file.';
       end if;
-      update person_emails set is_primary = (lower(btrim(email)) = v_primary)
-       where person_id = v_pid and is_primary <> (lower(btrim(email)) = v_primary);
+      -- Demote first, then promote: person_emails_one_primary is checked row by row, so a single
+      -- UPDATE that flips both can trip it depending on the order rows are visited.
+      update person_emails set is_primary = false
+       where person_id = v_pid and is_primary and lower(btrim(email)) <> v_primary;
+      update person_emails set is_primary = true
+       where person_id = v_pid and not is_primary and lower(btrim(email)) = v_primary;
     end if;
   end if;
 
@@ -228,6 +235,7 @@ begin
         raise exception using errcode = 'T7902', message = 'That relationship belongs to someone else.';
       end if;
       delete from relationships where id = r.id;
+      v_unlinked := v_unlinked || (r.person_id || '>' || r.related_person_id || ':' || r.type);
       if r.type = 'sibling_of' then
         delete from relationships
          where person_id = r.related_person_id and related_person_id = r.person_id and type = 'sibling_of';
@@ -240,6 +248,10 @@ begin
       end if;
       if r.a = r.b then
         raise exception using errcode = 'T7902', message = 'A person cannot relate to themselves.';
+      end if;
+      if exists (select 1 from people where id in (r.a, r.b)
+                  and (merged_into_person_id is not null or guest_host_household_id is not null)) then
+        raise exception using errcode = 'T7902', message = 'Only people on the roster can be linked.';
       end if;
       insert into relationships (person_id, related_person_id, type, is_guardian)
       values (r.a, r.b, r.t, false) on conflict (person_id, related_person_id, type) do nothing;
@@ -275,16 +287,43 @@ begin
     end case;
   end loop;
 
-  -- The household-link triggers already ran on each insert; a relationship removed above can
-  -- leave nothing new to link, so this is the whole diff.
-  select coalesce(jsonb_agg(jsonb_build_array(person_id, related_person_id, type)), '[]'::jsonb) into v_after
+  -- A link the leader removed must stay removed: if the household rule would add it straight back
+  -- (the adult is still parent of another scout there, or two scouts share the household), say so
+  -- instead of saving a choice the next household change would silently undo.
+  if array_length(v_unlinked, 1) > 0 and v_new_household is not null then
+    select g.person_id, g.related_person_id, g.type into r
+      from household_link_gaps(v_new_household) g
+     where (g.person_id || '>' || g.related_person_id || ':' || g.type) = any(v_unlinked)
+        or (g.type = 'parent_of' and (g.person_id || '>' || g.related_person_id || ':guardian_of') = any(v_unlinked))
+        or (g.type = 'guardian_of' and (g.person_id || '>' || g.related_person_id || ':parent_of') = any(v_unlinked))
+     limit 1;
+    if found then
+      raise exception using errcode = 'T7902', message = case
+        when r.type = 'sibling_of' then format(
+          '%s and %s share a household, so they stay linked as siblings. Move one of them to another household to unlink them.',
+          (select display_name from people where id = r.person_id), (select display_name from people where id = r.related_person_id))
+        else format(
+          '%s is a parent or guardian of another scout in this household, so the household links them to %s too. Move one of them to another household to unlink them.',
+          (select display_name from people where id = r.person_id), (select display_name from people where id = r.related_person_id))
+      end;
+    end if;
+  end if;
+
+  -- The household-link triggers already ran on each insert, so this is the whole diff.
+  select coalesce(array_agg(person_id || '>' || related_person_id || ':' || type), '{}') into v_after
     from relationships where person_id = any(v_scope) or related_person_id = any(v_scope)
        or person_id in (select person_id from household_members where household_id = v_new_household)
        or related_person_id in (select person_id from household_members where household_id = v_new_household);
 
   return jsonb_build_object(
-    'added', (select coalesce(jsonb_agg(a), '[]'::jsonb) from jsonb_array_elements(v_after) a where not v_before @> jsonb_build_array(a)),
-    'removed', (select coalesce(jsonb_agg(b), '[]'::jsonb) from jsonb_array_elements(v_before) b where not v_after @> jsonb_build_array(b))
+    'added', (select coalesce(jsonb_agg(jsonb_build_array(split_part(k, '>', 1)::bigint,
+                                                           split_part(split_part(k, '>', 2), ':', 1)::bigint,
+                                                           split_part(k, ':', 2))), '[]'::jsonb)
+                from unnest(v_after) k where not (k = any(v_before))),
+    'removed', (select coalesce(jsonb_agg(jsonb_build_array(split_part(k, '>', 1)::bigint,
+                                                             split_part(split_part(k, '>', 2), ':', 1)::bigint,
+                                                             split_part(k, ':', 2))), '[]'::jsonb)
+                  from unnest(v_before) k where not (k = any(v_after)))
   );
 end;
 $$;

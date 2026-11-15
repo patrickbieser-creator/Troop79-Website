@@ -147,7 +147,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
     setSaveError(null);
     setNotice(null);
     phase.start();
-    void savePersonRecord(base.personId, draft)
+    void savePersonRecord(base.personId, draft, draftKey(saved))
       .then((res) => {
         if (!res.ok) {
           phase.fail();

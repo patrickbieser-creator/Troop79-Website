@@ -33,12 +33,13 @@ create index if not exists scouts_school_id_idx on public.scouts (school_id);
 -- ── Backfill ─────────────────────────────────────────────────────────────────────────────────────────────────────
 -- ╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
 -- ║ THE MAPPING — every distinct production `scouts.school` value as of 2026-11-15 → its clean school.           ║
--- ║ PROPOSED, NOT YET CONFIRMED BY PATRICK. Edit the rows here (old text is matched case-insensitively and       ║
--- ║ trimmed). Any non-blank value NOT listed is kept as its own school, trimmed, so nothing is lost.             ║
--- ║ Note: "Reagan … <- Fernwood" etc. recorded the scout's previous school too; only Reagan is kept here.        ║
+-- ║ Confirmed by Patrick 2026-11-15. Old text is matched case-insensitively, trimmed, runs of spaces collapsed. ║
+-- ║ A NULL clean name leaves the scout with no school: plain "Shorewood" was a stopgap for Lake Bluff, Atwater ║
+-- ║ or Shorewood Intermediate, and Patrick fixes those five by hand. Any value NOT listed becomes its own school.║
+-- ║ "Reagan … <- Fernwood" recorded the previous school: it is copied into "things we should know" (step 0).   ║
 -- ╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
 drop table if exists pg_temp.school_map;
-create temp table school_map (old_text text not null, clean_name text not null, short_name text);
+create temp table school_map (old_text text not null, clean_name text, short_name text);
 insert into school_map (old_text, clean_name, short_name) values
   ('Audubon HS',                              'Audubon High School',                     null),
   ('Bay View Elementry',                      'Bay View Elementary',                     null),
@@ -46,7 +47,7 @@ insert into school_map (old_text, clean_name, short_name) values
   ('Deer Creek Intermediate School',          'Deer Creek Intermediate School',          null),
   ('Fernwood Montessori',                     'Fernwood Montessori School',              null),
   ('Fernwood Montessori School',              'Fernwood Montessori School',              null),
-  ('Lake Bluff Elementry',                    'Lake Bluff Elementary',                   null),
+  ('Lake Bluff Elementry',                    'Lake Bluff School',                       null),
   ('Milwaukee Montessori',                    'Milwaukee Montessori School',             null),
   ('Milwaukee Parkside School for the Arts',  'Milwaukee Parkside School for the Arts',  null),
   ('Pilgrim Luthern',                         'Pilgrim Lutheran',                        null),
@@ -57,18 +58,41 @@ insert into school_map (old_text, clean_name, short_name) values
   ('Reagan HS <- Tamarack Waldorf',           'Reagan High School',                      null),
   ('Rufus King',                              'Rufus King High School',                  null),
   ('Saint Francis High School',               'Saint Francis High School',               null),
-  ('Shorewood',                               'Shorewood High School',                   null),
+  ('Shorewood',                               null,                                      null),
   ('Shorewood High School',                   'Shorewood High School',                   null),
   ('Shorewood Intermediate School (SIS)',     'Shorewood Intermediate School',           'SIS'),
   ('St Jude catholic school',                 'St. Jude the Apostle',                    null),
   ('St Jude the Apostle',                     'St. Jude the Apostle',                    null);
 -- ── end of mapping ───────────────────────────────────────────────────────────────────────────────────────────────
 
--- 1. The clean list (one row per clean name; a short name wins over none).
+create or replace function pg_temp.school_key(t text) returns text language sql immutable as
+$$ select lower(btrim(regexp_replace(coalesce(t, ''), '\s+', ' ', 'g'))) $$;
+
+-- 0. "Reagan HS <- Fernwood Montessori": keep the earlier school in the scout's "things we should know" (Patrick
+--    2026-11-15). Idempotent: skipped when the line is already there.
+update public.people p
+   set things_we_should_know = concat_ws(chr(10), nullif(btrim(p.things_we_should_know), ''),
+                                         'Previous school: ' || btrim(split_part(s.school, '<-', 2))),
+       updated_at = now()
+  from public.scouts s
+ where s.person_id = p.id
+   and s.school like '%<-%'
+   and nullif(btrim(split_part(s.school, '<-', 2)), '') is not null
+   and coalesce(p.things_we_should_know, '') not like '%Previous school: ' || btrim(split_part(s.school, '<-', 2)) || '%';
+
+-- 1. The clean list (one row per clean name; a short name wins over none), plus the Shorewood-area schools
+--    Patrick asked for so the "Shorewood" five can be fixed by hand.
 insert into public.schools (name, short_name)
 select clean_name, max(short_name)
   from school_map
+ where clean_name is not null
  group by clean_name
+on conflict ((lower(btrim(name)))) do nothing;
+insert into public.schools (name) values
+  ('Atwater School'),
+  ('Lake Bluff School'),
+  ('Shorewood Intermediate School'),
+  ('Shorewood High School')
 on conflict ((lower(btrim(name)))) do nothing;
 
 -- 2. Anything the mapping doesn't name becomes its own school, trimmed and with runs of spaces collapsed.
@@ -76,7 +100,7 @@ insert into public.schools (name)
 select distinct btrim(regexp_replace(s.school, '\s+', ' ', 'g'))
   from public.scouts s
  where nullif(btrim(s.school), '') is not null
-   and not exists (select 1 from school_map m where lower(btrim(m.old_text)) = lower(btrim(s.school)))
+   and not exists (select 1 from school_map m where pg_temp.school_key(m.old_text) = pg_temp.school_key(s.school))
 on conflict ((lower(btrim(name)))) do nothing;
 
 -- 3. Point every scout at its school.
@@ -86,25 +110,28 @@ update public.scouts sc
         select s.id as scout_id,
                coalesce(m.clean_name, btrim(regexp_replace(s.school, '\s+', ' ', 'g'))) as target
           from public.scouts s
-          left join school_map m on lower(btrim(m.old_text)) = lower(btrim(s.school))
+          left join school_map m on pg_temp.school_key(m.old_text) = pg_temp.school_key(s.school)
          where nullif(btrim(s.school), '') is not null
+           and not (m.old_text is not null and m.clean_name is null)
        ) t
   join public.schools sh on lower(btrim(sh.name)) = lower(btrim(t.target))
  where sc.id = t.scout_id
    and sc.school_id is null;
 
-drop table if exists pg_temp.school_map;
-
--- 4. Nothing lost: every scout with school text now has a school.
+-- 4. Nothing lost: every scout with school text now has a school, apart from the ones mapped to none.
 do $$
 declare
   missing integer;
 begin
   select count(*) into missing
-    from public.scouts
-   where nullif(btrim(school), '') is not null and school_id is null;
+    from public.scouts s
+   where nullif(btrim(s.school), '') is not null and s.school_id is null
+     and not exists (select 1 from school_map m
+                      where m.clean_name is null and pg_temp.school_key(m.old_text) = pg_temp.school_key(s.school));
   if missing > 0 then
     raise exception 'schools backfill: % scout(s) with school text have no school_id', missing;
   end if;
 end;
 $$;
+
+drop table if exists pg_temp.school_map;

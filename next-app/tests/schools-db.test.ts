@@ -79,10 +79,12 @@ afterAll(async () => {
 
 describe('the schools migration', () => {
   it('Migration_BackfillsSchoolId_ForEveryScoutWithSchoolText', async () => {
-    // The old text column stays until a later migration drops it; every non-blank value must have a school.
+    // The old text column stays until a later migration drops it; every non-blank value must have a school,
+    // except plain "Shorewood", a stopgap Patrick mapped to no school and fixes by hand (2026-11-15).
     const { data, error } = await admin.from('scouts').select('id, school, school_id').not('school', 'is', null).is('school_id', null);
     expect(error).toBeNull();
-    expect((data ?? []).filter((r) => String((r as { school: string }).school).trim() !== '')).toEqual([]);
+    const unmapped = (data ?? []).map((r) => String((r as { school: string }).school).trim()).filter((t) => t !== '' && t.toLowerCase() !== 'shorewood');
+    expect(unmapped).toEqual([]);
   });
 
   it('SchoolsIndex_RefusesARawDuplicate_WhatEverItsCase', async () => {
