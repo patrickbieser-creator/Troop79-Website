@@ -1,6 +1,6 @@
 # Person Record — One Form, One Save
 
-**Status:** Ready to build
+**Status:** Shipped 2026-11-15 (v1.270.0). Schools mapping, the "Previous school" notes and the backfill (minus the Stollenwerk parent links) per Patrick, 2026-11-15.
 **Created:** 2026-11-15
 **Priority:** High
 **Spec:** Claude Design canvas "Roster person page" — https://claude.ai/artifact/BpEA89e8uhPJFUt9jNxfL6
