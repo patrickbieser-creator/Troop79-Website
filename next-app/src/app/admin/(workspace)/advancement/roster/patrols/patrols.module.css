@@ -81,8 +81,8 @@
 .rowSelect {
   min-width: 11rem;
 }
-/* .bulkBtn retired 2026-08-25 → shared Button (variant="primary"; solid navy,
-   overriding the sweep's default name-based grouping — paint here is primary). */
+/* .bulkBtn retired 2026-08-25 → shared Button. Secondary since 2026-11-15: Assign only changes
+   the draft, so the one primary on the screen is the EditBar's Save. */
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
 /* DataTable · Compact — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
@@ -106,22 +106,7 @@
 }
 
 /* ── Save bar ────────────────────────────────────────────────────────────── */
-.saveBar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--admin-space-6);
-  margin-top: var(--admin-space-8);
-  padding-top: var(--admin-space-6);
-  border-top: 1px solid var(--admin-gray-200);
-}
-.saveCount {
-  margin-right: auto;
-  font-size: var(--admin-text-base);
-  color: var(--admin-gray-600);
-}
-/* .discardBtn retired 2026-08-25 → shared Button (variant="secondary"). */
-/* .saveBtn retired 2026-08-25 → shared Button (SaveButton already renders primary). */
+/* .saveBar / .saveCount retired 2026-11-15 → shared EditBar at the top (Plans/Shared-Save-Bar.md). */
 
 .backLink {
   font-size: var(--admin-text-base);

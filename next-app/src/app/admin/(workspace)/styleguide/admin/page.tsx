@@ -33,6 +33,7 @@ import {
   FamilyListSpecimen,
   HistoryChipSpecimen,
   PendingBannerSpecimen,
+  EditBarCountSpecimen,
   RecordBarBlockedSpecimen,
   RecordBarSpecimen,
   RecordFieldsSpecimen,
@@ -296,6 +297,15 @@ const SCOREBOARD: {
     phase: 'D',
     notes:
       'Retired the same day: people-table’s PersonEditor dialog (status / demographics / emails / household / roles / relationships / merge / delete), ScoutForm’s edit branch (create-once “+ Add Scout” stays), scout-relations.tsx, pending-update-panel.tsx. 2026-11-15 retired the per-section Edit model (SectionCard, immediate blocks, Status card, Danger zone, side cards, fact strip) for one draft and one Save; AGENTS.md rule replaced accordingly'
+  },
+  {
+    pattern: 'Save bar placement',
+    copies: '2 on EditBar · 3 other sticky bars · ~38 Saves elsewhere (mostly at the foot of the form) · ~14 drafts the dirty guard cannot see',
+    canonical:
+      'EditBar (_components/edit-bar.tsx, 2026-11-15): sticky top bar, Save / Discard / status · screen actions; guards the page (dirty guard + leave prompt) while dirty',
+    phase: 'D',
+    notes:
+      'Plans/Shared-Save-Bar.md. Step 1 moved Patrols (its foot-of-table Save went unseen and a page of moves was lost) and the person record onto it. Step 2: a UX sweep sorts the rest into draft screens and saves-immediately screens, then converts the drafts in batches, starting with the ones the guard cannot see'
   },
   {
     pattern: 'Eyebrow labels (12px/600 sentence case since calm R5; was 11px/700/uppercase)',
@@ -1771,6 +1781,20 @@ export default function StyleguidePage() {
           >
             <BlockedSaveDemo />
           </Specimen>
+          <Specimen
+            label="Edit bar — saved"
+            canonical
+            note="EditBar (_components/edit-bar.tsx, Plans/Shared-Save-Bar.md, 2026-11-15) is THE save bar on an edit screen: sticky at the top, Save + Discard changes left, a status line that always says whether anything is unsaved, screen actions (More actions…) right. Clean, the line says the screen's own state (`cleanStatus`) or “All changes saved”. Never a Save at the foot of a long form: on Patrols it went unseen and a page of moves was lost."
+          >
+            <EditBarCountSpecimen dirty={false} />
+          </Specimen>
+          <Specimen
+            label="Edit bar — unsaved changes"
+            canonical
+            note="While dirty: navy border, “N unsaved changes — Save to keep them” (or the caller's own `status`), and the page is guarded — Back, the sidebar and guarded tabs ask “Discard changes?”, and closing or reloading the tab gets the browser's leave prompt. Any button that only changes the draft (Patrols' Assign) is secondary; the bar's Save is the one primary."
+          >
+            <EditBarCountSpecimen dirty />
+          </Specimen>
         </div>
       </section>
 
@@ -1782,7 +1806,7 @@ export default function StyleguidePage() {
           2026-11-15): ONE form with ONE Save. Every field is always editable in numbered FormSections; emails, household,
           family links, roles and initials are part of the same draft; nothing commits until Save, which writes it all in
           one database transaction. One sticky record bar carries Save / Discard changes, the status line and, on the
-          right, Send sign-in link and More actions&hellip;. The rail lists what is left to fill in and the latest changes.
+          right, Send sign-in link and More actions&hellip; &mdash; the shared EditBar with the record&rsquo;s own status line. The rail lists what is left to fill in and the latest changes.
           Specimens paint from the page&rsquo;s own <code>record.module.css</code>.
         </p>
         <div className={sg.specimenGrid}>

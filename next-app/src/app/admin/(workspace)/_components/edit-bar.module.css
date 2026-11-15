@@ -1,0 +1,41 @@
+/**
+ * EditBar — the one sticky save bar (Plans/Shared-Save-Bar.md). Save + Discard + status on the
+ * left, screen actions on the right; navy border while there are unsaved changes. Tokens only.
+ */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-4);
+  padding: var(--admin-space-4) var(--admin-space-6);
+  margin-bottom: var(--admin-space-7);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-sm);
+}
+.barDirty {
+  border-color: var(--admin-navy);
+  box-shadow: 0 0 0 1px var(--admin-navy), var(--admin-shadow-sm);
+}
+.status {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.status strong { color: var(--admin-gray-900); }
+.barDirty .status strong { color: var(--admin-navy); }
+.right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-3);
+}
+
+@media (max-width: 640px) {
+  .bar { padding: var(--admin-space-3) var(--admin-space-4); }
+}

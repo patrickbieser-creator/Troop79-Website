@@ -198,7 +198,11 @@ specimen: /admin/styleguide/admin → Save Buttons.
 
 **Controls on an edit screen have one hierarchy (Jenna's rule, Patrick 2026-10-05; D-332):** (1) at most ONE primary
 (navy) button is visible per screen state — Save while the draft is dirty, Publish when it is saved and publishable.
-(2) Record-level actions live in ONE sticky bar: Save + Discard changes on the left (with the "Can't save yet" note),
+(2) Record-level actions live in ONE sticky bar — the shared `EditBar` (`_components/edit-bar.tsx`, 2026-11-15,
+Plans/Shared-Save-Bar.md), at the TOP of the screen, never a Save at the foot of a long form. Its status line always says
+whether anything is unsaved ("N unsaved changes — Save to keep them"), and while dirty it guards the page (dirty guard +
+the browser's leave prompt), so a screen keeping its draft in its own state still cannot lose it silently. A button that
+only changes the draft (Patrols' Assign) is secondary. Save + Discard changes on the left (with the "Can't save yet" note),
 Publish + a "More actions…" `ActionsMenu` on the right; Duplicate, Retire/Restore, "make it a …" and Back-to-… live in
 the menu, never as loose buttons; a destructive menu item opens a danger Dialog that names the consequence. (3) Section
 actions ("+ Add …", "New …") are quiet buttons inside their section, below the list they add to — never primary.

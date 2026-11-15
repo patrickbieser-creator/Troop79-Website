@@ -12,7 +12,8 @@ import { Notice } from '../../_components/notice';
 import { Button } from '../../../_components/button';
 import { FormSection } from '../../../_components/form-panel';
 import { ActionsMenu } from '../../_components/actions-menu';
-import { DiscardButton, SaveButton, SaveProblem } from '../../_components/save-state';
+import { SaveProblem } from '../../_components/save-state';
+import { EditBar } from '../../_components/edit-bar';
 import { HistoryChip } from '../../advancement/roster/[personId]/history-rows';
 import type { PersonHistoryEntry } from '../../advancement/roster/[personId]/record-types';
 import pr from '../../advancement/roster/[personId]/person-record.module.css';
@@ -23,11 +24,15 @@ const noop = () => {};
 /** The ONE sticky record bar: Save + Discard + the status line left, actions right. */
 export function RecordBarSpecimen({ dirty }: { dirty: boolean }) {
   return (
-    <div className={[rs.bar, dirty ? rs.barDirty : ''].join(' ')}>
-      <SaveButton dirty={dirty} pending={false} onClick={noop} />
-      <DiscardButton dirty={dirty} onClick={noop} />
-      <span className={rs.barStatus}>
-        {dirty ? (
+    <EditBar
+      specimen
+      ariaLabel="Record actions (specimen)"
+      dirty={dirty}
+      pending={false}
+      onSave={noop}
+      onDiscard={noop}
+      status={
+        dirty ? (
           <>
             <strong>2 unsaved changes:</strong> Patrol, Swim class
             <span className={rs.also}>Saving will also link Jenna Scarpace as parent of Hadley Baquero.</span>
@@ -39,38 +44,61 @@ export function RecordBarSpecimen({ dirty }: { dirty: boolean }) {
               History (5)
             </button>
           </>
-        )}
-      </span>
-      <span className={rs.barRight}>
-        <Button size="sm" onClick={noop}>
-          Send sign-in link
-        </Button>
-        <ActionsMenu
-          ariaLabel="More actions (specimen)"
-          placeholder="More actions…"
-          options={[
-            { value: 'merge', label: 'Merge with another person…' },
-            { value: 'test', label: 'Mark as test record…' },
-            { value: 'd', label: '──────────', disabled: true },
-            { value: 'delete', label: 'Delete Dana Whitlock…' }
-          ]}
-          onAction={noop}
-        />
-      </span>
-    </div>
+        )
+      }
+      right={
+        <>
+          <Button size="sm" onClick={noop}>
+            Send sign-in link
+          </Button>
+          <ActionsMenu
+            ariaLabel="More actions (specimen)"
+            placeholder="More actions…"
+            options={[
+              { value: 'merge', label: 'Merge with another person…' },
+              { value: 'test', label: 'Mark as test record…' },
+              { value: 'd', label: '──────────', disabled: true },
+              { value: 'delete', label: 'Delete Dana Whitlock…' }
+            ]}
+            onAction={noop}
+          />
+        </>
+      }
+    />
   );
 }
 
 /** A blocked save: the button stays enabled, the reason sits beside it. */
 export function RecordBarBlockedSpecimen() {
   return (
-    <div className={`${rs.bar} ${rs.barDirty}`}>
-      <SaveButton dirty pending={false} blocked onBlocked={noop} />
-      <DiscardButton dirty onClick={noop} />
-      <span className={rs.barStatus}>
-        <SaveProblem reason="Pick why the scout is inactive" more={1} />
-      </span>
-    </div>
+    <EditBar
+      specimen
+      ariaLabel="Blocked save (specimen)"
+      dirty
+      pending={false}
+      blocked
+      onBlocked={noop}
+      onSave={noop}
+      onDiscard={noop}
+      status={<SaveProblem reason="Pick why the scout is inactive" more={1} />}
+    />
+  );
+}
+
+/** The default status line any screen gets: a count while dirty, the screen's own clean line otherwise. */
+export function EditBarCountSpecimen({ dirty }: { dirty: boolean }) {
+  return (
+    <EditBar
+      specimen
+      ariaLabel={dirty ? 'Unsaved changes (specimen)' : 'Saved (specimen)'}
+      dirty={dirty}
+      pending={false}
+      saveLabel="Save patrol assignments"
+      onSave={noop}
+      onDiscard={noop}
+      changes={3}
+      cleanStatus="4 scouts still unassigned"
+    />
   );
 }
 

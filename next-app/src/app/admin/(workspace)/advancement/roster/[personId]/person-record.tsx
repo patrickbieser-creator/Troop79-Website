@@ -23,8 +23,8 @@ import { fmtDate } from '@/lib/format-date';
 import { PageTitle } from '../../../_components/page-title';
 import { Badge } from '../../../_components/badge';
 import { Notice } from '../../../_components/notice';
-import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useSavePhase } from '../../../_components/save-state';
-import { useRegisterDirty } from '../../../_components/dirty-guard';
+import { SaveFeedback, SaveProblem, useSavePhase } from '../../../_components/save-state';
+import { EditBar } from '../../../_components/edit-bar';
 import { CrossoverCard } from './crossover-card';
 import { HistoryDialog, type HistoryView } from './history-dialog';
 import { SendSignInLink, type SendLinkResult } from './send-sign-in-link';
@@ -61,16 +61,7 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
     }
   }
 
-  useRegisterDirty(dirty);
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
+  // The dirty guard and the leave prompt come with EditBar (Plans/Shared-Save-Bar.md).
 
   const setDraft = useCallback((fn: (d: RecordDraft) => RecordDraft) => setDraftState((d) => fn(d)), []);
 
@@ -252,70 +243,79 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         }
       />
 
-      <div className={[styles.bar, dirty ? styles.barDirty : ''].join(' ')} role="region" aria-label="Record actions">
-        <SaveButton dirty={dirty} pending={busy} blocked={problems.length > 0} onBlocked={onBlocked} onClick={save} />
-        <DiscardButton dirty={dirty} pending={busy} onClick={discard} />
-        <span className={styles.barStatus} aria-live="polite">
-          {saveError ? (
-            <span className={styles.problem}>{saveError}</span>
-          ) : shownProblems.length > 0 ? (
-            <SaveProblem reason={shownProblems[0].message} more={shownProblems.length - 1} />
-          ) : dirty ? (
-            <>
-              <strong>
-                {changedCount} unsaved change{changedCount === 1 ? '' : 's'}:
-              </strong>{' '}
-              {diff.changed.join(', ')}
-            </>
-          ) : last ? (
-            <>
-              Last change {fmtDate(last.occurredAt)} by {last.actorLabel} ·{' '}
-              <button type="button" className={styles.linkBtn} onClick={() => setHistoryView({ mode: 'log' })}>
-                History ({history.total})
-              </button>
-            </>
-          ) : (
-            'No changes recorded yet'
-          )}
-          {alsoShown.length > 0 && (
-            <span className={styles.also}>
-              Saving will also {alsoShown.some((l) => l.change === 'added') ? 'link ' : ''}
-              {joinNames(alsoShown.filter((l) => l.change === 'added').map((l) => describe(l)))}
-              {alsoShown.some((l) => l.change === 'added') && alsoShown.some((l) => l.change === 'removed') ? ', and remove ' : ''}
-              {!alsoShown.some((l) => l.change === 'added') && alsoShown.some((l) => l.change === 'removed') ? 'remove ' : ''}
-              {joinNames(alsoShown.filter((l) => l.change === 'removed').map((l) => describe(l)))}.
-            </span>
-          )}
-        </span>
-        <span className={styles.barRight}>
-          {(kind !== 'scout' || base.emails.length > 0) && (
-            <SendSignInLink
-              personId={base.personId}
-              kind={kind}
-              emails={base.emails}
-              heldReason={emailsDirty ? 'Save the email changes first' : null}
-              onResult={(r: SendLinkResult) => {
-                setNotice(r);
-                if (r.variant === 'success') router.refresh();
-              }}
-            />
-          )}
-          <MoreActions
-            personId={base.personId}
-            name={name}
-            kind={kind}
-            from={from}
-            active={base.status.active}
-            scout={scout}
-            leaderCode={base.initials?.code ?? null}
-            isTest={base.isTest ?? false}
-            counts={{ emails: base.emails.length, relationships: detail.relationships.length, roles: detail.roles.length }}
-            householdLabel={base.household?.label ?? null}
-            disabled={dirty || busy}
-            onNotice={setNotice}
-          />
-        </span>
-      </div>
+      <EditBar
+        ariaLabel="Record actions"
+        dirty={dirty}
+        pending={busy}
+        blocked={problems.length > 0}
+        onBlocked={onBlocked}
+        onSave={save}
+        onDiscard={discard}
+        status={
+          <>
+              {saveError ? (
+                <span className={styles.problem}>{saveError}</span>
+              ) : shownProblems.length > 0 ? (
+                <SaveProblem reason={shownProblems[0].message} more={shownProblems.length - 1} />
+              ) : dirty ? (
+                <>
+                  <strong>
+                    {changedCount} unsaved change{changedCount === 1 ? '' : 's'}:
+                  </strong>{' '}
+                  {diff.changed.join(', ')}
+                </>
+              ) : last ? (
+                <>
+                  Last change {fmtDate(last.occurredAt)} by {last.actorLabel} ·{' '}
+                  <button type="button" className={styles.linkBtn} onClick={() => setHistoryView({ mode: 'log' })}>
+                    History ({history.total})
+                  </button>
+                </>
+              ) : (
+                'No changes recorded yet'
+              )}
+              {alsoShown.length > 0 && (
+                <span className={styles.also}>
+                  Saving will also {alsoShown.some((l) => l.change === 'added') ? 'link ' : ''}
+                  {joinNames(alsoShown.filter((l) => l.change === 'added').map((l) => describe(l)))}
+                  {alsoShown.some((l) => l.change === 'added') && alsoShown.some((l) => l.change === 'removed') ? ', and remove ' : ''}
+                  {!alsoShown.some((l) => l.change === 'added') && alsoShown.some((l) => l.change === 'removed') ? 'remove ' : ''}
+                  {joinNames(alsoShown.filter((l) => l.change === 'removed').map((l) => describe(l)))}.
+                </span>
+              )}
+          </>
+        }
+        right={
+          <>
+              {(kind !== 'scout' || base.emails.length > 0) && (
+                <SendSignInLink
+                  personId={base.personId}
+                  kind={kind}
+                  emails={base.emails}
+                  heldReason={emailsDirty ? 'Save the email changes first' : null}
+                  onResult={(r: SendLinkResult) => {
+                    setNotice(r);
+                    if (r.variant === 'success') router.refresh();
+                  }}
+                />
+              )}
+              <MoreActions
+                personId={base.personId}
+                name={name}
+                kind={kind}
+                from={from}
+                active={base.status.active}
+                scout={scout}
+                leaderCode={base.initials?.code ?? null}
+                isTest={base.isTest ?? false}
+                counts={{ emails: base.emails.length, relationships: detail.relationships.length, roles: detail.roles.length }}
+                householdLabel={base.household?.label ?? null}
+                disabled={dirty || busy}
+                onNotice={setNotice}
+              />
+          </>
+        }
+      />
       <SaveFeedback phase={phase.phase} />
 
       {(currentTab !== from || notice) && (

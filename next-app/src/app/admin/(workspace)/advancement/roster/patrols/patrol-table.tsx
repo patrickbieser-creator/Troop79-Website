@@ -14,7 +14,9 @@
  * NOTHING SAVES UNTIL SAVE. Every edit lands in a local draft, the counts
  * update live so the shape of the troop is visible while deciding, and one
  * Save writes only the rows that actually changed. That is also what makes
- * Discard meaningful.
+ * Discard meaningful. The Save lives in the shared sticky EditBar at the TOP
+ * (2026-11-15 — at the foot of the table it went unseen and a page of moves
+ * was lost); Assign is secondary, because it only changes the draft.
  */
 
 import { useMemo, useState, useTransition } from 'react';
@@ -35,7 +37,8 @@ import { gradeFromGradYear, gradeLabel } from '@/lib/demographics';
 // name. Shared with the printable roster rather than written twice.
 import { rankLabel, type RosterPrintRank } from '@/lib/roster-print';
 import { Notice } from '../../../_components/notice';
-import { SaveButton, SaveFeedback, useSavePhase } from '../../../_components/save-state';
+import { SaveFeedback, useSavePhase } from '../../../_components/save-state';
+import { EditBar } from '../../../_components/edit-bar';
 import { Button } from '../../../../_components/button';
 import styles from './patrols.module.css';
 import { SearchField, useTableSearch } from '../../../_components/search-field';
@@ -153,6 +156,32 @@ export function PatrolTable({
 
   return (
     <div>
+      <EditBar
+        dirty={changes.length > 0}
+        pending={isPending}
+        saveLabel="Save patrol assignments"
+        onSave={save}
+        onDiscard={() => {
+          setDraft({});
+          setSelected(new Set());
+          setSaved(null);
+          setErr(null);
+        }}
+        changes={changes.length}
+        cleanStatus={
+          unassigned > 0 ? `${unassigned} scout${unassigned === 1 ? '' : 's'} still unassigned` : 'Every scout is in a patrol'
+        }
+      />
+      <SaveFeedback phase={feedback.phase} />
+      {err && <Notice variant="error">{err}</Notice>}
+      {saved !== null && (
+        <Notice variant="success">
+          {saved === 0
+            ? 'Nothing to save — no patrol changed.'
+            : `Saved — ${saved} scout${saved === 1 ? '' : 's'} moved.`}
+        </Notice>
+      )}
+
       <div className={styles.tableToolbar}>
         <SearchField value={q} onChange={setQ} label="Search scouts" />
       </div>
@@ -227,7 +256,7 @@ export function PatrolTable({
         )}
 
         <Button
-          variant="primary"
+          variant="secondary"
           onClick={assignSelected}
           disabled={selected.size === 0}
         >
@@ -284,43 +313,6 @@ export function PatrolTable({
           })}
         </tbody>
       </table>
-
-      {err && <Notice variant="error">{err}</Notice>}
-      {saved !== null && (
-        <Notice variant="success">
-          {saved === 0
-            ? 'Nothing to save — no patrol changed.'
-            : `Saved — ${saved} scout${saved === 1 ? '' : 's'} moved.`}
-        </Notice>
-      )}
-
-      <div className={styles.saveBar}>
-        <span className={styles.saveCount}>
-          {changes.length === 0
-            ? unassigned > 0
-              ? `${unassigned} scout${unassigned === 1 ? '' : 's'} still unassigned`
-              : 'Every scout is in a patrol'
-            : `${changes.length} change${changes.length === 1 ? '' : 's'} pending`}
-        </span>
-        <Button
-          onClick={() => {
-            setDraft({});
-            setSelected(new Set());
-            setSaved(null);
-            setErr(null);
-          }}
-          disabled={changes.length === 0 || isPending}
-        >
-          Discard
-        </Button>
-        <SaveButton
-          dirty={changes.length > 0}
-          pending={isPending}
-          dirtyLabel="Save patrol assignments"
-          onClick={save}
-        />
-        <SaveFeedback phase={feedback.phase} />
-      </div>
     </div>
   );
 }
