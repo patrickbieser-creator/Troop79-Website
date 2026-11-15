@@ -20,6 +20,7 @@ import {
   type FieldValue
 } from '@/lib/change-requests';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { ensureSchoolWith, schoolNameById } from '@/lib/schools';
 
 /**
  * Leader-side review for family-submitted change requests
@@ -144,10 +145,35 @@ export async function approveChangeRequest(id: number): Promise<Result> {
       if (SCOUT_FIELD_TABLE[f] === 'scouts') scoutPatch[field] = value;
       else personPatch[SCOUT_FIELD_PEOPLE_COLUMN[f] ?? field] = value;
     }
+    // A family proposes a school by NAME (picked from the list, or typed as new). The scout points at a
+    // schools row, so resolve the name here — case-insensitively, adding the school if it is new — and
+    // write school_id; scouts.school (text) is retired (lib/schools.ts).
+    if ('school' in scoutPatch) {
+      const name = String(scoutPatch.school ?? '').trim();
+      delete scoutPatch.school;
+      const { data: wasSchool } = await supabase.from('scouts').select('school_id').eq('id', row.entity_id).maybeSingle();
+      before.school = await schoolNameById(supabase, (wasSchool as { school_id: number | null } | null)?.school_id ?? null);
+      if (name) {
+        const resolved = await ensureSchoolWith(supabase, name);
+        if (!resolved.ok) return { ok: false, error: resolved.error };
+        if (resolved.created) {
+          await recordAudit({
+            area: 'roster',
+            action: 'create',
+            entityType: 'school',
+            entityId: resolved.school.id,
+            summary: `Added school "${resolved.school.name}" (from a family's update, change request #${id})`
+          });
+        }
+        scoutPatch.school_id = resolved.school.id;
+      } else {
+        scoutPatch.school_id = null;
+      }
+    }
     if (Object.keys(scoutPatch).length > 0) {
       const { data: was } = await supabase
         .from('scouts')
-        .select(Object.keys(scoutPatch).join(', '))
+        .select(Object.keys(scoutPatch).filter((k) => k !== 'school_id').join(', ') || 'id')
         .eq('id', row.entity_id)
         .maybeSingle();
       Object.assign(before, (was ?? {}) as Record<string, unknown>);

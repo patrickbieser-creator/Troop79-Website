@@ -154,6 +154,7 @@ function scoutRecord(over: Partial<PersonRecordData> = {}): PersonRecordData {
       id: 'W03',
       patrol: 'Falcon',
       current_rank: 'first_class',
+      school_id: null,
       school: 'Riverside',
       graduation_year: 2030,
       swim_class: 'swimmer',
@@ -208,9 +209,9 @@ describe('Person record — pending update banners live in the section they touc
     render(<PersonRecord record={scoutRecord({ pending: scoutRequest() })} from="active_scout" />);
 
     expect(bannerIn('Contact & sign-in')).toBeTruthy();
-    expect(bannerIn('Details')).toBeTruthy();
-    expect(bannerIn('Identity')).toBeNull();
-    expect(bannerIn('Household & family')).toBeNull();
+    expect(bannerIn('School & health')).toBeTruthy();
+    expect(bannerIn('Name & troop')).toBeNull();
+    expect(bannerIn('Family')).toBeNull();
 
     // Each banner lists only its own section's fields, current beside proposed.
     const contact = section('Contact & sign-in');
@@ -218,7 +219,7 @@ describe('Person record — pending update banners live in the section they touc
     expect(within(phoneRow).getByText('(414) 555-0190')).toBeTruthy();
     expect(within(phoneRow).getByText('(414) 555-0191')).toBeTruthy();
     expect(within(contact).queryByRole('row', { name: /Birthdate/ })).toBeNull();
-    const details = section('Details');
+    const details = section('School & health');
     expect(within(details).getByRole('row', { name: /Birthdate/ })).toBeTruthy();
     expect(within(details).queryByRole('row', { name: /Phone/ })).toBeNull();
     expect(within(contact).getByText(/Priya Raman/)).toBeTruthy();
@@ -233,20 +234,20 @@ describe('Person record — pending update banners live in the section they touc
     const contact = section('Contact & sign-in');
 
     // The copy says the click acts on the whole request and names the other section.
-    expect(within(contact).getByText(/This request also changes Details/)).toBeTruthy();
+    expect(within(contact).getByText(/This request also changes Name & membership/)).toBeTruthy();
     await user.click(within(contact).getByRole('button', { name: 'Approve all 2 changes' }));
 
     await waitFor(() => expect(approveChangeRequest).toHaveBeenCalledTimes(1));
     expect(approveChangeRequest).toHaveBeenCalledWith(77);
     await waitFor(() => expect(bannerIn('Contact & sign-in')).toBeNull());
-    expect(bannerIn('Details')).toBeNull();
+    expect(bannerIn('Name & membership')).toBeNull();
     expect(nav.refresh).toHaveBeenCalled();
   });
 
   it('Leader_RejectsWithReason_ReasonIsSent', async () => {
     const user = userEvent.setup();
     render(<PersonRecord record={adultRecord({ pending: adultRequest() })} from="adult" />);
-    const details = section('Details');
+    const details = section('Name & membership');
 
     expect(within(details).queryByLabelText(/Reason/)).toBeNull();
     await user.click(within(details).getByRole('button', { name: 'Reject all 2 changes…' }));
@@ -255,7 +256,7 @@ describe('Person record — pending update banners live in the section they touc
 
     await waitFor(() => expect(rejectChangeRequest).toHaveBeenCalledTimes(1));
     expect(rejectChangeRequest).toHaveBeenCalledWith(77, 'Please use the address on the BSA application');
-    await waitFor(() => expect(bannerIn('Details')).toBeNull());
+    await waitFor(() => expect(bannerIn('Name & membership')).toBeNull());
     expect(bannerIn('Contact & sign-in')).toBeNull();
     expect(approveChangeRequest).not.toHaveBeenCalled();
   });

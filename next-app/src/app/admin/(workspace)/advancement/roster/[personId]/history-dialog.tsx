@@ -20,7 +20,7 @@ import { Button } from '../../../../_components/button';
 import { Notice } from '../../../_components/notice';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../../_components/dialog';
 import { loadFullHistory } from './history-actions';
-import { HistoryRows, NO_DETAIL_TEXT } from './history-section';
+import { HistoryRows, NO_DETAIL_TEXT } from './history-rows';
 import type { PersonHistoryEntry } from './record-types';
 import styles from './person-record.module.css';
 

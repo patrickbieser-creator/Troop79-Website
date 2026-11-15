@@ -12,6 +12,7 @@ import { displayValue, pendingFields, type DraftValues } from '@/lib/profile-dra
 // consumer isn't yet a pattern.
 import { DateField } from '@/app/_components/date-field';
 import { EditField } from './edit-field';
+import { SchoolPicker } from '@/app/_components/school-picker';
 import { EditorActions } from './editor-actions';
 import { fmtDate } from '@/lib/format-date';
 import styles from './profile.module.css';
@@ -63,7 +64,8 @@ export default function ProfileEditor({
   onChange,
   onDiscard,
   submitAction,
-  withdrawAction
+  withdrawAction,
+  schools = []
 }: {
   scout: ScoutProfileFields;
   pending: ChangeRequestRow | null;
@@ -74,6 +76,8 @@ export default function ProfileEditor({
   onDiscard: () => void;
   submitAction: (formData: FormData) => Promise<void>;
   withdrawAction: (formData: FormData) => Promise<void>;
+  /** The active schools' names (lib/schools.ts). Picking "+ Add" proposes a new one in the update. */
+  schools?: readonly string[];
 }) {
   const [isSubmitting, startTransition] = useTransition();
   const queued = pendingFields(pending);
@@ -222,11 +226,12 @@ export default function ProfileEditor({
           previous={displayValue(scout.school)}
         >
           {(a) => (
-            <input
+            <SchoolPicker
               {...a}
-              className={styles.editInput}
+              names={schools}
+              inputClassName={styles.editInput}
               value={values.school ?? ''}
-              onChange={(e) => onChange('school', e.target.value)}
+              onChange={(name) => onChange('school', name)}
             />
           )}
         </EditField>

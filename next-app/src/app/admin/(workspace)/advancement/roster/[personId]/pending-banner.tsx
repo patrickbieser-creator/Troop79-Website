@@ -29,7 +29,7 @@ import { Notice } from '../../../_components/notice';
 import { approveChangeRequest, rejectChangeRequest } from '../change-request-actions';
 import { fieldsInSection, otherSectionsTouched, shownValue, type SectionKey } from './pending-map';
 import type { FamilyNotice, PendingChangeRequest } from './record-types';
-import { Field, FieldGrid } from './section-card';
+import { Field, FieldGrid } from './field-grid';
 import styles from './person-record.module.css';
 
 export function PendingBanner({

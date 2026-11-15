@@ -44,6 +44,7 @@ const scout = (over: Partial<ScoutRow>): ScoutRow => ({
   bsa_member_id: null,
   birthdate: null,
   gender: null,
+  school_id: null,
   school: null,
   graduation_year: null,
   swim_class: null,

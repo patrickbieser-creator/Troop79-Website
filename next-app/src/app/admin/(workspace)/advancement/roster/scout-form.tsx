@@ -22,6 +22,9 @@ import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import styles from '../lookups/lookups.module.css';
 import { FormSection } from '../../../_components/form-panel';
+import { SchoolCombobox } from '../../_components/school-combobox';
+import { useSchools } from '../../_components/use-schools';
+import { addSchool } from '../lookups/school-actions';
 import { Button } from '../../../_components/button';
 
 export interface ScoutRow {
@@ -38,6 +41,9 @@ export interface ScoutRow {
   bsa_member_id: string | null;
   birthdate: string | null;
   gender: 'M' | 'F' | null;
+  /** schools.id (lib/schools.ts). */
+  school_id: number | null;
+  /** The school's name, read through the join — never the retired scouts.school text. */
   school: string | null;
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
@@ -113,7 +119,9 @@ export function ScoutForm({
   const [thingsWeShouldKnow, setThingsWeShouldKnow] = useState('');
   const [birthdate, setBirthdate] = useState('');
   const [gender, setGender] = useState<string>('');
-  const [school, setSchool] = useState('');
+  // schools.id; '' = none. The list comes from listSchools (useSchools).
+  const [schoolId, setSchoolId] = useState('');
+  const { schools } = useSchools();
   const [grade, setGrade] = useState<string>('');
   const [swimClass, setSwimClass] = useState<string>('');
   const [jlOverride, setJlOverride] = useState<string>('');
@@ -123,7 +131,7 @@ export function ScoutForm({
   const { dirty } = useSavedSnapshot(
     JSON.stringify({
       id, firstName, lastName, patrol, bsaMemberId, active, inactiveReason, addr1, addr2, city,
-      stateAbbr, zip, phone, email, healthFormDate, thingsWeShouldKnow, birthdate, gender, school,
+      stateAbbr, zip, phone, email, healthFormDate, thingsWeShouldKnow, birthdate, gender, schoolId,
       grade, swimClass, jlOverride
     })
   );
@@ -183,7 +191,7 @@ export function ScoutForm({
     fd.set('things_we_should_know', thingsWeShouldKnow);
     fd.set('birthdate', birthdate);
     fd.set('gender', gender);
-    fd.set('school', school);
+    fd.set('school_id', schoolId);
     fd.set('graduation_year', grade === '' ? '' : String(gradYearFromGrade(Number(grade))));
     fd.set('swim_class', swimClass);
     fd.set('junior_leader_override', jlOverride);
@@ -322,16 +330,18 @@ export function ScoutForm({
               <option value="F">Female</option>
             </select>
           </label>
-          <label className={styles.editField}>
-            <span className={styles.editLabel}>School</span>
-            <input
-              type="text"
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-              className={styles.editInput}
-              placeholder="e.g. Milwaukee German Immersion"
+          <div className={styles.editField}>
+            <label className={styles.editLabel} htmlFor="new-scout-school">
+              School
+            </label>
+            <SchoolCombobox
+              id="new-scout-school"
+              schools={schools}
+              value={schoolId === '' ? null : Number(schoolId)}
+              onChange={(id) => setSchoolId(id == null ? '' : String(id))}
+              onAddSchool={addSchool}
             />
-          </label>
+          </div>
           <label className={styles.editField}>
             <span className={styles.editLabel}>
               Grade{grade !== '' ? ` · class of ${gradYearFromGrade(Number(grade))}` : ''}

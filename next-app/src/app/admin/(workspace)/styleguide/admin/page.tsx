@@ -28,15 +28,15 @@ import { EditorPromptsSpecimen } from './editor-prompts-specimen';
 import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
 import { fmtDate, fmtDateLong, fmtDateFull, fmtDay, fmtDateTime, fmtMonthYear, fmtRange, fmtWhen } from '@/lib/format-date';
-import { ActionsMenuSpecimen, AdminAddRowSpecimen, BucketPickerSpecimen, AdminNumberBoxSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
+import { ActionsMenuSpecimen, AdminAddRowSpecimen, BucketPickerSpecimen, SchoolComboboxHiddenSpecimen, SchoolComboboxSpecimen, AdminNumberBoxSpecimen, ComboboxInvalidSpecimen, ComboboxSpecimen, GearPickerSpecimen, GearPickerNoMatchSpecimen, DangerConfirmSpecimen, SearchFieldSpecimen, SortHeaderSpecimen } from './specimens';
 import {
-  DangerZoneSpecimen,
+  FamilyListSpecimen,
   HistoryChipSpecimen,
-  ImmediateBlockSpecimen,
   PendingBannerSpecimen,
-  SectionEditingSpecimen,
-  SectionReadSpecimen,
-  StatusRowSpecimen
+  RecordBarBlockedSpecimen,
+  RecordBarSpecimen,
+  RecordFieldsSpecimen,
+  ToFinishSpecimen
 } from './person-record-specimen';
 import { TabStrip } from '../../_components/tab-strip';
 import { AddButton } from '../../_components/add-button';
@@ -290,12 +290,12 @@ const SCOREBOARD: {
   },
   {
     pattern: 'Person editors (roster)',
-    copies: '✓ DONE — 1 record page, 0 dialogs (Phase 6, 2026-09-07)',
+    copies: '✓ DONE — 1 record page, 0 dialogs, 1 Save (2026-11-15)',
     canonical:
-      '✓ SHIPPED: advancement/roster/[personId] — per-section Edit → dirty-gated Save/Cancel (SectionCard), immediate blocks, Status read row, pending banners per section, History, Danger zone; roster rows link to it',
+      '✓ SHIPPED: advancement/roster/[personId] — one form, one Save (Plans/Person-Record-One-Save.md): numbered FormSections always editable, one sticky record bar (Save / Discard / status · Send sign-in link / More actions…), To finish + Recent changes rail, pending banners per section; one save_person_record transaction',
     phase: 'D',
     notes:
-      'Retired the same day: people-table’s PersonEditor dialog (status / demographics / emails / household / roles / relationships / merge / delete), ScoutForm’s edit branch (create-once “+ Add Scout” stays), scout-relations.tsx, pending-update-panel.tsx. Save-model rule amended in AGENTS.md: per-section Edit is a valid alternative to one whole-form dirty gate'
+      'Retired the same day: people-table’s PersonEditor dialog (status / demographics / emails / household / roles / relationships / merge / delete), ScoutForm’s edit branch (create-once “+ Add Scout” stays), scout-relations.tsx, pending-update-panel.tsx. 2026-11-15 retired the per-section Edit model (SectionCard, immediate blocks, Status card, Danger zone, side cards, fact strip) for one draft and one Save; AGENTS.md rule replaced accordingly'
   },
   {
     pattern: 'Eyebrow labels (12px/600 sentence case since calm R5; was 11px/700/uppercase)',
@@ -814,6 +814,27 @@ export default function StyleguidePage() {
           <div className={sg.specimen}>
             <div className={sg.specimenLabel}>Marked</div>
             <ComboboxInvalidSpecimen />
+          </div>
+        </div>
+        <h3 className={sg.sectionHead}>School picker</h3>
+        <p className={sg.sectionNote}>
+          The Combobox with its three extras on (2026-11-15, Plans/Person-Record-One-Save.md): <code>highlight</code>{' '}
+          bolds the typed text in each option, <code>toggle</code> adds a &#9662; that opens and closes the list, and{' '}
+          <code>extraOption</code> ends the list with &ldquo;+ Add &ldquo;&hellip;&rdquo; as a new school&rdquo;, which
+          opens a small dialog for the full name and picks the row <code>addSchool</code> returns. No Add when the typed
+          text already names a school (case ignored). Hidden schools aren&rsquo;t offered, but a scout&rsquo;s current
+          one still shows. <code>_components/school-combobox.tsx</code>: scout create form and the record page;
+          families get the public twin (<code>src/app/_components/school-picker.tsx</code>, /admin/styleguide/public).
+          The list itself is Lookups &amp; Admin &rsaquo; Schools.
+        </p>
+        <div className={sg.specimenGrid}>
+          <div className={`${sg.specimen} ${sg.specimenCanonical}`}>
+            <div className={sg.specimenLabel}>Canonical — type &ldquo;wood&rdquo;, then &ldquo;Golda Meir&rdquo;</div>
+            <SchoolComboboxSpecimen />
+          </div>
+          <div className={sg.specimen}>
+            <div className={sg.specimenLabel}>A hidden school still shows</div>
+            <SchoolComboboxHiddenSpecimen />
           </div>
         </div>
       </section>
@@ -1757,61 +1778,67 @@ export default function StyleguidePage() {
       <section className={sg.section}>
         <h2 className={sg.sectionHead}>Person Record Page</h2>
         <p className={sg.sectionNote}>
-          The roster&rsquo;s record page (<code>advancement/roster/[personId]/</code>, Plans/Person-Editor-Rethink.md,
-          2026-09-07): read-only by default, each section with exactly ONE Edit that turns just that section into a
-          form with its own dirty-gated Save and a Cancel that restores the last-saved values; one section editable at
-          a time. One-click actions sit outside every form in a labelled &ldquo;Takes effect immediately&rdquo; block.
-          Every specimen below paints from the page&rsquo;s own <code>person-record.module.css</code>.
+          The roster&rsquo;s record page (<code>advancement/roster/[personId]/</code>, Plans/Person-Record-One-Save.md,
+          2026-11-15): ONE form with ONE Save. Every field is always editable in numbered FormSections; emails, household,
+          family links, roles and initials are part of the same draft; nothing commits until Save, which writes it all in
+          one database transaction. One sticky record bar carries Save / Discard changes, the status line and, on the
+          right, Send sign-in link and More actions&hellip;. The rail lists what is left to fill in and the latest changes.
+          Specimens paint from the page&rsquo;s own <code>record.module.css</code>.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Section card — read mode (SectionCard + ReadRows / ReadRow)"
+            label="Record bar — clean"
             canonical
-            note="Heading, the one Edit, definition-list rows (· derived for computed values, — for empty), and at most one “How this works” disclosure (D-070). No standing hint paragraphs anywhere on the page."
+            note="Saved (greyed) + Discard changes (greyed) + “Last change <date> by <who> · History (N)”. Send sign-in link acts at once (it is not an edit) but is greyed while the email list has unsaved changes; More actions… (an ActionsMenu) holds Move to adults, Merge, Mark as test record and Delete last — each opens a dialog naming the consequence, and the menu is greyed while the draft is dirty."
           >
-            <SectionReadSpecimen />
+            <RecordBarSpecimen dirty={false} />
           </Specimen>
           <Specimen
-            label="Section card — editing (FieldGrid / Field + SectionFormActions)"
+            label="Record bar — unsaved changes"
             canonical
-            note="Edit is hidden while editing; Cancel is the way out and restores the LAST SAVED values. Save is the shared SaveButton: disabled with “No changes to save yet” until the draft differs, “Save changes” when dirty, greyed with the reason when a required name is blank, Saving… → Done via SaveFeedback. Opening a second section’s Edit while this one is dirty prompts to discard (SectionEditProvider)."
+            note="The status line names what changed; knock-on family links from the database’s own dry run are spelled out before Save (“Saving will also link …”). The one primary on the page is Save."
           >
-            <SectionEditingSpecimen />
+            <RecordBarSpecimen dirty />
           </Specimen>
           <Specimen
-            label="Takes effect immediately (ImmediateBlock)"
-            canonical
-            note="Emails, roles and relationships commit on click, so they never sit inside a draft form: a dashed block with a TEXT tag (never colour-only), its own error / success line, and a list whose row actions are Buttons. A control that would do nothing is greyed with a title saying why."
+            label="Record bar — blocked save"
+            note="Save stays enabled on an incomplete draft (D-331): a click marks every bad field in place, focuses the first and puts “Can’t save yet: <reason> (+N more)” beside the button."
           >
-            <ImmediateBlockSpecimen />
+            <RecordBarBlockedSpecimen />
           </Specimen>
           <Specimen
-            label="Status read row (status-card)"
+            label="Section fields — unsaved and problem states"
             canonical
-            note="Badge + the one-line consequence, ONE Edit. Edit opens the reason panel; “Mark inactive…” confirms in the danger Dialog. No Save / Saved button exists here by design — a grey “Saved” under an immediate status change was the bug that started the rethink. Identical for scouts and adults."
+            note="No per-section Edit. An unsaved change has the navy outline; a field with a problem the red outline and a sentence under it. Status is a SegmentedControl inside section 1; choosing Inactive reveals the reason."
           >
-            <StatusRowSpecimen />
+            <RecordFieldsSpecimen />
+          </Specimen>
+          <Specimen
+            label="Family — one list"
+            canonical
+            note="Household select, then every other member (and anyone linked from outside it) with a relationship select read from this record’s side, then one quiet “+ Person to household”. A changed row is tinted. Links are stored once and shown from both people’s records."
+          >
+            <FamilyListSpecimen />
+          </Specimen>
+          <Specimen
+            label="Rail — To finish"
+            canonical
+            note="Derived from the saved record (YPT, health form, verified address, BSA ID, an optional role); each item focuses its field. Replaces the fact strip and the side cards."
+          >
+            <ToFinishSpecimen />
           </Specimen>
           <Specimen
             label="Pending update banner (pending-banner)"
             canonical
-            note="The family’s change request, INSIDE the section it touches, in the shared warning Notice (no new pending class family) with a Field / Current / Proposed table. One request, one decision: Approve / Reject from any section act on the whole request, and the buttons say so when it also touches other sections."
+            note="The family’s change request at the top of the section it touches, in the shared warning Notice with a Field / Current / Proposed table. One request, one decision: Approve / Reject from any section act on the whole request."
           >
             <PendingBannerSpecimen />
           </Specimen>
           <Specimen
-            label="History row + chip (history-section)"
-            canonical
-            note="Date · actor — summary, then a chip: hover shows “Field: old → new” per line, click opens the Field / Was / Now dialog. A row logged before the audit log kept field detail shows the muted “summary only” chip. Values live in details, never in the summary (D-257)."
+            label="History row + chip (history-rows, full-log dialog)"
+            note="Date · actor — summary, then a chip: hover shows “Field: old → new” per line, click opens the Field / Was / Now view. A row logged before field detail was kept shows the muted “summary only” chip (D-257)."
           >
             <HistoryChipSpecimen />
-          </Specimen>
-          <Specimen
-            label="Danger zone (collapsed disclosure)"
-            canonical
-            note="Promote / merge / delete behind one Show — no standing prose; the consequences live in the confirm dialogs, which Merge and Delete BOTH open (outlined danger Buttons in place, solid danger only on the Dialog’s confirm). Delete is greyed with the reason while a scout or leader record is attached."
-          >
-            <DangerZoneSpecimen />
           </Specimen>
         </div>
       </section>

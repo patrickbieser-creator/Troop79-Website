@@ -23,7 +23,7 @@ import { Notice } from '../../../_components/notice';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../../_components/dialog';
 import { DatePickerField } from '../../../_components/date-picker-field';
 import { crossOverWebelos, undoCrossOver } from './scout-status-actions';
-import { Field, FieldGrid } from './section-card';
+import { Field, FieldGrid } from './field-grid';
 import styles from './person-record.module.css';
 
 export function CrossoverCard({

@@ -11,6 +11,7 @@ import type { FieldValue } from '@/lib/change-requests';
 import type { PersonEmailRow } from '@/lib/person-emails';
 import type { InactiveReason } from '@/lib/supabase/types';
 import type { PersonDetail } from '../person-actions';
+import type { School } from '@/lib/schools';
 
 export type RosterTab = 'active_scout' | 'webelos' | 'inactive_scout' | 'leader' | 'adult';
 export type PersonKind = 'scout' | 'leader' | 'adult';
@@ -63,6 +64,9 @@ export interface ScoutRecordRow {
   id: string;
   patrol: string | null;
   current_rank: string | null;
+  /** schools.id (lib/schools.ts); null = no school. */
+  school_id: number | null;
+  /** The school's NAME, read through the schools join — the retired scouts.school text is never read. */
   school: string | null;
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
@@ -80,6 +84,20 @@ export interface HouseholdMember {
   name: string;
   kind: PersonKind;
   active: boolean;
+}
+
+/** One row of the Family section (Plans/Person-Record-One-Save.md): every other member of
+ *  the person's household, plus anyone outside it they have a link with. `links` are the
+ *  stored relationship rows between the two, read from this record's side. */
+export interface FamilyRow {
+  personId: number;
+  name: string;
+  kind: PersonKind;
+  /** A scout or Webelos (person_directory's youth tabs) — decides the select's choices. */
+  youth: boolean;
+  inHousehold: boolean;
+  active: boolean;
+  links: { id: number; type: string; outgoing: boolean }[];
 }
 
 export interface PersonStatus {
@@ -171,6 +189,12 @@ export interface PersonRecord {
   household: { id: number; label: string; members: HouseholdMember[] } | null;
   /** Every household, for the Family section's draft picker. */
   households: HouseholdChoice[];
+  /** The Family section's one list. Optional only so an older fixture still type-checks. */
+  family?: FamilyRow[];
+  /** This person is a scout or Webelos (person_directory's youth tabs). */
+  youth?: boolean;
+  /** Every school, hidden ones too, for a scout's School picker (empty for adults). */
+  schools?: School[];
   /** Which row the Status card acts on: the scout's for a scout tab, the
    *  person's otherwise. */
   status: PersonStatus;

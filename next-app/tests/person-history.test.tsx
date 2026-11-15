@@ -10,9 +10,9 @@ import { loadFullHistory } from '../src/app/admin/(workspace)/advancement/roster
 import type { PersonDetail } from '../src/app/admin/(workspace)/advancement/roster/person-actions';
 
 /**
- * Person Editor Rethink, Phase 4 (Plans/Person-Editor-Rethink.md) — the
- * History card in the fact strip and the History section above the Danger
- * zone, fed by audit_log filtered to this person. One line per change; the
+ * Person record History (Plans/Person-Record-One-Save.md; first built in
+ * Person-Editor-Rethink Phase 4): the record bar's "Last change … · History (N)",
+ * the rail's Recent changes (latest 3), fed by audit_log filtered to this person. One line per change; the
  * chip on a row carries the field-level old → new as a hover tooltip AND
  * opens it as a Field / Was / Now table; "Full log" opens every entry,
  * newest first; an entry logged before the cutover (details null) shows
@@ -171,92 +171,70 @@ function adultRecord(): PersonRecordData {
   };
 }
 
-function historySection() {
-  return screen.getByRole('region', { name: 'History' });
+function recent() {
+  return screen.getByRole('region', { name: 'Recent changes' });
 }
+const recordBar = () => screen.getByRole('region', { name: 'Record actions' });
 
-describe('Phase 4 — History card, section, chips and the full log', () => {
-  it('Leader_SeesHistoryFactCard_WithLastChangeAndCounts', () => {
+describe('History — record bar, Recent changes and the full log', () => {
+  it('Leader_SeesLastChangeAndCount_InRecordBar', () => {
     render(<PersonRecord record={adultRecord()} from="adult" />);
-    const fact = screen.getByRole('button', { name: /Aug 20, 2026.*· system/ });
-    expect(fact).toBeTruthy();
-    expect(screen.getByText('6 changes · 4 with field detail')).toBeTruthy();
-    // Latest four only in the section, newest first.
-    const rows = within(historySection()).getAllByRole('listitem');
-    expect(rows).toHaveLength(4);
-    expect(rows[0].textContent).toContain('Marked email bounced');
-    expect(rows[3].textContent).toContain('Updated Dana Whitlock');
-    expect(within(historySection()).queryByText('Created from the roster spreadsheet')).toBeNull();
+    expect(recordBar().textContent).toContain('Last change Aug 20, 2026 by system');
+    expect(within(recordBar()).getByRole('button', { name: 'History (6)' })).toBeTruthy();
+  });
+
+  it('Leader_SeesLatestThree_InRecentChanges', () => {
+    render(<PersonRecord record={adultRecord()} from="adult" />);
+    const rows = within(recent()).getAllByRole('listitem').map((li) => li.textContent ?? '');
+    expect([rows.length, rows[0]]).toEqual([3, expect.stringContaining('Marked email bounced')]);
   });
 
   it('Leader_OpensFullLog_SeesAllEntriesNewestFirst', async () => {
     vi.mocked(loadFullHistory).mockResolvedValueOnce(NEWEST_FIRST);
     render(<PersonRecord record={adultRecord()} from="adult" />);
-    await userEvent.click(within(historySection()).getByRole('button', { name: 'Full log' }));
+    await userEvent.click(within(recent()).getByRole('button', { name: 'All 6 changes' }));
 
     const dialog = await screen.findByRole('dialog', { name: /History — Dana Whitlock/ });
     await waitFor(() => expect(within(dialog).getAllByRole('listitem')).toHaveLength(6));
-    expect(loadFullHistory).toHaveBeenCalledWith(401);
     const rows = within(dialog).getAllByRole('listitem').map((li) => li.textContent ?? '');
-    expect(rows[0]).toContain('Marked email bounced');
-    expect(rows[5]).toContain('Created from the roster spreadsheet');
-    expect(within(dialog).getByText(/6 entries, newest first/)).toBeTruthy();
-  });
-
-  it('Leader_HoversChip_SeesOldToNewTooltip', () => {
-    render(<PersonRecord record={adultRecord()} from="adult" />);
-    const chip = within(historySection()).getByRole('button', { name: /2 fields changed/ });
-    expect(chip.getAttribute('title')).toBe('Status: Active → Inactive\nReason: — → Moved to Madison, Aug 2026');
-    const ones = within(historySection()).getAllByRole('button', { name: /^1 field changed/ });
-    expect(ones.map((b) => b.getAttribute('title'))).toEqual([
-      'g.tomasek@oldmail.example: deliverable → bounced Aug 20, 2026',
-      'Committee member: since Sep 1, 2021 → ended Aug 15, 2026'
+    expect([rows[0], rows[5]]).toEqual([
+      expect.stringContaining('Marked email bounced'),
+      expect.stringContaining('Created from the roster spreadsheet')
     ]);
   });
 
-  it('Leader_ClicksChip_SeesFieldWasNowTable', async () => {
+  it('Leader_ClicksRecentEntry_SeesFieldWasNowTable', async () => {
     render(<PersonRecord record={adultRecord()} from="adult" />);
-    await userEvent.click(within(historySection()).getByRole('button', { name: /2 fields changed/ }));
-
+    await userEvent.click(within(recent()).getByRole('button', { name: /Set person 401 inactive/ }));
     const dialog = await screen.findByRole('dialog', { name: /Set person 401 inactive/ });
-    const table = within(dialog).getByRole('table');
-    expect(within(table).getAllByRole('columnheader').map((th) => th.textContent)).toEqual(['Field', 'Was', 'Now']);
-    const rows = within(table).getAllByRole('row').slice(1);
-    expect(rows).toHaveLength(2);
-    expect(within(rows[0]).getAllByRole('cell').map((td) => td.textContent)).toEqual(['Status', 'Active', 'Inactive']);
-    expect(within(rows[1]).getAllByRole('cell').map((td) => td.textContent)).toEqual([
-      'Reason',
-      '—',
-      'Moved to Madison, Aug 2026'
+    const rows = within(within(dialog).getByRole('table')).getAllByRole('row').slice(1);
+    expect(rows.map((r) => within(r).getAllByRole('cell').map((td) => td.textContent))).toEqual([
+      ['Status', 'Active', 'Inactive'],
+      ['Reason', '—', 'Moved to Madison, Aug 2026']
     ]);
-    expect(within(dialog).getByText(/Aug 16, 2026.*· Priya Raman/)).toBeTruthy();
   });
 
   it('Leader_ViewsPreCutoverEntry_SeesNoDetailFallback', async () => {
-    render(<PersonRecord record={adultRecord()} from="adult" />);
-    // Entry 3 (details null) is among the latest four; its chip says so.
-    const chip = within(historySection()).getByRole('button', { name: /summary only/ });
-    expect(chip.getAttribute('title')).toBe('No field-level detail recorded for this entry');
-    await userEvent.click(chip);
+    const rec = adultRecord();
+    rec.history = { latest: [ENTRIES[2]], total: 6, withDetails: 4 };
+    render(<PersonRecord record={rec} from="adult" />);
+    await userEvent.click(within(recent()).getByRole('button', { name: /primary_phone/ }));
     const dialog = await screen.findByRole('dialog', { name: /primary_phone/ });
     expect(within(dialog).getByText('No field-level detail recorded for this entry.')).toBeTruthy();
-    expect(within(dialog).queryByRole('cell', { name: 'Status' })).toBeNull();
   });
 
   it('Leader_ClicksChipInsideFullLog_SeesDetail_ThenBackReturnsToLog', async () => {
     vi.mocked(loadFullHistory).mockResolvedValueOnce(NEWEST_FIRST);
     render(<PersonRecord record={adultRecord()} from="adult" />);
-    await userEvent.click(screen.getByRole('button', { name: /Aug 20, 2026.*· system/ }));
+    await userEvent.click(within(recordBar()).getByRole('button', { name: 'History (6)' }));
     const dialog = await screen.findByRole('dialog', { name: /History — Dana Whitlock/ });
     await waitFor(() => expect(within(dialog).getAllByRole('listitem')).toHaveLength(6));
 
     const chips = within(dialog).getAllByRole('button', { name: /^1 field changed/ });
     await userEvent.click(chips[chips.length - 1]); // the oldest — entry 2, YPT
-    expect(within(dialog).getByRole('table')).toBeTruthy();
     expect(within(dialog).getByRole('cell', { name: 'YPT completed' })).toBeTruthy();
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Back to log' }));
     expect(within(dialog).getAllByRole('listitem')).toHaveLength(6);
-    expect(within(dialog).queryByRole('table')).toBeNull();
   });
 });

@@ -19,11 +19,11 @@ import type { PendingChangeRequest, PersonRecord } from './record-types';
 
 export type SectionKey = 'identity' | 'details' | 'contact' | 'family';
 
-export const SECTION_TITLE: Record<SectionKey, string> = {
-  identity: 'Identity',
-  details: 'Details',
-  contact: 'Contact & sign-in',
-  family: 'Household & family'
+/** The record page's section titles (Plans/Person-Record-One-Save.md): an adult's
+ *  'details' fields live in Name & membership, a scout's in School & health. */
+export const SECTION_TITLE: Record<PendingChangeRequest['entityType'], Record<SectionKey, string>> = {
+  adult: { identity: 'Name & membership', details: 'Name & membership', contact: 'Contact & sign-in', family: 'Family' },
+  scout: { identity: 'Name & troop', details: 'School & health', contact: 'Contact & sign-in', family: 'Family' }
 };
 
 const CONTACT_ADULT = ['primary_email', 'primary_phone', 'address_line1', 'address_line2', 'city', 'state', 'zip'] as const;
@@ -66,7 +66,8 @@ export function otherSectionsTouched(request: PendingChangeRequest, section: Sec
     const s = sectionOfField(request.entityType, key);
     if (s && s !== section) seen.add(s);
   }
-  return (Object.keys(SECTION_TITLE) as SectionKey[]).filter((k) => seen.has(k)).map((k) => SECTION_TITLE[k]);
+  const titles = SECTION_TITLE[request.entityType];
+  return [...new Set((Object.keys(titles) as SectionKey[]).filter((k) => seen.has(k)).map((k) => titles[k]))];
 }
 
 /** The record's current values keyed by the REQUEST's field names, so the

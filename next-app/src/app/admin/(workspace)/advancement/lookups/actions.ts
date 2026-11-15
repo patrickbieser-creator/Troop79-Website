@@ -24,6 +24,7 @@ import { parseTeachMinutes } from '@/lib/meeting-board-picklist';
 import { normalizeClassCodes } from '@/lib/requirement-class';
 import { expireMeetingCategories, expirePeopleLists } from '@/lib/people-lists';
 import { suggestInitials } from '@/lib/sign-off-initials';
+import { schoolNameById } from '@/lib/schools';
 
 /** The event-tab kinds an event can be classified as — Day Outing/Fundraiser
  *  have no natural quantity of their own, Camping/Hiking are implied by
@@ -84,6 +85,11 @@ function readDemoFields(formData: FormData): ScoutDemoFields {
   };
 }
 
+function schoolIdOf(raw: string | null): number | null {
+  const n = Number(raw);
+  return raw && Number.isInteger(n) && n > 0 ? n : null;
+}
+
 /** Scout-only demographics (Scoutbook parity, 2026-07-13). */
 function readScoutExtras(formData: FormData) {
   const str = (k: string) => {
@@ -94,7 +100,8 @@ function readScoutExtras(formData: FormData) {
   const jl = str('junior_leader_override');
   return {
     gender: str('gender'),
-    school: str('school'),
+    // schools.id from the school picker; blank = no school. scouts.school (text) is retired.
+    school_id: schoolIdOf(str('school_id')),
     graduation_year: gradYearRaw ? Number(gradYearRaw) : null,
     swim_class: str('swim_class'),
     // Junior Leader override for event sign-ups (Plans/Participant-
@@ -120,7 +127,8 @@ export interface ScoutIdentityInput {
 }
 
 export interface ScoutFieldsInput {
-  school?: string | null;
+  /** schools.id; null = no school. */
+  school_id?: number | null;
   graduation_year?: number | null;
   swim_class?: string | null;
   junior_leader_override?: 'yes' | 'no' | null;
@@ -280,7 +288,7 @@ export async function createScout(formData: FormData): Promise<Result> {
     inactive_reason: inactiveReason,
     is_webelos: isWebelos,
     person_id: personId,
-    school: extras.school,
+    school_id: extras.school_id,
     graduation_year: extras.graduation_year,
     swim_class: extras.swim_class,
     junior_leader_override: extras.junior_leader_override
@@ -366,7 +374,7 @@ export async function updateScout(formData: FormData): Promise<Result> {
       // it in sync with rank_award ledger rows.
       active,
       inactive_reason: inactiveReason,
-      school: extras.school,
+      school_id: extras.school_id,
       graduation_year: extras.graduation_year,
       swim_class: extras.swim_class,
       junior_leader_override: extras.junior_leader_override
@@ -541,7 +549,11 @@ export async function updateScoutFields(scoutId: string, input: ScoutFieldsInput
 
   // Only the keys present are written — an absent key leaves the column alone.
   const patch: Record<string, unknown> = {};
-  if ('school' in input) patch.school = input.school?.trim() || null;
+  if ('school_id' in input) {
+    const sid = input.school_id ?? null;
+    if (sid != null && (!Number.isInteger(sid) || sid <= 0)) return { ok: false, error: `Invalid school: ${sid}` };
+    patch.school_id = sid;
+  }
   if ('graduation_year' in input) {
     const y = input.graduation_year;
     if (y != null && (!Number.isInteger(y) || y < 1900 || y > 2200)) {
@@ -577,8 +589,12 @@ export async function updateScoutFields(scoutId: string, input: ScoutFieldsInput
   const details: AuditDetail[] = [];
   for (const k of keys) {
     if ((was[k] ?? null) === (patch[k] ?? null)) continue;
-    if (k === 'school') {
-      details.push({ field: 'School', from: (was[k] as string | null) ?? '—', to: (patch[k] as string | null) ?? '—' });
+    if (k === 'school_id') {
+      const [from, to] = await Promise.all([
+        schoolNameById(supabase, (was[k] as number | null) ?? null),
+        schoolNameById(supabase, (patch[k] as number | null) ?? null)
+      ]);
+      details.push({ field: 'School', from: from ?? '—', to: to ?? '—' });
     } else if (k === 'graduation_year') {
       details.push({ field: 'Grade', from: gradeValue(was[k] as number | null), to: gradeValue(patch[k] as number | null) });
     } else if (k === 'swim_class') {

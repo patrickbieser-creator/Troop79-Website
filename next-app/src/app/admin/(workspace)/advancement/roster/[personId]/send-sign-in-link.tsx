@@ -19,7 +19,7 @@ import styles from './person-record.module.css';
 /** Copy for every way sendSignInLink() can fail to send — a leader acting
  *  from the roster is allowed to be told the truth. */
 const SEND_LINK_REASON: Record<'unreachable' | 'rate-limited' | 'failed', string> = {
-  unreachable: 'Add an email address first (Contact & sign-in).',
+  unreachable: 'Add an email address first (Contact & sign-in), then Save.',
   'rate-limited': 'Already sent recently — try again in a few minutes.',
   failed: "Couldn't send the link — try again."
 };
@@ -33,12 +33,15 @@ export function SendSignInLink({
   personId,
   kind,
   emails,
-  onResult
+  onResult,
+  heldReason
 }: {
   personId: number;
   kind: PersonKind;
   emails: PersonEmailRow[];
   onResult: (result: SendLinkResult) => void;
+  /** Greyed with this reason while the email list has unsaved changes (one Save, 2026-11-15). */
+  heldReason?: string | null;
 }) {
   const [emailId, setEmailId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -78,9 +81,11 @@ export function SendSignInLink({
       )}
       <Button
         size="sm"
-        disabled={busy || none}
+        disabled={busy || none || !!heldReason}
         title={
-          none
+          heldReason
+            ? heldReason
+            : none
             ? kind === 'scout'
               ? 'No email on file — signs in through a parent'
               : 'Add an email address first (Contact & sign-in)'

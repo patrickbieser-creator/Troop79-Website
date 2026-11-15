@@ -77,6 +77,8 @@ interface Props {
   addEmailAction: (formData: FormData) => Promise<void>;
   setPrimaryEmailAction: (formData: FormData) => Promise<void>;
   removeEmailAction: (formData: FormData) => Promise<void>;
+  /** The active schools' names, for the scout form's school picker. */
+  schools?: readonly string[];
 }
 
 /** The editable field list for a member's kind. */
@@ -139,7 +141,8 @@ export default function HouseholdMembers({
   selfEmails,
   addEmailAction,
   setPrimaryEmailAction,
-  removeEmailAction
+  removeEmailAction,
+  schools = []
 }: Props) {
   const [selected, setSelected] = useState<MemberKey | null>(
     initialKey && members.some((m) => m.key === initialKey) ? initialKey : (members[0]?.key ?? null)
@@ -268,6 +271,7 @@ export default function HouseholdMembers({
               onDiscard={() => discard(current.key)}
               submitAction={submitScoutAction}
               withdrawAction={withdrawAction}
+              schools={schools}
             />
           ) : (
             <AdultEditor

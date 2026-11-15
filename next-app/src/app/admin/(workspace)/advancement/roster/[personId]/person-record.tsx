@@ -1,147 +1,189 @@
 'use client';
 
 /**
- * The person record shell (Plans/Person-Editor-Rethink.md, Direction A):
- * header (name, kind + status pills, ids, primary contact, Send sign-in
- * link), the fact strip, then two columns — the Status card and the
- * sections in the main column, the Household / Sign-in / Where-they-appear
- * cards at the side.
+ * The person record page, one form / one Save (Plans/Person-Record-One-Save.md; replaces
+ * the per-section Edit model of Person-Editor-Rethink Direction A).
  *
- * Phase 2 made the sections real: Identity (scouts), Details, Contact &
- * sign-in and Household & family each own a per-section Edit → Save/Cancel
- * form (section-card.tsx), one editable at a time under SectionEditProvider.
- * Phase 3 added what commits on click: the "Takes effect immediately" blocks
- * (emails inside Contact, relationships inside Family, Roles as its own
- * section), the collapsed Danger zone (merge / delete / promote) and the
- * header's Send sign-in link. The shell keeps the LIVE copies of emails,
- * roles, relationships and the adult's roster tab: a block refetches after
- * its action and hands the fresh rows up here, so the header, facts, side
- * cards and the "now appears under …" notice follow without a round trip;
- * router.refresh() then re-renders the server's view underneath.
- * Phase 4 added History: a fact-strip card and a section above the Danger
- * zone, rendered straight from the server's `record.history` (the
- * audit_log filtered to this person), so that same router.refresh() after
- * any action is what brings the new row in; the full-log / detail dialog is
- * owned here because both the card and the section open it.
- * Phase 5 put the family's pending update INSIDE the sections it touches
- * (pending-banner.tsx): the shell hands each section the banner for its own
- * fields; Approve / Reject from any one of them decides the whole request,
- * after which the shell drops it everywhere at once. The "Added by a family"
- * notice sits at the top of the main column with its single Acknowledge.
+ * Header (name, badges, one line of contact facts), then ONE sticky record bar — Save /
+ * Discard changes and a status line on the left, Send sign-in link and More actions… on
+ * the right — then the numbered sections in the main column and the rail (To finish,
+ * Recent changes) beside them.
+ *
+ * Everything a leader can change here is ONE draft (record-draft.ts): fields, status,
+ * emails, household, family links, roles and initials. Save sends the whole draft to
+ * savePersonRecord, which diffs it against the saved record and commits it in one
+ * database transaction. While the draft touches the household or family, a debounced
+ * preview names the links the save would ALSO add or end ("Saving will also link …").
+ * After a save, router.refresh() brings the new record and the draft resets to it.
  */
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ageOn, gradeFromGradYear, gradeLabel, yptStatus } from '@/lib/demographics';
 import { fmtDate } from '@/lib/format-date';
-import type { PersonEmailRow } from '@/lib/person-emails';
 import { PageTitle } from '../../../_components/page-title';
 import { Badge } from '../../../_components/badge';
 import { Notice } from '../../../_components/notice';
-import type { PersonDetail } from '../person-actions';
-import { StatusCard, reasonLabel } from './status-card';
-import { SectionEditProvider } from './section-card';
-import { IdentitySection } from './identity-section';
+import { DiscardButton, SaveButton, SaveFeedback, SaveProblem, useSavePhase } from '../../../_components/save-state';
+import { useRegisterDirty } from '../../../_components/dirty-guard';
 import { CrossoverCard } from './crossover-card';
-import { AdultDetailsSection, ScoutDetailsSection, gradeFor } from './details-section';
-import { ContactSection } from './contact-section';
-import { FamilySection } from './family-section';
-import { RolesBlock } from './roles-block';
-import { DangerZone } from './danger-zone';
-import { TestRecordSection } from './test-record-section';
-import { HistoryFact } from './history-card';
-import { HistorySection } from './history-section';
 import { HistoryDialog, type HistoryView } from './history-dialog';
 import { SendSignInLink, type SendLinkResult } from './send-sign-in-link';
-import { InitialsBlock } from './initials-block';
 import { FamilyAddedNotice, PendingBanner } from './pending-banner';
 import { currentValuesFor, type SectionKey } from './pending-map';
-import {
-  ROLE_LABEL,
-  TAB_LABEL,
-  isRosterTab,
-  type PersonHistoryEntry,
-  type PersonHistorySummary,
-  type PersonRecord as PersonRecordData,
-  type PersonStatus,
-  type RosterTab
-} from './record-types';
-import styles from './person-record.module.css';
+import { MoreActions } from './more-actions';
+import { ContactSection, FamilySection, HealthSection, NameSection, RolesSection, describe, joinNames, uniqueLinks } from './record-sections';
+import { diffDraft, draftFromRecord, draftKey, draftProblems, toFinish, type RecordDraft } from './record-draft';
+import { previewPersonRecordSave, savePersonRecord, type LinkChange } from './save-record-actions';
+import { TAB_LABEL, type PersonHistoryEntry, type PersonRecord as PersonRecordData, type RosterTab } from './record-types';
+import { FormPanel } from '../../../../_components/form-panel';
+import styles from './record.module.css';
 
 const ROSTER = '/admin/advancement/roster';
-
 const KIND_LABEL = { scout: 'Scout', leader: 'Leader', adult: 'Adult' } as const;
 
-const NO_HISTORY: PersonHistorySummary = { latest: [], total: 0, withDetails: 0 };
-
-function str(v: unknown): string {
-  return v == null ? '' : String(v);
-}
+const str = (v: unknown) => (v == null ? '' : String(v));
 
 export function PersonRecord({ record, from }: { record: PersonRecordData; from: RosterTab }) {
   const router = useRouter();
-  const [status, setStatus] = useState<PersonStatus>(record.status);
-  const [emails, setEmails] = useState<PersonEmailRow[]>(record.emails);
-  const [roles, setRoles] = useState<PersonDetail['roles']>(record.detail.roles);
-  const [relationships, setRelationships] = useState<PersonDetail['relationships']>(record.detail.relationships);
-  const [adultTab, setAdultTab] = useState<RosterTab>(record.tab);
-  const [linkResult, setLinkResult] = useState<SendLinkResult | null>(null);
-  const [signinHelp, setSigninHelp] = useState(false);
+  const [base, setBase] = useState(record);
+  const [draft, setDraftState] = useState<RecordDraft>(() => draftFromRecord(record));
+  const [justSaved, setJustSaved] = useState(false);
+  const saved = useMemo(() => draftFromRecord(base), [base]);
+  const dirty = draftKey(draft) !== draftKey(saved);
+
+  // New props after a save (router.refresh) or another change: the draft follows the
+  // record unless the leader is mid-edit.
+  if (record !== base) {
+    setBase(record);
+    if (!dirty || justSaved) {
+      setDraftState(draftFromRecord(record));
+      setJustSaved(false);
+    }
+  }
+
+  useRegisterDirty(dirty);
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
+
+  const setDraft = useCallback((fn: (d: RecordDraft) => RecordDraft) => setDraftState((d) => fn(d)), []);
+
+  const phase = useSavePhase();
+  const [tried, setTried] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ variant: 'success' | 'error'; message: string } | null>(null);
   const [historyView, setHistoryView] = useState<HistoryView | null>(null);
-  // The family's request / notice come from the server; once decided here
-  // they are gone from every section at once, and a later router.refresh()
-  // (a new request while the page is open) shows the next one.
   const [resolvedRequestId, setResolvedRequestId] = useState<number | null>(null);
   const [resolvedNoticeId, setResolvedNoticeId] = useState<number | null>(null);
-  const pending = record.pending && record.pending.id !== resolvedRequestId ? record.pending : null;
-  const familyNotice = record.familyNotice && record.familyNotice.id !== resolvedNoticeId ? record.familyNotice : null;
 
-  const { detail, scout, kind } = record;
-  const f = detail.fields;
-  const name = record.displayName;
-  const primary = emails.find((e) => e.isPrimary) ?? null;
-  const deliverable = emails.filter((e) => !e.bouncedAt);
-  const phone = str(f.primary_phone);
-  const birthdate = str(f.birthdate) || null;
-  const age = ageOn(birthdate, record.today);
-  const health = str(f.health_form_date) || null;
-  const ypt = yptStatus(str(f.ypt_completed) || null, record.today);
-  const currentRoles = roles.filter((r) => !r.end_date);
-  const parents = relationships.filter((r) => !r.outgoing && (r.type === 'parent_of' || r.type === 'guardian_of'));
+  const problems = draftProblems(draft, base);
+  const shownProblems = tried ? problems : [];
+  const problemFor = (fieldId: string) => shownProblems.find((p) => p.fieldId === fieldId)?.message ?? null;
 
-  // A scout's tab follows the status it just changed; an adult's follows the
-  // roles, refetched after every grant / end.
-  const currentTab: RosterTab =
-    kind === 'scout' ? (scout?.is_webelos ? 'webelos' : status.active ? 'active_scout' : 'inactive_scout') : adultTab;
+  const householdLabels = useMemo(() => new Map(base.households.map((h) => [String(h.id), h.label])), [base.households]);
+  const schoolLabels = useMemo(() => new Map((base.schools ?? []).map((s) => [String(s.id), s.name])), [base.schools]);
+  const diff = diffDraft(base, draft, {
+    schoolName: (id) => schoolLabels.get(id) ?? 'a new school',
+    householdLabel: (id) => householdLabels.get(id) ?? 'household'
+  });
+  const touchesFamily = !!diff.payload.household || !!diff.payload.relationships;
 
-  function onStatusChanged(next: PersonStatus) {
-    setStatus(next);
-    router.refresh();
+  // "Saving will also link …" and the remove-from-household question both come from the
+  // database's own dry run, debounced while the draft changes.
+  const [also, setAlso] = useState<LinkChange[]>([]);
+  const [endable, setEndable] = useState<LinkChange[]>([]);
+  const familyKey = JSON.stringify([draft.householdId, draft.endLinks, draft.family, draft.addMembers.map((m) => m.personId)]);
+  const householdMoving = draft.householdId !== saved.householdId && !!saved.householdId;
+  useEffect(() => {
+    if (!touchesFamily) return;
+    let live = true;
+    const t = setTimeout(() => {
+      void previewPersonRecordSave(base.personId, draft).then((r) => {
+        if (live) setAlso(uniqueLinks(r.also));
+      });
+      if (householdMoving) {
+        void previewPersonRecordSave(base.personId, { ...draft, endLinks: true }).then((r) => {
+          if (live) setEndable(uniqueLinks(r.also.filter((l) => l.change === 'removed')));
+        });
+      }
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+    // familyKey stands in for the parts of the draft the preview reads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyKey, base.personId, touchesFamily, householdMoving]);
+  const alsoShown = touchesFamily ? also.filter((l) => !(l.change === 'removed' && !draft.endLinks)) : [];
+
+  function focusField(fieldId: string) {
+    const el = document.getElementById(fieldId) ?? document.querySelector<HTMLElement>(`[name="${fieldId}"]`);
+    if (!el) return;
+    el.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    el.focus({ preventScroll: true });
   }
 
-  /** A block refetched getPersonDetail after its action. */
-  function onDetail(next: PersonDetail) {
-    setRoles(next.roles);
-    setRelationships(next.relationships);
-    if (kind !== 'scout') setAdultTab(isRosterTab(next.tab) ? next.tab : 'adult');
+  function onBlocked() {
+    setTried(true);
+    if (problems[0]) focusField(problems[0].fieldId);
   }
 
-  function onPromoted() {
-    setStatus({ active: false, reason: 'aged_out' });
+  function discard() {
+    setDraftState(saved);
+    setTried(false);
+    setSaveError(null);
+    setAlso([]);
+    setEndable([]);
   }
 
-  // One request, one decision: whichever section's button was clicked, the
-  // whole request is now reviewed — drop it from every section and re-read
-  // so the applied values and the History row come in.
-  const pendingCurrent = pending ? currentValuesFor(record, pending.entityType) : null;
-  function bannerFor(section: SectionKey) {
+  function save() {
+    setTried(true);
+    setSaveError(null);
+    setNotice(null);
+    phase.start();
+    void savePersonRecord(base.personId, draft)
+      .then((res) => {
+        if (!res.ok) {
+          phase.fail();
+          setSaveError(res.error);
+          if (res.problems?.[0]) focusField(res.problems[0].fieldId);
+          return;
+        }
+        phase.done();
+        setTried(false);
+        setJustSaved(true);
+        setAlso([]);
+        setEndable([]);
+        const others = uniqueLinks(res.links).filter((l) => l.person_id !== base.personId && l.related_person_id !== base.personId);
+        if (others.length > 0) {
+          setNotice({ variant: 'success', message: `Saved. Also ${others[0].change === 'added' ? 'linked' : 'unlinked'} ${joinNames(others.map((l) => describe(l)))}.` });
+        }
+        router.refresh();
+      })
+      .catch(() => {
+        phase.fail();
+        setSaveError('Couldn’t save the record. Nothing was changed. Try again.');
+      });
+  }
+
+  // The family's pending request / notice (unchanged review flow).
+  const pending = base.pending && base.pending.id !== resolvedRequestId ? base.pending : null;
+  const familyNotice = base.familyNotice && base.familyNotice.id !== resolvedNoticeId ? base.familyNotice : null;
+  const pendingCurrent = pending ? currentValuesFor(base, pending.entityType) : null;
+  function banner(section: SectionKey) {
     if (!pending || !pendingCurrent) return null;
     return (
       <PendingBanner
         request={pending}
         section={section}
         current={pendingCurrent}
-        today={record.today}
+        today={base.today}
         onResolved={() => {
           setResolvedRequestId(pending.id);
           router.refresh();
@@ -150,96 +192,135 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
     );
   }
 
-  function onAcknowledged() {
-    if (familyNotice) setResolvedNoticeId(familyNotice.id);
-    router.refresh();
-  }
+  const { detail, scout, kind } = base;
+  const f = detail.fields;
+  const name = base.displayName;
+  const isScout = kind === 'scout' && scout != null;
+  const primary = base.emails.find((e) => e.isPrimary) ?? base.emails[0] ?? null;
+  const phone = str(f.primary_phone);
+  const bsa = str(f.bsa_member_id);
+  const family = base.family ?? [];
+  const childrenOf = family.filter((r) => r.links.some((l) => l.outgoing && (l.type === 'parent_of' || l.type === 'guardian_of')));
+  const parents = family.filter((r) => r.links.some((l) => !l.outgoing && (l.type === 'parent_of' || l.type === 'guardian_of')));
+  const currentTab: RosterTab = base.tab;
+  const history = base.history ?? { latest: [], total: 0, withDetails: 0 };
+  const last = history.latest[0];
+  const emailsDirty = diff.changed.includes('Email addresses');
+  const items = toFinish(base);
+  const busy = phase.phase === 'saving';
 
-  // A sent link is itself a History row — re-read so the card's count moves.
-  function onLinkResult(result: SendLinkResult) {
-    setLinkResult(result);
-    if (result.variant === 'success') router.refresh();
-  }
+  const contactBits: React.ReactNode[] = [];
+  if (primary) contactBits.push(<a key="e" href={`mailto:${primary.email}`}>{primary.email}</a>);
+  else if (isScout) {
+    contactBits.push(
+      <span key="e">Signs in through {parents.length ? joinNames(parents.map((p) => p.name)) : 'a parent (none linked)'}</span>
+    );
+  } else contactBits.push(<span key="e" className={styles.muted}>no email on file</span>);
+  if (phone) contactBits.push(<a key="p" href={`tel:${phone}`}>{phone}</a>);
+  if (bsa) contactBits.push(<span key="b">BSA {bsa}</span>);
+  if (!isScout && childrenOf.length) contactBits.push(<span key="c">Parent of {joinNames(childrenOf.map((c) => c.name))}</span>);
 
-  const history = record.history ?? NO_HISTORY;
-  const openLog = () => setHistoryView({ mode: 'log' });
-  const openDetail = (entry: PersonHistoryEntry) => setHistoryView({ mode: 'detail', entry, fromLog: false });
-  const historyFact: [string, React.ReactNode] = ['History', <HistoryFact key="history" history={history} onOpen={openLog} />];
-
-  const facts: [string, React.ReactNode][] =
-    kind === 'scout'
-      ? [
-          ['Rank', record.rankLabel ?? '—'],
-          ['Patrol', scout?.patrol || '—'],
-          ['Grade', gradeLabel(gradeFromGradYear(scout?.graduation_year ?? null, record.today))],
-          ['Age', age ?? '—'],
-          ['Health form', health ? fmtDate(health) : <Badge variant="warning">missing</Badge>],
-          historyFact
-        ]
-      : [
-          ['Household', record.household?.label ?? '—'],
-          ['Roles', currentRoles.map((r) => ROLE_LABEL[r.role] ?? r.role).join(', ') || 'none'],
-          ['Age', age ?? '—'],
-          [
-            'YPT',
-            ypt.status === 'missing' ? (
-              <Badge variant="warning">none</Badge>
-            ) : ypt.status === 'expired' ? (
-              <Badge variant="danger">expired</Badge>
-            ) : ypt.status === 'expiring' ? (
-              <Badge variant="warning">expiring</Badge>
-            ) : (
-              <Badge variant="success">current</Badge>
-            )
-          ],
-          ['Health form', health ? fmtDate(health) : <Badge variant="warning">missing</Badge>],
-          historyFact
-        ];
+  const changedCount = diff.changed.length;
 
   return (
-    <SectionEditProvider>
+    <>
       <PageTitle
         back={{ label: TAB_LABEL[from], href: `${ROSTER}?tab=${from}` }}
         title={name}
         sub={
           <>
-            <span className={styles.pills}>
+            <span className={styles.badges}>
               <Badge variant={kind === 'adult' ? 'neutral' : 'info'}>{scout?.is_webelos ? 'Webelos' : KIND_LABEL[kind]}</Badge>
-              {status.active ? (
-                <Badge variant="success">Active</Badge>
-              ) : (
-                <>
-                  <Badge variant="muted">Inactive</Badge>
-                  <span className={styles.muted}>{reasonLabel(kind, status.reason) ?? ''}</span>
-                </>
-              )}
-              {kind === 'scout' && scout ? <span className={styles.mono}>{scout.id}</span> : null}
-              {str(f.bsa_member_id) ? <span className={styles.mono}>BSA {str(f.bsa_member_id)}</span> : null}
+              {!scout?.is_webelos &&
+                (base.status.active ? <Badge variant="success">Active</Badge> : <Badge variant="muted">Inactive</Badge>)}
+              {isScout && base.rankLabel ? (
+                <Link href="/advancement" title="Open advancement">
+                  <Badge variant="neutral">{base.rankLabel}</Badge>
+                </Link>
+              ) : null}
+              {base.isTest ? <Badge variant="warning">Test record</Badge> : null}
             </span>
             <span className={styles.contact}>
-              {primary ? (
-                <a href={`mailto:${primary.email}`}>{primary.email}</a>
-              ) : kind === 'scout' ? (
-                `signs in through ${parents.length ? parents.map((p) => p.otherName).join(' or ') : 'a parent (none linked)'}`
-              ) : (
-                <span className={styles.muted}>no email on file</span>
-              )}
-              {phone ? (
-                <>
-                  {' · '}
-                  <a href={`tel:${phone}`}>{phone}</a>
-                </>
-              ) : null}
+              {contactBits.map((b, i) => (
+                <span key={i}>
+                  {i > 0 ? ' · ' : ''}
+                  {b}
+                </span>
+              ))}
             </span>
           </>
         }
-      >
-        <SendSignInLink personId={record.personId} kind={kind} emails={emails} onResult={onLinkResult} />
-      </PageTitle>
+      />
 
-      {(currentTab !== from || linkResult) && (
+      <div className={[styles.bar, dirty ? styles.barDirty : ''].join(' ')} role="region" aria-label="Record actions">
+        <SaveButton dirty={dirty} pending={busy} blocked={problems.length > 0} onBlocked={onBlocked} onClick={save} />
+        <DiscardButton dirty={dirty} pending={busy} onClick={discard} />
+        <span className={styles.barStatus} aria-live="polite">
+          {saveError ? (
+            <span className={styles.problem}>{saveError}</span>
+          ) : shownProblems.length > 0 ? (
+            <SaveProblem reason={shownProblems[0].message} more={shownProblems.length - 1} />
+          ) : dirty ? (
+            <>
+              <strong>
+                {changedCount} unsaved change{changedCount === 1 ? '' : 's'}:
+              </strong>{' '}
+              {diff.changed.join(', ')}
+            </>
+          ) : last ? (
+            <>
+              Last change {fmtDate(last.occurredAt)} by {last.actorLabel} ·{' '}
+              <button type="button" className={styles.linkBtn} onClick={() => setHistoryView({ mode: 'log' })}>
+                History ({history.total})
+              </button>
+            </>
+          ) : (
+            'No changes recorded yet'
+          )}
+          {alsoShown.length > 0 && (
+            <span className={styles.also}>
+              Saving will also {alsoShown.some((l) => l.change === 'added') ? 'link ' : ''}
+              {joinNames(alsoShown.filter((l) => l.change === 'added').map((l) => describe(l)))}
+              {alsoShown.some((l) => l.change === 'added') && alsoShown.some((l) => l.change === 'removed') ? ', and remove ' : ''}
+              {!alsoShown.some((l) => l.change === 'added') && alsoShown.some((l) => l.change === 'removed') ? 'remove ' : ''}
+              {joinNames(alsoShown.filter((l) => l.change === 'removed').map((l) => describe(l)))}.
+            </span>
+          )}
+        </span>
+        <span className={styles.barRight}>
+          {(kind !== 'scout' || base.emails.length > 0) && (
+            <SendSignInLink
+              personId={base.personId}
+              kind={kind}
+              emails={base.emails}
+              heldReason={emailsDirty ? 'Save the email changes first' : null}
+              onResult={(r: SendLinkResult) => {
+                setNotice(r);
+                if (r.variant === 'success') router.refresh();
+              }}
+            />
+          )}
+          <MoreActions
+            personId={base.personId}
+            name={name}
+            kind={kind}
+            from={from}
+            active={base.status.active}
+            scout={scout}
+            leaderCode={base.initials?.code ?? null}
+            isTest={base.isTest ?? false}
+            counts={{ emails: base.emails.length, relationships: detail.relationships.length, roles: detail.roles.length }}
+            householdLabel={base.household?.label ?? null}
+            disabled={dirty || busy}
+            onNotice={setNotice}
+          />
+        </span>
+      </div>
+      <SaveFeedback phase={phase.phase} />
+
+      {(currentTab !== from || notice) && (
         <div className={styles.noticeStack}>
-          {linkResult && <Notice variant={linkResult.variant}>{linkResult.message}</Notice>}
+          {notice && <Notice variant={notice.variant}>{notice.message}</Notice>}
           {currentTab !== from && (
             <Notice variant="info">
               {name} now appears under <strong>{TAB_LABEL[currentTab]}</strong>, not {TAB_LABEL[from]}.
@@ -248,291 +329,100 @@ export function PersonRecord({ record, from }: { record: PersonRecordData; from:
         </div>
       )}
 
-      <dl className={styles.facts}>
-        {facts.map(([k, v]) => (
-          <div key={k} className={styles.fact}>
-            <dt className={styles.factKey}>{k}</dt>
-            <dd className={styles.factVal}>{v}</dd>
-          </div>
-        ))}
-      </dl>
-
       <div className={styles.cols}>
         <div className={styles.main}>
-          {familyNotice && <FamilyAddedNotice notice={familyNotice} name={name} onAcknowledged={onAcknowledged} />}
-
-          {kind === 'scout' && scout && (scout.is_webelos || scout.crossed_over_on) && (
+          {familyNotice && (
+            <FamilyAddedNotice
+              notice={familyNotice}
+              name={name}
+              onAcknowledged={() => {
+                setResolvedNoticeId(familyNotice.id);
+                router.refresh();
+              }}
+            />
+          )}
+          {isScout && (scout.is_webelos || scout.crossed_over_on) && (
             <CrossoverCard
               scoutId={scout.id}
               name={name}
               isWebelos={!!scout.is_webelos}
               crossedOverOn={scout.crossed_over_on ?? null}
-              bsaMemberId={str(f.bsa_member_id) || null}
-              today={record.today}
+              bsaMemberId={bsa || null}
+              today={base.today}
             />
           )}
-          {/* Active/Inactive does not apply to a Webelos — not a scout yet. */}
-          {!(kind === 'scout' && scout?.is_webelos) && (
-            <StatusCard
-              personId={record.personId}
-              scoutId={kind === 'scout' ? (scout?.id ?? null) : null}
-              kind={kind}
-              name={name}
-              active={record.status.active}
-              reason={record.status.reason}
-              onChanged={onStatusChanged}
-            />
-          )}
-
-          {kind === 'scout' && scout ? (
-            <>
-              <IdentitySection
-                scoutId={scout.id}
-                banner={bannerFor('identity')}
-                saved={{
-                  first_name: str(f.first_name),
-                  last_name: str(f.last_name),
-                  suffix: str(f.suffix),
-                  nickname: str(f.nickname),
-                  bsa_member_id: str(f.bsa_member_id),
-                  patrol: scout.patrol ?? ''
-                }}
-                rankLabel={record.rankLabel}
-              />
-              <ScoutDetailsSection
-                personId={record.personId}
-                banner={bannerFor('details')}
-                scoutId={scout.id}
-                today={record.today}
-                saved={{
-                  birthdate: str(f.birthdate),
-                  gender: record.gender ?? '',
-                  school: scout.school ?? '',
-                  grade: gradeFor(scout.graduation_year, record.today),
-                  swim_class: scout.swim_class ?? '',
-                  junior_leader_override: scout.junior_leader_override ?? '',
-                  health_form_date: str(f.health_form_date),
-                  things_we_should_know: str(f.things_we_should_know)
-                }}
-              />
-            </>
-          ) : (
-            <AdultDetailsSection
-              personId={record.personId}
-              banner={bannerFor('details')}
-              today={record.today}
-              saved={{
-                first_name: str(f.first_name),
-                last_name: str(f.last_name),
-                suffix: str(f.suffix),
-                nickname: str(f.nickname),
-                birthdate: str(f.birthdate),
-                bsa_member_id: str(f.bsa_member_id),
-                ypt_completed: str(f.ypt_completed),
-                health_form_date: str(f.health_form_date),
-                things_we_should_know: str(f.things_we_should_know)
-              }}
-            />
-          )}
-
-          <ContactSection
-            personId={record.personId}
-            banner={bannerFor('contact')}
-            kind={kind}
-            emails={emails}
-            onEmailsChanged={setEmails}
-            saved={{
-              primary_phone: str(f.primary_phone),
-              address_line1: str(f.address_line1),
-              address_line2: str(f.address_line2),
-              city: str(f.city),
-              state: str(f.state),
-              zip: str(f.zip)
-            }}
-          />
-
-          <FamilySection
-            personId={record.personId}
-            banner={bannerFor('family')}
-            name={name}
-            kind={kind}
-            saved={{ household: record.household ? String(record.household.id) : '' }}
-            households={record.households}
-            relationships={relationships}
-            members={record.household?.members ?? []}
-            memberHref={(id) => `${ROSTER}/${id}?from=${from}`}
-            onRelationshipsChanged={onDetail}
-          />
-
-          {kind !== 'scout' && (
-            <section className={styles.card} aria-label="Roles">
-              <div className={styles.cardHead}>
-                <h2>Roles</h2>
-              </div>
-              <div className={styles.cardBody}>
-                <RolesBlock personId={record.personId} name={name} roles={roles} today={record.today} onChanged={onDetail} />
-              </div>
-            </section>
-          )}
-
-          <HistorySection history={history} onOpenLog={openLog} onOpenDetail={openDetail} />
-
-          <TestRecordSection personId={record.personId} isTest={record.isTest ?? false} />
-
-          <DangerZone
-            personId={record.personId}
-            name={name}
-            kind={kind}
-            from={from}
-            active={status.active}
-            scout={scout}
-            leader={record.initials ? { code: record.initials.code } : null}
-            emailCount={emails.length}
-            relationshipCount={relationships.length}
-            roleCount={roles.length}
-            householdLabel={record.household?.label ?? null}
-            onPromoted={onPromoted}
-          />
+          <FormPanel className={styles.form} aria-label={`${name}’s record`}>
+            {(() => {
+              const props = { record: base, draft, saved, setDraft, problem: problemFor, disabled: busy, banner };
+              return (
+                <>
+                  <NameSection {...props} num={1} />
+                  <HealthSection {...props} num={2} />
+                  <ContactSection {...props} num={3} />
+                  <FamilySection {...props} num={4} from={from} endable={endable} />
+                  {!isScout && <RolesSection {...props} num={5} />}
+                </>
+              );
+            })()}
+          </FormPanel>
         </div>
 
-        <aside className={styles.side}>
-          <SideCard title="Household">
-            {record.household ? (
+        <aside className={styles.rail} aria-label="About this record">
+          <section className={styles.railCard} aria-labelledby="pr-todo-h">
+            <h2 id="pr-todo-h">To finish</h2>
+            {items.length > 0 ? (
+              <ul className={styles.todo}>
+                {items.map((it) => (
+                  <li key={it.key}>
+                    <button type="button" onClick={() => focusField(it.fieldId)}>
+                      {it.label}
+                      {it.optional ? <span className={styles.muted}> (optional)</span> : null}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.todoDone}>Nothing left to fill in.</p>
+            )}
+          </section>
+          <section className={styles.railCard} aria-labelledby="pr-recent-h">
+            <h2 id="pr-recent-h">Recent changes</h2>
+            {history.latest.length > 0 ? (
               <>
-                <strong>{record.household.label}</strong>
-                <ul className={styles.list}>
-                  {record.household.members.map((m) => (
-                    <li key={m.personId}>
-                      <span className={styles.grow}>
-                        {m.personId === record.personId ? (
-                          <strong>{m.name}</strong>
-                        ) : (
-                          <Link href={`${ROSTER}/${m.personId}?from=${from}`}>{m.name}</Link>
-                        )}
-                      </span>
-                      <span className={styles.muted}>
-                        {KIND_LABEL[m.kind]}
-                        {m.active ? '' : ' · inactive'}
-                      </span>
+                <ul className={styles.recent}>
+                  {history.latest.slice(0, 3).map((e: PersonHistoryEntry) => (
+                    <li key={e.id}>
+                      <button type="button" onClick={() => setHistoryView({ mode: 'detail', entry: e, fromLog: false })}>
+                        <span className={styles.recentWhat}>{e.summary}</span>
+                        <span className={styles.recentWhen}>
+                          {fmtDate(e.occurredAt)} · {e.actorLabel}
+                        </span>
+                      </button>
                     </li>
                   ))}
                 </ul>
+                <div className={styles.railMore}>
+                  <button type="button" className={styles.linkBtn} onClick={() => setHistoryView({ mode: 'log' })}>
+                    All {history.total} change{history.total === 1 ? '' : 's'}
+                  </button>
+                </div>
               </>
             ) : (
-              <span className={styles.empty}>Not in a household</span>
+              <p className={styles.todoDone}>No changes recorded yet.</p>
             )}
-          </SideCard>
-
-          <SideCard title="Sign-in">
-            <ul className={styles.list}>
-              <li>
-                <span title="Derived from the addresses on file — not a switch">Can sign in</span>
-                <span>
-                  {deliverable.length ? 'Yes' : kind === 'scout' ? 'Via a parent' : <Badge variant="warning">no email</Badge>}
-                </span>
-              </li>
-              <li>
-                <span>Verified addresses</span>
-                <span>
-                  {emails.filter((e) => e.verifiedAt).length} of {emails.length}
-                </span>
-              </li>
-              {kind === 'leader' && (
-                <li>
-                  <span>Admin access</span>
-                  <span>
-                    {record.leader?.canLogin ? 'Yes' : 'No'}{' '}
-                    <span className={styles.muted}>
-                      · <Link href="/admin/access">Access &amp; Permissions</Link>
-                    </span>
-                  </span>
-                </li>
-              )}
-            </ul>
-            <div>
-              <button
-                type="button"
-                className={styles.disc}
-                aria-expanded={signinHelp}
-                onClick={() => setSigninHelp((h) => !h)}
-              >
-                How this works
-              </button>
-              {signinHelp && (
-                <div className={styles.discBody}>
-                  <p>
-                    <strong>Can sign in</strong> is derived, not a setting: anyone with an address on file that has not
-                    bounced can ask for a sign-in code or link at /signin. A scout with no address of their own signs in
-                    as one of the household&rsquo;s parents. Add or remove addresses under Contact &amp; sign-in.
-                  </p>
-                  <p>
-                    <strong>Verified</strong> is stamped automatically the first time a code or link sent to that
-                    address is redeemed — proof someone reads that inbox. There is no manual verify; sending a sign-in
-                    link from here is how a leader gets an address verified.
-                  </p>
-                  <p>
-                    <strong>Admin access</strong> (leaders only) is a separate flag managed on the Access &amp;
-                    Permissions screen, not here.
-                  </p>
-                </div>
-              )}
-            </div>
-          </SideCard>
-
-          <SideCard title="Sign-off initials">
-            <InitialsBlock
-              personId={record.personId}
-              name={name}
-              initials={record.initials}
-              suggestion={record.initialsSuggestion}
-            />
-          </SideCard>
-
-          <SideCard title="Where they appear">
-            <ul className={styles.list}>
-              <li>
-                <span>Roster tab</span>
-                <span>{TAB_LABEL[currentTab]}</span>
-              </li>
-              <li>
-                <span>Signup picker</span>
-                <span>{status.active ? 'Offered' : 'Not offered'}</span>
-              </li>
-              {kind === 'scout' && (
-                <li>
-                  <span>Fast Entry</span>
-                  <span>{status.active ? 'Listed' : 'Hidden'}</span>
-                </li>
-              )}
-              <li>
-                <span>Record</span>
-                <span className={styles.mono}>people #{record.personId}</span>
-              </li>
-            </ul>
-          </SideCard>
+          </section>
         </aside>
       </div>
 
       {historyView && (
         <HistoryDialog
-          personId={record.personId}
+          personId={base.personId}
           name={name}
           view={historyView}
           onView={setHistoryView}
           onClose={() => setHistoryView(null)}
         />
       )}
-    </SectionEditProvider>
-  );
-}
-
-function SideCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className={styles.card} aria-label={title}>
-      <div className={styles.cardHead}>
-        <h2>{title}</h2>
-      </div>
-      <div className={styles.cardBody}>{children}</div>
-    </section>
+    </>
   );
 }

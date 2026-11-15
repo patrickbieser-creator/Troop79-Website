@@ -399,7 +399,7 @@
   <div class="grey-stripe">
     <div class="grey-stripe-inner">
       <p>Project: <strong>Troop79-Website</strong> &nbsp;&middot;&nbsp; Status: <strong>Live in Production &mdash; troop79-website.vercel.app</strong></p>
-      <p>Last updated: <strong>November 14, 2026</strong> &nbsp;&middot;&nbsp; v1.269.1</p>
+      <p>Last updated: <strong>November 15, 2026</strong> &nbsp;&middot;&nbsp; v1.270.0</p>
     </div>
   </div>
 
@@ -494,6 +494,38 @@ py -m http.server 8000</pre>
             <li>Production target: Next.js + Supabase (Phase 4)</li>
           </ul>
         </div>
+      </div>
+    </div>
+
+    <!-- RELEASE v1.270.0 -->
+    <div class="release">
+      <div class="release-header">
+        <span class="release-version">v1.270.0</span>
+        <span class="release-date">November 15, 2026</span>
+        <span class="release-label"><span class="badge badge-feature">Feature</span></span>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Roster: one form, one Save</p>
+        <ul class="change-list">
+          <li><span>A person&rsquo;s record on the Roster is now one form with one <strong>Save</strong>. Every field is ready to edit, with no Edit button per section. Emails, household, family links, roles and sign-off initials all save together, and either everything saves or nothing does.</span></li>
+          <li><span>A bar that stays at the top while you scroll shows what you&rsquo;ve changed (&ldquo;2 unsaved changes: Patrol, Swim class&rdquo;). It also has <strong>Discard changes</strong>, <strong>Send sign-in link</strong>, and a <strong>More actions</strong> menu for Move to adults, Merge, Mark as test record and Delete.</span></li>
+          <li><span>A <strong>To finish</strong> list beside the form names what&rsquo;s missing: YPT, health form, a verified email address, BSA ID. Click an item to jump to its field. The three latest changes sit underneath, with a link to the full history.</span></li>
+          <li><span>The Family section is one list: the household, then each member with how they&rsquo;re related to this person. Before you save, the page tells you what else will change, for example &ldquo;Saving will also link Jenna Scarpace as parent of Hadley Baquero.&rdquo;</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Family links fill themselves in</p>
+        <ul class="change-list">
+          <li><span>A parent or guardian in a household is now linked to every scout in it, and scouts in the same household are linked as siblings. This happens automatically, from the Roster, family sign-up and approved family updates alike. An adult with no relationship, such as a grandparent, gets no links.</span></li>
+          <li><span>A family link shows on both people&rsquo;s records, and changing it from either side changes the same link. When you take someone out of a household, you&rsquo;re asked whether to end the links that came with it.</span></li>
+        </ul>
+      </div>
+      <div class="change-group">
+        <p class="change-group-title">Schools are a pick list</p>
+        <ul class="change-list">
+          <li><span>School is now picked from the troop&rsquo;s list: type part of the name, or add a new school. Leaders use it on the scout record and when adding a scout; families use it on their profile, and a school they add goes to a leader with the rest of their update.</span></li>
+          <li><span><strong>Lookups &amp; Admin</strong> has a new <strong>Schools</strong> list where you can rename, merge and hide schools. The existing spellings were combined, so &ldquo;Fernwood Montessori&rdquo; and &ldquo;Fernwood Montessori School&rdquo; are now one school.</span></li>
+        </ul>
       </div>
     </div>
 

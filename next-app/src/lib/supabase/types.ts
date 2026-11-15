@@ -66,7 +66,9 @@ export interface Scout {
   display_name: string;
   patrol: string | null;
   current_rank: string | null;
-  school: string | null;
+  /** schools.id (20270105100000_schools.sql); the school row is `School` in lib/schools.ts. The old
+   *  `scouts.school` text column is retired — still in the table until a later migration drops it, never read. */
+  school_id: number | null;
   /** Grade is derived from this (June 15 rollover) — see lib/demographics. */
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
@@ -78,6 +80,9 @@ export interface Scout {
    *  row's `people` counterpart. */
   person_id: number | null;
 }
+
+/** A `schools` row (id, name, short_name, active) — defined with its helpers in lib/schools.ts. */
+export type { School } from '@/lib/schools';
 
 export interface ScoutParent {
   id?: number;

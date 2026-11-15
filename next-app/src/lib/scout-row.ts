@@ -14,10 +14,11 @@ import type { ScoutRow } from '@/app/admin/(workspace)/advancement/roster/scout-
  * into that shape, so callers don't each reinvent the join.
  */
 
-/** Columns that stay on `scouts`. */
+/** Columns that stay on `scouts`. The school is `school_id` plus its name through the `schools` join
+ *  (lib/schools.ts) — the old `scouts.school` text column is retired and never read. */
 export const SCOUT_CORE_COLS =
   'id, first_name, last_name, display_name, patrol, current_rank, active, inactive_reason, is_webelos, ' +
-  'school, graduation_year, swim_class, junior_leader_override, person_id';
+  'school_id, school_row:schools(name), graduation_year, swim_class, junior_leader_override, person_id';
 
 export interface ScoutCoreRow {
   id: string;
@@ -30,7 +31,9 @@ export interface ScoutCoreRow {
   inactive_reason: InactiveReason | null;
   /** A Webelos on the way into the troop (active is false, no reason). */
   is_webelos?: boolean;
-  school: string | null;
+  school_id: number | null;
+  /** The `schools` embed: the school's name, or null for none. */
+  school_row: { name: string } | null;
   graduation_year: number | null;
   swim_class: 'swimmer' | 'beginner' | 'nonswimmer' | null;
   junior_leader_override: 'yes' | 'no' | null;
@@ -77,7 +80,8 @@ export function mergeScoutRow(s: ScoutCoreRow, person: ScoutPersonContactRow | u
     bsa_member_id: person?.bsa_member_id ?? null,
     birthdate: person?.birthdate ?? null,
     gender: (person?.gender as 'M' | 'F' | null) ?? null,
-    school: s.school,
+    school_id: s.school_id,
+    school: s.school_row?.name ?? null,
     graduation_year: s.graduation_year,
     swim_class: s.swim_class,
     junior_leader_override: s.junior_leader_override,

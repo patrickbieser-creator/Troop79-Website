@@ -221,7 +221,7 @@ only irreversible actions (Share, Record) name their consequence beside the butt
 `(public)/library/menu-monster/menus/_components/{step-strip,summary-rail,plan-tab}.tsx`; specimens on
 /admin/styleguide/public.
 
-**Per-section Edit is a valid alternative to one whole-form dirty gate (2026-09-07):** a record page may give each section its own Edit → dirty-gated Save/Cancel using the same `save-state.tsx` pieces, rather than one Save for the whole page — provided only one section is editable at a time (opening a second section's Edit while another is dirty prompts to discard) and one-click actions (emails, roles, relationships) are visually separated as a labelled "Takes effect immediately" block, never inside a draft form. Reference: `roster/[personId]/`.
+**A record page has one draft and one Save (2026-11-15, replaces the 2026-09-07 per-section Edit amendment):** lists on the record (emails, relationships, roles, initials) are part of that draft, and nothing commits until Save, which writes the whole change in one database transaction. One-click actions are reserved for things that are not edits (send a link, open history, the More actions… menu's merge / delete). Reference: `roster/[personId]/` (`record-draft.ts` + `save_person_record`); Plans/Person-Record-One-Save.md.
 
 Reference implementations: `src/app/(public)/events/[id]/person-first-form.tsx` (draftKey snapshot)
 and `slot-first-form.tsx` (claims/comments/guests keys). The Guests section's "locked until someone

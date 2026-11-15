@@ -65,6 +65,7 @@ export const LOOKUP_GROUPS: LookupGroup[] = [
     tint: 'stone',
     cards: [
       { id: 'households', title: 'Households', blurb: 'Household names; who belongs is set on the Roster' },
+      { id: 'schools', title: 'Schools', blurb: 'The school pick list: rename, merge, hide' },
       { id: 'stores', title: 'Menu Monster stores', blurb: 'The store pull-down in the price book', stores: true }
     ]
   }

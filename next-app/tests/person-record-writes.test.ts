@@ -30,6 +30,7 @@ let adultId = 0;
 let scoutPersonId = 0;
 let houseA = 0;
 let houseB = 0;
+let schoolId = 0;
 
 interface AuditRow {
   summary: string;
@@ -103,6 +104,7 @@ afterAll(async () => {
     .delete()
     .in('entity_id', [SCOUT_ID, ...ids.map(String)]);
   await admin.from('scouts').delete().eq('id', SCOUT_ID);
+  if (schoolId) await admin.from('schools').delete().eq('id', schoolId);
   await admin.from('households').delete().in('id', [houseA, houseB].filter(Boolean));
   if (ids.length) await admin.from('people').delete().in('id', ids);
 });
@@ -154,8 +156,12 @@ describe('Phase 2 section writes — one section, one action, field-level audit 
       .eq('id', scoutPersonId)
       .single();
 
+    // Schools are a lookup table (lib/schools.ts): the scout stores school_id; the audit names the school.
+    const { data: sch, error: schErr } = await admin.from('schools').insert({ name: 'ZZVITEST School Writes Middle' }).select('id').single();
+    if (schErr || !sch) throw new Error(`fixture: schools insert failed: ${schErr?.message}`);
+    schoolId = (sch as { id: number }).id;
     const res = await updateScoutFields(SCOUT_ID, {
-      school: 'ZZ Middle School',
+      school_id: schoolId,
       graduation_year: 2031,
       swim_class: 'beginner',
       junior_leader_override: 'yes'
@@ -164,11 +170,11 @@ describe('Phase 2 section writes — one section, one action, field-level audit 
 
     const { data: scout } = await admin
       .from('scouts')
-      .select('school, graduation_year, swim_class, junior_leader_override')
+      .select('school_id, graduation_year, swim_class, junior_leader_override')
       .eq('id', SCOUT_ID)
       .single();
     expect(scout).toEqual({
-      school: 'ZZ Middle School',
+      school_id: schoolId,
       graduation_year: 2031,
       swim_class: 'beginner',
       junior_leader_override: 'yes'
@@ -185,13 +191,13 @@ describe('Phase 2 section writes — one section, one action, field-level audit 
     const audit = await latestAudit('scout', SCOUT_ID);
     expect(audit.details).toEqual(
       expect.arrayContaining([
-        { field: 'School', from: '—', to: 'ZZ Middle School' },
+        { field: 'School', from: '—', to: 'ZZVITEST School Writes Middle' },
         { field: 'Swim class', from: '—', to: 'Beginner' },
         { field: 'Junior leader', from: 'Derived from grade', to: 'Yes (override)' }
       ])
     );
     expect(audit.details?.find((d) => d.field === 'Grade')?.to).toContain('class of 2031');
-    expect(audit.summary).not.toContain('ZZ Middle School');
+    expect(audit.summary).not.toContain('ZZVITEST School Writes Middle');
   });
 
   it('UpdatePersonDemographics_RecordsFieldLevelDetails', async () => {

@@ -1,0 +1,96 @@
+/* Public school picker (public tokens only). Specimen: /admin/styleguide/public -> School picker. */
+
+.wrap {
+  position: relative;
+}
+
+.input {
+  width: 100%;
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-sm);
+  font-family: inherit;
+  font-size: 16px; /* iOS no-zoom floor — matches the shared form kit */
+  color: var(--text-body);
+  padding: var(--sp-3) var(--sp-10) var(--sp-3) var(--sp-3);
+}
+.input.input {
+  /* A screen's own input class may set padding; keep room for the × and ▾. */
+  padding-right: var(--sp-10);
+}
+.input:focus-visible,
+.clear:focus-visible {
+  border-color: var(--navy);
+  outline: var(--focus-ring);
+  outline-offset: 1px;
+}
+
+.clear,
+.toggle {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: var(--rad-circle);
+  font-family: inherit;
+  line-height: 1;
+  color: var(--text-meta);
+  cursor: pointer;
+}
+.clear {
+  right: calc(var(--sp-2) + 1.75rem);
+  font-size: var(--fs-md);
+}
+.toggle {
+  right: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.clear:hover,
+.toggle:hover {
+  background: var(--cream);
+  color: var(--navy);
+}
+
+.options {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  right: 0;
+  margin: var(--sp-1) 0 0;
+  padding: var(--sp-1) 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: var(--warm-white);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--rad-sm);
+  box-shadow: var(--shadow-card);
+}
+.options[hidden] {
+  display: none;
+}
+
+.option {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-md);
+  color: var(--text-body);
+  cursor: pointer;
+}
+.option[data-active='true'] {
+  background: var(--cream);
+  color: var(--navy);
+}
+.option[aria-selected='true'] {
+  font-weight: 600;
+}
+.option strong {
+  font-weight: 700;
+}
+.addOption {
+  border-top: 1px solid var(--border-light);
+  color: var(--navy);
+}

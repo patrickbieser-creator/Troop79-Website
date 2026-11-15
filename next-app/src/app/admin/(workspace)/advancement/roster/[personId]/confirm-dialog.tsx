@@ -1,20 +1,14 @@
 'use client';
 
 /**
- * Shared pieces for the "Takes effect immediately" blocks (Plans/Person-
- * Editor-Rethink.md, Phase 3). Emails, relationships and roles commit on
- * click, so they never sit inside a draft form: each block is a dashed
- * `ImmediateBlock` with a text label (never colour-only), a `useImmediate`
- * runner that turns one server action into busy → refetch → success line
- * (or an error Notice), and a `ConfirmDialog` for the steps that must say
- * their consequence before anything is written (removing a verified
- * address, ending a role, merge, delete, promote).
+ * The record page's confirm dialog and the run-an-action helper behind More actions (merge,
+ * delete, move to adults, test record). Moved here from immediate.tsx when the "Takes effect
+ * immediately" blocks were retired (Plans/Person-Record-One-Save.md).
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../../../../_components/button';
 import { Notice } from '../../../_components/notice';
 import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../../_components/dialog';
-import styles from './person-record.module.css';
 
 export interface ActionOutcome {
   ok: boolean;
@@ -85,29 +79,6 @@ export function useImmediate(): Immediate {
 /** The dashed block: heading, the "Takes effect immediately" tag, then the
  *  block's own error / success lines above its list. A landmark (section +
  *  h3) so tests and screen readers can address it by name. */
-export function ImmediateBlock({
-  title,
-  state,
-  children
-}: {
-  title: string;
-  state: Pick<Immediate, 'error' | 'notice'>;
-  children: ReactNode;
-}) {
-  const headingId = useId();
-  return (
-    <section className={styles.imm} aria-labelledby={headingId}>
-      <div className={styles.immHead}>
-        <h3 id={headingId}>{title}</h3>
-        <span className={styles.immTag}>Takes effect immediately</span>
-      </div>
-      {state.error && <Notice>{state.error}</Notice>}
-      {state.notice && <Notice variant="success">{state.notice}</Notice>}
-      {children}
-    </section>
-  );
-}
-
 export interface ConfirmSpec {
   title: string;
   body: ReactNode;

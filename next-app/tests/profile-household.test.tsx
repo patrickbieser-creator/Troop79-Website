@@ -410,8 +410,10 @@ describe('submit is offered only when there is something to send', () => {
     const user = userEvent.setup();
     renderHousehold({ initialKey: 'scout:mtest' });
 
+    // School is a pick list (lib/schools.ts); a school not on it goes in as typed through "+ Add".
     await user.clear(field('School'));
     await user.type(field('School'), 'Lakeside');
+    await user.click(screen.getByRole('option', { name: '+ Add “Lakeside” as a new school' }));
     await user.click(screen.getByRole('button', { name: 'Submit update' }));
 
     const sent = submitScout.mock.calls[0][0] as FormData;

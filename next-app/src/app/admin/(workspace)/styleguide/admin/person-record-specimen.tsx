@@ -1,145 +1,170 @@
 'use client';
 
 /**
- * Person Record Page specimens for /admin/styleguide/admin (Plans/Person-
- * Editor-Rethink.md, Phase 6). Reuses the record page's own client pieces
- * where they take plain props (SectionCard, the field kit, ImmediateBlock,
- * HistoryChip) and mirrors the class structure of the pieces that are wired
- * to server actions (Status read row, pending banner, Danger zone) — so the
- * page's real stylesheet is what paints every specimen. Display-only: every
- * handler is inert.
+ * Person Record Page specimens for /admin/styleguide/admin (Plans/Person-Record-One-Save.md,
+ * 2026-11-15: one form, one Save). Mirrors the class structure of the record page's own
+ * pieces — the sticky record bar, a FormSection's fields (unsaved = navy outline, problem =
+ * red outline + note), a Family row, the To finish rail card — so the page's real stylesheet
+ * (record.module.css) paints every specimen. The pending banner and History chip reuse the
+ * page's components. Display-only: every handler is inert.
  */
-import { Badge } from '../../_components/badge';
 import { Notice } from '../../_components/notice';
 import { Button } from '../../../_components/button';
-import {
-  Field,
-  FieldGrid,
-  ReadRow,
-  ReadRows,
-  SectionCard,
-  SectionFormActions
-} from '../../advancement/roster/[personId]/section-card';
-import { ImmediateBlock } from '../../advancement/roster/[personId]/immediate';
-import { HistoryChip } from '../../advancement/roster/[personId]/history-section';
+import { FormSection } from '../../../_components/form-panel';
+import { ActionsMenu } from '../../_components/actions-menu';
+import { DiscardButton, SaveButton, SaveProblem } from '../../_components/save-state';
+import { HistoryChip } from '../../advancement/roster/[personId]/history-rows';
 import type { PersonHistoryEntry } from '../../advancement/roster/[personId]/record-types';
 import pr from '../../advancement/roster/[personId]/person-record.module.css';
+import rs from '../../advancement/roster/[personId]/record.module.css';
 
 const noop = () => {};
 
-const READ_FORM = { editing: false, stamped: false, flash: false, startEdit: noop, error: null };
-const EDIT_FORM = { editing: true, stamped: false, flash: false, startEdit: noop, error: null };
-const CLEAN_ACTIONS = {
-  dirty: false,
-  blockedReason: null,
-  busy: false,
-  phase: 'idle' as const,
-  cancel: noop,
-  submit: noop
-};
-
-/** A read-mode section: read rows, ONE Edit, at most one disclosure. */
-export function SectionReadSpecimen() {
+/** The ONE sticky record bar: Save + Discard + the status line left, actions right. */
+export function RecordBarSpecimen({ dirty }: { dirty: boolean }) {
   return (
-    <SectionCard
-      title="Details"
-      form={READ_FORM}
-      help="Age and grade are derived from the birthdate and graduation year; the stored value is the class year."
-    >
-      <ReadRows>
-        <ReadRow label="Birthdate">Jul 12, 2012</ReadRow>
-        <ReadRow label="Age" derived>
-          14
-        </ReadRow>
-        <ReadRow label="School">Milwaukee German Immersion</ReadRow>
-        <ReadRow label="Health form">{null}</ReadRow>
-      </ReadRows>
-    </SectionCard>
+    <div className={[rs.bar, dirty ? rs.barDirty : ''].join(' ')}>
+      <SaveButton dirty={dirty} pending={false} onClick={noop} />
+      <DiscardButton dirty={dirty} onClick={noop} />
+      <span className={rs.barStatus}>
+        {dirty ? (
+          <>
+            <strong>2 unsaved changes:</strong> Patrol, Swim class
+            <span className={rs.also}>Saving will also link Jenna Scarpace as parent of Hadley Baquero.</span>
+          </>
+        ) : (
+          <>
+            Last change Nov 15, 2026 by Patrick Bieser ·{' '}
+            <button type="button" className={rs.linkBtn} onClick={noop}>
+              History (5)
+            </button>
+          </>
+        )}
+      </span>
+      <span className={rs.barRight}>
+        <Button size="sm" onClick={noop}>
+          Send sign-in link
+        </Button>
+        <ActionsMenu
+          ariaLabel="More actions (specimen)"
+          placeholder="More actions…"
+          options={[
+            { value: 'merge', label: 'Merge with another person…' },
+            { value: 'test', label: 'Mark as test record…' },
+            { value: 'd', label: '──────────', disabled: true },
+            { value: 'delete', label: 'Delete Dana Whitlock…' }
+          ]}
+          onAction={noop}
+        />
+      </span>
+    </div>
   );
 }
 
-/** The same section in editing mode: Cancel + a dirty-gated Save that
- *  opens disabled ("No changes to save yet"). */
-export function SectionEditingSpecimen() {
+/** A blocked save: the button stays enabled, the reason sits beside it. */
+export function RecordBarBlockedSpecimen() {
   return (
-    <SectionCard title="Details" form={EDIT_FORM}>
-      <FieldGrid>
-        <Field label="First name" required>
-          <input type="text" defaultValue="Dana" />
-        </Field>
-        <Field label="Last name" required>
-          <input type="text" defaultValue="Whitlock" />
-        </Field>
-        <Field label="School" full>
-          <input type="text" defaultValue="Milwaukee German Immersion" />
-        </Field>
-      </FieldGrid>
-      <SectionFormActions form={CLEAN_ACTIONS} />
-    </SectionCard>
+    <div className={`${rs.bar} ${rs.barDirty}`}>
+      <SaveButton dirty pending={false} blocked onBlocked={noop} />
+      <DiscardButton dirty onClick={noop} />
+      <span className={rs.barStatus}>
+        <SaveProblem reason="Pick why the scout is inactive" more={1} />
+      </span>
+    </div>
   );
 }
 
-/** One-click actions live OUTSIDE any form, in a dashed block whose tag
- *  says so in words. */
-export function ImmediateBlockSpecimen() {
+/** Fields in a numbered section: always editable; an unsaved change gets the navy outline,
+ *  a problem the red outline and a note under the field. */
+export function RecordFieldsSpecimen() {
   return (
-    <ImmediateBlock title="Email addresses" state={{ error: null, notice: null }}>
-      <ul className={pr.list}>
-        <li>
-          <span className={pr.grow}>
-            dana@example.org <span className={pr.muted}>home</span>
+    <FormSection num={1} title="Name & troop">
+      <div className={rs.grid}>
+        <div className={rs.field}>
+          <label className={rs.label} htmlFor="sg-pr-first">
+            First name
+          </label>
+          <input id="sg-pr-first" defaultValue="Hadley" />
+        </div>
+        <div className={`${rs.field} ${rs.changed}`}>
+          <label className={rs.label} htmlFor="sg-pr-patrol">
+            Patrol
+          </label>
+          <input id="sg-pr-patrol" defaultValue="Flaming Arrows" />
+          <p className={rs.hint}>Changed, not saved yet.</p>
+        </div>
+        <div className={`${rs.field} ${rs.full}`}>
+          <label className={rs.label} htmlFor="sg-pr-reason">
+            Why inactive?
+          </label>
+          <select id="sg-pr-reason" aria-invalid defaultValue="">
+            <option value="">Pick a reason…</option>
+          </select>
+          <p className={rs.problem}>Pick why the scout is inactive</p>
+        </div>
+      </div>
+    </FormSection>
+  );
+}
+
+/** The Family section's ONE list: every household member (and anyone linked from outside
+ *  it) with a relationship select; a quiet add row last. */
+export function FamilyListSpecimen() {
+  return (
+    <>
+      <ul className={rs.list} aria-label="Family (specimen)">
+        <li className={rs.row}>
+          <span className={rs.rowName}>
+            <a href="#sg-family">Jenna Scarpace</a> <span className={rs.rowMeta}>Adult</span>
           </span>
-          <span className={pr.pills}>
-            <Badge variant="info">primary</Badge> <Badge variant="success">verified</Badge>
-          </span>
-          <span className={pr.rowActions}>
-            <Button size="sm" disabled title="Already primary">
-              Make primary
-            </Button>
-            <Button size="sm" variant="danger" disabled title="Keep at least one address">
-              Remove
-            </Button>
+          <span className={rs.rowCtl}>
+            <span className={rs.rowMeta}>No relationship</span>
           </span>
         </li>
-        <li>
-          <span className={pr.grow}>
-            d.whitlock@work.example <span className={pr.muted}>work</span>
+        <li className={`${rs.row} ${rs.rowChanged}`}>
+          <span className={rs.rowName}>
+            <a href="#sg-family">Hadley Baquero</a> <span className={rs.rowMeta}>Scout</span>
           </span>
-          <span className={pr.pills}>
-            <Badge variant="neutral">unverified</Badge>
-          </span>
-          <span className={pr.rowActions}>
-            <Button size="sm">Make primary</Button>
-            <Button size="sm" variant="danger">
-              Remove
-            </Button>
+          <span className={rs.rowCtl}>
+            <select aria-label="How Adrian and Hadley are related" defaultValue="p">
+              <option value="p">Adrian is parent</option>
+              <option value="g">Adrian is guardian</option>
+              <option value="">No relationship</option>
+            </select>
           </span>
         </li>
       </ul>
-    </ImmediateBlock>
+      <div className={rs.addRow}>
+        <Button size="sm" variant="quiet" onClick={noop}>
+          + Person to household
+        </Button>
+      </div>
+    </>
   );
 }
 
-/** The Status read row — a Badge plus its one-line consequence, and ONE
- *  Edit. No Save / Saved button exists here (the Marita bug). */
-export function StatusRowSpecimen() {
+/** The rail's To finish card: derived from the record; each item focuses its field. */
+export function ToFinishSpecimen() {
   return (
-    <section className={pr.card} aria-label="Status (specimen)">
-      <div className={pr.cardHead}>
-        <h2>Status</h2>
-        <Button size="sm" onClick={noop}>
-          Edit
-        </Button>
-      </div>
-      <div className={pr.cardBody}>
-        <dl className={pr.dl}>
-          <dt>Status</dt>
-          <dd>
-            <Badge variant="success">Active</Badge>{' '}
-            <span className={pr.sub}>On rosters, dashboards and the Fast Entry picker</span>
-          </dd>
-        </dl>
-      </div>
+    <section className={rs.railCard}>
+      <h2>To finish</h2>
+      <ul className={rs.todo}>
+        <li>
+          <button type="button" onClick={noop}>
+            YPT expired
+          </button>
+        </li>
+        <li>
+          <button type="button" onClick={noop}>
+            Health form missing
+          </button>
+        </li>
+        <li>
+          <button type="button" onClick={noop}>
+            No role<span className={rs.muted}> (optional)</span>
+          </button>
+        </li>
+      </ul>
     </section>
   );
 }
@@ -217,21 +242,5 @@ export function HistoryChipSpecimen() {
         </span>
       </li>
     </ul>
-  );
-}
-
-/** The Danger zone, collapsed by default: no standing prose — the
- *  consequences live in the confirm dialogs Merge and Delete both open. */
-export function DangerZoneSpecimen() {
-  return (
-    <section className={`${pr.card} ${pr.dangerCard}`} aria-label="Danger zone (specimen)">
-      <div className={pr.cardHead}>
-        <h2>Danger zone</h2>
-        <span className={pr.dangerMeta}>promote · merge · delete</span>
-        <Button size="sm" aria-expanded={false} onClick={noop}>
-          Show
-        </Button>
-      </div>
-    </section>
   );
 }

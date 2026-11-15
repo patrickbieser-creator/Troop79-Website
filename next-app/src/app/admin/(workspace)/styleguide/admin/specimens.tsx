@@ -11,6 +11,8 @@ import { SortHeader, useSortable } from '../../_components/use-sortable';
 import { SearchField, useTableSearch } from '../../_components/search-field';
 import { AdminCombobox, type ComboOption } from '../../_components/admin-combobox';
 import { BucketPicker } from '../../_components/bucket-picker';
+import { SchoolCombobox } from '../../_components/school-combobox';
+import type { School } from '@/lib/schools';
 import type { Bucket } from '@/lib/buckets';
 import { GearPicker } from '../../library/menu-monster/gear-picker';
 import { AdminNumberBox } from '../../../_components/admin-number-box';
@@ -191,6 +193,34 @@ const BUCKET_SAMPLE: Bucket[] = [
 ];
 
 /** Bucket picker: pick, or walk the two-step "+ New bucket…" (its create only pretends here). */
+const SCHOOL_SAMPLE: School[] = [
+  { id: 1, name: 'Shorewood High School', short_name: null, active: true },
+  { id: 2, name: 'Shorewood Intermediate School', short_name: 'SIS', active: true },
+  { id: 3, name: 'Rufus King High School', short_name: null, active: true },
+  { id: 4, name: 'Reagan High School', short_name: null, active: true },
+  { id: 5, name: 'Old Closed Academy', short_name: null, active: false }
+];
+
+/** School picker: the Combobox with highlight, ▾ and "+ Add “…” as a new school" (this specimen's Add only pretends). */
+export function SchoolComboboxSpecimen() {
+  const [value, setValue] = useState<number | null>(2);
+  return (
+    <SchoolCombobox
+      id="sg-school"
+      schools={SCHOOL_SAMPLE}
+      value={value}
+      onChange={(id) => setValue(id)}
+      onAddSchool={async (name) => ({ ok: true, school: { id: 100 + name.length, name, short_name: null, active: true } })}
+    />
+  );
+}
+
+/** A scout whose school was hidden: it still shows as the value, but is not offered. */
+export function SchoolComboboxHiddenSpecimen() {
+  const [value, setValue] = useState<number | null>(5);
+  return <SchoolCombobox id="sg-school-hidden" label="School (hidden)" schools={SCHOOL_SAMPLE} value={value} onChange={(id) => setValue(id)} onAddSchool={async () => ({ ok: false, error: 'specimen' })} />;
+}
+
 export function BucketPickerSpecimen() {
   const [value, setValue] = useState<number | null>(4);
   return (

@@ -33,7 +33,7 @@ import { SectionDivider } from '@/app/_components/section-divider';
 import { GoalBar } from '@/app/_components/goal-bar';
 import { goalProgress } from '@/lib/wreaths/scout-entry';
 import cardS from '@/app/_components/card.module.css';
-import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicPaymentOptionsSpecimen, PublicStepperSpecimen, PublicTabStripSpecimen, PublicTabStripScrollSpecimen } from './specimens';
+import { PublicAccountControlSpecimen, PublicDrawerSpecimen, PublicBlockedSaveSpecimen, PublicBrandDetailSpecimen, PublicDietRowsSpecimen, PublicFinishLineSpecimen, PublicAmountScaleSpecimen, PublicGearSpecimen, PublicMenuEditListSpecimen, PublicPaymentOptionsSpecimen, PublicStepperSpecimen, PublicSchoolPickerSpecimen, PublicTabStripSpecimen, PublicTabStripScrollSpecimen } from './specimens';
 import { IngredientList } from '@/app/(public)/library/menu-monster/_components/ingredient-list';
 import { StepStrip } from '@/app/(public)/library/menu-monster/menus/_components/step-strip';
 import { SummaryRail } from '@/app/(public)/library/menu-monster/menus/_components/summary-rail';
@@ -565,6 +565,17 @@ export default function PublicStyleguidePage() {
               <code>Stepper</code> / <code>NumberBox</code> / <code>AmountInput</code> from <code>_components/stepper</code> &mdash; 32px tall,
               16px number (iOS floor), 28px buttons, commit-on-blur. Label sits left and ends in a colon. Dollars-and-cents is a framed
               AmountInput, not a dial.
+            </p>
+          </div>
+
+          {/* School picker — the family twin of the leaders' SchoolCombobox (2026-11-15) */}
+          <div className={sg.specimenBlock}>
+            <PublicSchoolPickerSpecimen />
+            <p className={sg.specimenInlineNote}>
+              <code>SchoolPicker</code> from <code>_components/school-picker</code> &mdash; the /profile school field. Type to filter (typed
+              text bolded), &times; clears, &#9662; toggles, arrows / Enter / Esc. Families pick from the active schools; &ldquo;+ Add
+              &ldquo;&hellip;&rdquo; as a new school&rdquo; only puts the typed name in their update, and a leader&rsquo;s approval adds it
+              to the list. Public tokens; the admin twin is <code>SchoolCombobox</code> on /admin/styleguide/admin.
             </p>
           </div>
 

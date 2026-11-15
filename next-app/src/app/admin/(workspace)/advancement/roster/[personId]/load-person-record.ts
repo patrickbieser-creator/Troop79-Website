@@ -16,6 +16,7 @@ import { centralToday } from '@/lib/dates';
 import { suggestInitials } from '@/lib/sign-off-initials';
 import { getPersonDetail, getPersonEmails } from '../person-actions';
 import { getPersonHistorySummary } from './get-person-history';
+import { listSchoolsWith } from '@/lib/schools';
 
 export * from './record-types';
 import type { FieldValue } from '@/lib/change-requests';
@@ -23,6 +24,7 @@ import {
   isRosterTab,
   kindOfTab as kindOf,
   type FamilyNotice,
+  type FamilyRow,
   type PendingChangeRequest,
   type PersonRecord,
   type PersonStatus,
@@ -36,7 +38,7 @@ export type LoadPersonRecordResult =
   | { kind: 'missing' };
 
 const SCOUT_RECORD_COLS =
-  'id, patrol, current_rank, school, graduation_year, swim_class, active, inactive_reason, junior_leader_override, is_webelos, crossed_over_on';
+  'id, patrol, current_rank, school_id, school_row:schools(name), graduation_year, swim_class, active, inactive_reason, junior_leader_override, is_webelos, crossed_over_on';
 
 export async function loadPersonRecord(personId: number): Promise<LoadPersonRecordResult> {
   const supabase = createAdminClient();
@@ -82,7 +84,11 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
     // At most one row per person: active, or retired (an archived reuse row has moved to archived_person_id).
     supabase.from('leaders').select('code, can_login, retired_at').eq('person_id', personId).maybeSingle()
   ]);
-  const scout = (scoutRes.data as ScoutRecordRow | null) ?? null;
+  // The school's name rides in on the schools join; flatten it to the record's `school`.
+  const scoutRaw = scoutRes.data as (Omit<ScoutRecordRow, 'school'> & { school_row: { name: string } | null }) | null;
+  const scout: ScoutRecordRow | null = scoutRaw
+    ? (({ school_row, ...rest }) => ({ ...rest, school: school_row?.name ?? null }))(scoutRaw)
+    : null;
   const genderRow = genderRes.data as {
     gender: string | null;
     is_test: boolean;
@@ -101,11 +107,13 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
   const tab: RosterTab = isRosterTab(detail.tab) ? detail.tab : 'adult';
   const kind = kindOf(tab);
 
-  const [rankLabel, household, { pending, familyNotice }, history] = await Promise.all([
+  const [rankLabel, household, { pending, familyNotice }, history, family, schools] = await Promise.all([
     loadRankLabel(supabase, scout?.current_rank ?? null),
     loadHousehold(supabase, detail.householdId),
     loadPending(supabase, personId, kind === 'scout' && scout ? { type: 'scout', id: scout.id } : { type: 'adult', id: String(personId) }),
-    getPersonHistorySummary(personId)
+    getPersonHistorySummary(personId),
+    loadFamily(supabase, personId, detail.householdId),
+    kind === 'scout' && scout ? listSchoolsWith(supabase) : Promise.resolve([])
   ]);
 
   const status: PersonStatus =
@@ -131,6 +139,9 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
       rankLabel,
       household,
       households,
+      family,
+      youth: YOUTH_TABS.has(tab),
+      schools,
       status,
       pendingUpdate: pending != null,
       pending,
@@ -142,6 +153,52 @@ export async function loadPersonRecord(personId: number): Promise<LoadPersonReco
 }
 
 type Db = ReturnType<typeof createAdminClient>;
+
+const YOUTH_TABS: ReadonlySet<string> = new Set(['active_scout', 'inactive_scout', 'webelos']);
+
+/**
+ * The Family section's one list (Plans/Person-Record-One-Save.md): every other member of
+ * the household, then anyone outside it this person has a link with, each with the stored
+ * relationship rows between the two, read from this person's side.
+ */
+async function loadFamily(supabase: Db, personId: number, householdId: number | null): Promise<FamilyRow[]> {
+  const [{ data: memberRows }, { data: relRows }] = await Promise.all([
+    householdId == null
+      ? Promise.resolve({ data: [] as { person_id: number }[] })
+      : supabase.from('household_members').select('person_id').eq('household_id', householdId),
+    supabase
+      .from('relationships')
+      .select('id, person_id, related_person_id, type')
+      .or(`person_id.eq.${personId},related_person_id.eq.${personId}`)
+  ]);
+  const members = new Set(((memberRows ?? []) as { person_id: number }[]).map((m) => Number(m.person_id)));
+  members.delete(personId);
+  const links = new Map<number, FamilyRow['links']>();
+  for (const r of (relRows ?? []) as { id: number; person_id: number; related_person_id: number; type: string }[]) {
+    const outgoing = Number(r.person_id) === personId;
+    const other = Number(outgoing ? r.related_person_id : r.person_id);
+    const list = links.get(other) ?? [];
+    list.push({ id: Number(r.id), type: r.type, outgoing });
+    links.set(other, list);
+  }
+  const ids = [...new Set([...members, ...links.keys()])];
+  if (ids.length === 0) return [];
+  const { data } = await supabase.from('person_directory').select('person_id, display_name, tab, active').in('person_id', ids);
+  const rows = ((data ?? []) as { person_id: number; display_name: string; tab: string; active: boolean }[]).map((r) => ({
+    personId: Number(r.person_id),
+    name: r.display_name,
+    kind: kindOf(isRosterTab(r.tab) ? r.tab : 'adult'),
+    youth: YOUTH_TABS.has(r.tab),
+    inHousehold: members.has(Number(r.person_id)),
+    active: r.active,
+    links: links.get(Number(r.person_id)) ?? []
+  }));
+  // Household first; adults before youth; then by name.
+  return rows.sort(
+    (a, b) =>
+      Number(b.inHousehold) - Number(a.inHousehold) || Number(a.youth) - Number(b.youth) || a.name.localeCompare(b.name)
+  );
+}
 
 /** The person's sign-off initials and how many entries they sign, or a suggestion when they have none. */
 async function loadInitials(

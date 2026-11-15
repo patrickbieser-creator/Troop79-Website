@@ -23,6 +23,7 @@ import { Drawer } from '@/app/_components/drawer';
 import type { SessionStatus } from '@/app/api/session-status/route';
 import { PaymentOptions } from '@/app/(public)/events/[id]/payment-options';
 import type { PayChoice } from '@/lib/event-pay/options';
+import { SchoolPicker } from '@/app/_components/school-picker';
 
 export function PublicTabStripSpecimen() {
   const [active, setActive] = useState('week');
@@ -68,6 +69,21 @@ export function PublicPaymentOptionsSpecimen() {
 }
 
 /** The shared compact dialer, live: a labelled Stepper (Label: − n +), a bare one at its minimum, and the framed cents box. */
+/** The family school picker: names only; "+ Add" just fills the update (a leader approves it). */
+export function PublicSchoolPickerSpecimen() {
+  const [school, setSchool] = useState('Shorewood High School');
+  return (
+    <Field label="School">
+      <SchoolPicker
+        id="sg-school-picker"
+        names={['Shorewood High School', 'Shorewood Intermediate School', 'Rufus King High School', 'Reagan High School']}
+        value={school}
+        onChange={setSchool}
+      />
+    </Field>
+  );
+}
+
 export function PublicStepperSpecimen() {
   const [people, setPeople] = useState(8);
   const [days, setDays] = useState(1);

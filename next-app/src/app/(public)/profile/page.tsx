@@ -20,6 +20,7 @@ import {
 import { type ScoutProfileFields } from './profile-editor';
 import { type AdultProfileFields } from './adult-editor';
 import HouseholdMembers, { type HouseholdMemberView } from './household-members';
+import { listActiveSchoolNamesWith } from '@/lib/schools';
 import { loadScoutRows } from '@/lib/scout-row';
 import { listPersonEmails, type PersonEmailRow } from '@/lib/person-emails';
 import { HouseholdReadOnly, scoutRows, adultRows, type ReadOnlyMember } from './household-readonly';
@@ -195,6 +196,8 @@ export default async function ProfilePage({
   let householdLabel = '';
   let canAddMember = false;
   let selfEmails: PersonEmailRow[] = [];
+  // The school pick list a family chooses from (active schools only; lib/schools.ts).
+  let schoolNames: string[] = [];
 
   if (state === 'ready' && session) {
     const household = await loadHouseholdByKey(session.householdKey);
@@ -209,6 +212,7 @@ export default async function ProfilePage({
     // form from any family whose scouts had all aged out.
     canAddMember = storedHouseholdId(household?.key) != null;
     selfEmails = await listPersonEmails(supabase, session.personId);
+    if (scoutIds.length > 0) schoolNames = await listActiveSchoolNamesWith(supabase);
 
     // A scout's contact fields live on people (Retire-Roster-Contact-Columns,
     // 2026-08-26) — loadScoutRows merges the two. Found live the same evening:
@@ -396,6 +400,7 @@ export default async function ProfilePage({
           addEmailAction={addAdultEmailAction}
           setPrimaryEmailAction={setAdultPrimaryEmailAction}
           removeEmailAction={removeAdultEmailAction}
+          schools={schoolNames}
         />
       )}
     </main>

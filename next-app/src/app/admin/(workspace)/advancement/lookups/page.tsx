@@ -107,6 +107,9 @@ import { PayToEditor } from './pay-to-editor';
 import { PAY_TO_KEYS } from '@/lib/event-pay/options';
 import { createStore, renameStore, retireStore, restoreStore, deleteStore, moveStore } from './store-actions';
 import { listStoresWith } from '@/lib/menu-monster/stores';
+import { SchoolsManager } from './schools-manager';
+import { addSchool, deleteSchool, mergeSchool, renameSchool, setSchoolActive } from './school-actions';
+import { listSchoolsWithUsage } from '@/lib/schools';
 import { PageTitle } from '../../_components/page-title';
 import { AdminHub } from '../../_components/admin-hub';
 
@@ -534,6 +537,22 @@ async function cardContent(id: string): Promise<{ sub: string; body: React.React
           />
         )
       };
+    case 'schools': {
+      const schools = await listSchoolsWithUsage(createAdminClient());
+      return {
+        sub: `${schools.filter((s) => s.active).length} schools offered · every school field picks from this list · a school in use can't be deleted, so merge or hide it`,
+        body: (
+          <SchoolsManager
+            schools={schools}
+            onAdd={addSchool}
+            onRename={renameSchool}
+            onMerge={mergeSchool}
+            onSetActive={setSchoolActive}
+            onDelete={deleteSchool}
+          />
+        )
+      };
+    }
     case 'stores': {
       const stores = await listStoresWith(createAdminClient(), { includeRetired: true });
       return {

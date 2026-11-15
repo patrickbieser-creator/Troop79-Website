@@ -1,0 +1,37 @@
+/* School picker's Add dialog (admin tokens only). Specimen: /admin/styleguide/admin -> Combobox -> School picker. */
+
+.dialog {
+  max-width: 28rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-2);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-700);
+}
+.field input {
+  background: var(--admin-field-bg);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  font: inherit;
+  font-size: var(--admin-text-md);
+  padding: var(--admin-space-4) var(--admin-space-5);
+}
+.field input[aria-invalid='true'] {
+  border-color: var(--admin-danger);
+  outline: 1px solid var(--admin-danger);
+}
+
+.hint {
+  margin: var(--admin-space-3) 0 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+
+.error {
+  margin: var(--admin-space-3) 0 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-danger);
+}
