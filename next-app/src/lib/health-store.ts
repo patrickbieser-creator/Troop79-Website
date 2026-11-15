@@ -456,6 +456,29 @@ export function healthViewerFor(access: HealthAccess, personId: number): HealthV
  * Asked of the roster, not of the sign-in or a sign-up row: `person_kind` on an entry is typed by the family.
  * An aged-out scout (an inactive scout row, now an adult) is not one.
  */
+/**
+ * Scouts (and Webelos) who share a household with this adult but aren't in what they may act for: a shared household
+ * grants nothing without a parent_of/guardian_of link. The family page names them so a missing link is noticed
+ * rather than the child silently not being there (Kevin Greene, 2026-11-14). Names, sorted.
+ */
+export async function unlinkedHouseholdScouts(sb: SupabaseClient, personId: number, linked: number[]): Promise<string[]> {
+  const { data: mine, error } = await sb.from('household_members').select('household_id').eq('person_id', personId);
+  if (error) throw new Error(error.message);
+  const households = ((mine ?? []) as { household_id: number }[]).map((m) => m.household_id);
+  if (households.length === 0) return [];
+  const { data: members, error: memberError } = await sb.from('household_members').select('person_id').in('household_id', households);
+  if (memberError) throw new Error(memberError.message);
+  const candidates = [...new Set(((members ?? []) as { person_id: number }[]).map((m) => Number(m.person_id)))].filter((id) => !linked.includes(id));
+  if (candidates.length === 0) return [];
+  const { data: youth, error: youthError } = await sb.from('scouts').select('person_id, active, is_webelos').in('person_id', candidates);
+  if (youthError) throw new Error(youthError.message);
+  const ids = [...new Set(((youth ?? []) as { person_id: number; active: boolean; is_webelos: boolean }[]).filter((s) => s.active || s.is_webelos).map((s) => Number(s.person_id)))];
+  if (ids.length === 0) return [];
+  const { data: people, error: peopleError } = await sb.from('people').select('display_name').in('id', ids);
+  if (peopleError) throw new Error(peopleError.message);
+  return ((people ?? []) as { display_name: string }[]).map((p) => p.display_name).sort((a, b) => a.localeCompare(b));
+}
+
 export async function isYouthOnRoster(sb: SupabaseClient, personId: number): Promise<boolean> {
   const { data, error } = await sb.from('scouts').select('active, is_webelos').eq('person_id', personId);
   if (error) throw new Error(error.message);

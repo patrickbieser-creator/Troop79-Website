@@ -39,6 +39,8 @@ export interface DirectoryPerson {
 export interface HouseholdOption {
   id: number;
   label: string;
+  /** Scouts and Webelos in it: Add adult asks how the new adult relates to each (lib/household-links). */
+  scouts?: { personId: number; name: string }[];
 }
 
 type PeopleColKey = 'name' | 'email' | 'phone' | 'bsa' | 'created';

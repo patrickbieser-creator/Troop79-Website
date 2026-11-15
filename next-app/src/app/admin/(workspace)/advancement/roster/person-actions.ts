@@ -21,6 +21,7 @@ import {
 import { centralToday } from '@/lib/dates';
 import { ROLE_LABEL } from './[personId]/record-types';
 import { expirePeopleLists } from '@/lib/people-lists';
+import { readHouseholdLinks, type HouseholdScout } from '@/lib/household-links';
 /**
  * Person-level edits behind the Roster's Leaders and Adults tabs.
  *
@@ -121,6 +122,18 @@ export type GrantableRole =
  * Ruiz" is the answer they need — unlike add_parent_to_household, where a
  * family typing a known email means "this is that person".
  */
+/** The scouts (and Webelos) in a household: who an adult added to it must be related to, or not. */
+async function scoutsInHousehold(supabase: Db, householdId: number): Promise<HouseholdScout[]> {
+  if (!Number.isInteger(householdId)) return [];
+  const { data: members } = await supabase.from('household_members').select('person_id').eq('household_id', householdId);
+  const ids = ((members ?? []) as { person_id: number }[]).map((m) => Number(m.person_id));
+  if (ids.length === 0) return [];
+  const { data: youth } = await supabase.from('scouts').select('person_id, active, is_webelos').in('person_id', ids);
+  const youthIds = [...new Set(((youth ?? []) as { person_id: number; active: boolean; is_webelos: boolean }[]).filter((s) => s.active || s.is_webelos).map((s) => Number(s.person_id)))];
+  const names = await displayNames(supabase, youthIds);
+  return youthIds.map((id) => ({ personId: id, name: names.get(id) ?? `person ${id}` })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function createPerson(formData: FormData): Promise<Result & { personId?: number }> {
   // The planner caches the roster and teacher pool (lib/people-lists); expired when this action ends.
   expirePeopleLists();
@@ -149,6 +162,12 @@ export async function createPerson(formData: FormData): Promise<Result & { perso
   }
 
   const supabase = createAdminClient();
+
+  // Every scout already in the chosen household needs an answer before anyone is created: a shared household
+  // grants nothing without a parent_of/guardian_of link (lib/household-links, Kevin Greene 2026-11-14).
+  const householdScouts = householdRaw ? await scoutsInHousehold(supabase, Number(householdRaw)) : [];
+  const links = readHouseholdLinks((key) => formData.get(key), householdScouts);
+  if (!links.ok) return links;
 
   if (email) {
     const { data: clash } = await supabase
@@ -208,6 +227,28 @@ export async function createPerson(formData: FormData): Promise<Result & { perso
     if (hhErr) {
       revalidatePath('/admin/advancement/roster');
       return { ok: false, error: `Created, but the household did not stick: ${hhErr.message}`, personId };
+    }
+    if (links.links.length > 0) {
+      const { error: relErr } = await supabase
+        .from('relationships')
+        .insert(links.links.map((l) => ({ person_id: personId, related_person_id: l.personId, type: l.type, is_guardian: false })));
+      if (relErr) {
+        revalidatePath('/admin/advancement/roster');
+        return { ok: false, error: `Created, but the parent links did not stick: ${relErr.message}`, personId };
+      }
+      const scoutName = new Map(householdScouts.map((s) => [s.personId, s.name]));
+      for (const l of links.links) {
+        const other = scoutName.get(l.personId) ?? `person ${l.personId}`;
+        await recordAudit({
+          area: 'roster',
+          action: 'create',
+          entityType: 'relationship',
+          entityId: personId,
+          subjects: [l.personId],
+          summary: `Recorded relationship: ${firstName} ${lastName} ${RELATIONSHIP_PHRASE[l.type] ?? l.type} ${other}`,
+          details: [{ field: relationshipField(l.type, other), from: 'not linked', to: linkedState(false) }]
+        });
+      }
     }
   }
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { createTestScout, deleteTestScout, type TestScout } from './helpers/signup-fixtures';
 import { memoryHealthStorage } from '../src/lib/health-files';
-import { healthOpensFor, healthPageOwner, listHealthPages, openHealthPage, removeHealthPage, saveHealthDates, saveHealthPage, type HealthDeps, type HealthViewer } from '../src/lib/health-store';
+import { healthOpensFor, healthPageOwner, listHealthPages, openHealthPage, removeHealthPage, saveHealthDates, saveHealthPage, unlinkedHouseholdScouts, type HealthDeps, type HealthViewer } from '../src/lib/health-store';
 import { resolveFamilyScope } from '../src/lib/household-scope';
 
 /**
@@ -242,5 +242,37 @@ describe('what the family sees', () => {
     await openHealthPage(row.id, { personId: parentId, name: 'A Named Leader', via: 'family' }, 'view', deps);
     const opens = await healthOpensFor(admin, [scout.personId]);
     expect(opens.map((o) => `${o.viewerName}:${o.action}`)).toEqual(['A Named Leader:view']);
+  });
+});
+
+/**
+ * A shared household grants nothing; a parent with no parent_of link to a scout in their own household can't add
+ * that scout's forms, and used to see no sign the scout existed (Kevin Greene, 2026-11-14). The page names them.
+ */
+describe('scouts in my household I am not linked to', () => {
+  let householdId: number;
+  beforeAll(async () => {
+    const { data, error } = await admin.from('households').insert({ label: 'ZZVITEST Health Household' }).select('id').single();
+    if (error) throw new Error(error.message);
+    householdId = data!.id;
+    const { error: memberError } = await admin.from('household_members').insert([
+      { household_id: householdId, person_id: parentId },
+      { household_id: householdId, person_id: scout.personId },
+      { household_id: householdId, person_id: other.personId }
+    ]);
+    if (memberError) throw new Error(memberError.message);
+  });
+  afterAll(async () => {
+    await admin.from('household_members').delete().eq('household_id', householdId);
+    await admin.from('households').delete().eq('id', householdId);
+  });
+
+  it('Parent_InAHouseholdWithAnUnlinkedScout_IsToldTheirName', async () => {
+    const scope = await resolveFamilyScope(admin, parentId, 'adult');
+    expect(await unlinkedHouseholdScouts(admin, parentId, scope)).toEqual(['ZZVITEST Scout HealthB']);
+  });
+
+  it('Parent_LinkedToEveryScoutInTheHousehold_IsToldNothing', async () => {
+    expect(await unlinkedHouseholdScouts(admin, parentId, [parentId, scout.personId, other.personId])).toEqual([]);
   });
 });

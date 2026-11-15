@@ -11,7 +11,8 @@ import { getIdentitySessionIfValid } from '@/lib/family-access';
 import Link from 'next/link';
 import { healthAccess, healthFamilyAccess } from '@/lib/health-access';
 import { healthFilesConfigured } from '@/lib/health-files';
-import { healthOpensFor, listHealthPages } from '@/lib/health-store';
+import { healthOpensFor, listHealthPages, unlinkedHouseholdScouts } from '@/lib/health-store';
+import { joinNames } from '@/lib/signup-confirmation';
 import { HEALTH_KIND, isHealthKind } from '@/lib/health-records';
 import { centralToday } from '@/lib/dates';
 import { fmtDateTime } from '@/lib/format-date';
@@ -74,11 +75,12 @@ export default async function HealthFormsPage() {
 
   const supabase = createAdminClient();
   const leader = await healthAccess();
-  const [{ data: peopleRows }, { data: scoutRows }, pages, opens] = await Promise.all([
+  const [{ data: peopleRows }, { data: scoutRows }, pages, opens, unlinked] = await Promise.all([
     supabase.from('people').select('id, display_name').in('id', access.personIds),
     supabase.from('scouts').select('person_id').in('person_id', access.personIds),
     listHealthPages(supabase, access.personIds),
-    healthOpensFor(supabase, access.personIds)
+    healthOpensFor(supabase, access.personIds),
+    unlinkedHouseholdScouts(supabase, access.viewer.personId, access.personIds)
   ]);
   const nameOf = new Map(((peopleRows ?? []) as { id: number; display_name: string }[]).map((p) => [Number(p.id), p.display_name]));
   const scoutIds = new Set(((scoutRows ?? []) as { person_id: number }[]).map((s) => Number(s.person_id)));
@@ -104,6 +106,12 @@ export default async function HealthFormsPage() {
           Every outing needs the BSA health form (Parts A and B) and an insurance card for each person going. The form is
           good for 12 months from the later signature date.
         </Notice>
+        {unlinked.length > 0 && (
+          <Notice tone="warning" className={styles.list}>
+            {joinNames(unlinked)} {unlinked.length === 1 ? 'is' : 'are'} in your household but not linked to you as a parent or
+            guardian, so you can&rsquo;t add {unlinked.length === 1 ? 'their' : 'those'} forms here. Ask a leader to link you.
+          </Notice>
+        )}
         <HealthForms
           people={people}
           pages={pages}

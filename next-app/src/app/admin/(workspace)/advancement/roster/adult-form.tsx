@@ -13,6 +13,9 @@ import { Notice } from '../../_components/notice';
 import { Dialog } from '../../_components/dialog';
 import { Button } from '../../../_components/button';
 import { FormPanel } from '../../../_components/form-panel';
+import { SegmentedControl } from '../../_components/segmented-control';
+import saveState from '../../_components/save-state.module.css';
+import { HOUSEHOLD_LINK_OPTIONS, linkField } from '@/lib/household-links';
 
 /**
  * "Add Adult" — the same shape as the Scout editor's create path (a dialog off
@@ -56,8 +59,13 @@ export function AdultForm({
   const [city, setCity] = useState('');
   const [stateAbbr, setStateAbbr] = useState('');
   const [zip, setZip] = useState('');
+  // How the new adult relates to each scout in the chosen household; '' = not answered yet.
+  const [relations, setRelations] = useState<Record<number, '' | 'parent_of' | 'guardian_of' | 'none'>>({});
+  const [tried, setTried] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const householdScouts = households.find((h) => String(h.id) === householdId)?.scouts ?? [];
+  const unanswered = householdScouts.filter((s) => !relations[s.personId]);
 
   // Mounted only while open — showModal() once on mount (Esc/backdrop free).
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -68,6 +76,11 @@ export function AdultForm({
 
   function save() {
     setError(null);
+    // A shared household grants nothing: each scout in it needs an answer (lib/household-links).
+    if (unanswered.length > 0) {
+      setTried(true);
+      return;
+    }
     const fd = new FormData();
     fd.set('first_name', firstName);
     fd.set('last_name', lastName);
@@ -80,6 +93,7 @@ export function AdultForm({
     fd.set('city', city);
     fd.set('state', stateAbbr);
     fd.set('zip', zip);
+    for (const s of householdScouts) fd.set(linkField(s.personId), relations[s.personId] ?? '');
     startTransition(async () => {
       const res = await createPerson(fd);
       if (!res.ok) {
@@ -176,7 +190,11 @@ export function AdultForm({
             className={fields.editInput}
             value={householdId}
             disabled={isPending}
-            onChange={(e) => setHouseholdId(e.target.value)}
+            onChange={(e) => {
+              setHouseholdId(e.target.value);
+              setRelations({});
+              setTried(false);
+            }}
           >
             <option value="">— none —</option>
             {households.map((h) => (
@@ -186,6 +204,23 @@ export function AdultForm({
             ))}
           </select>
         </label>
+        {householdScouts.map((s) => {
+          const bad = tried && !relations[s.personId];
+          return (
+            <div key={s.personId} className={bad ? `${fields.editFieldFull} ${saveState.bad}` : fields.editFieldFull}>
+              <span className={fields.editLabel}>Related to {s.name} as</span>
+              <SegmentedControl
+                name={`adult-relation-${s.personId}`}
+                label={`How this adult is related to ${s.name}`}
+                value={relations[s.personId] ?? ''}
+                options={HOUSEHOLD_LINK_OPTIONS}
+                disabled={isPending}
+                onChange={(v) => setRelations((r) => ({ ...r, [s.personId]: v }))}
+              />
+              {bad && <p className={saveState.badNote}>Choose one. Only a parent or guardian can add {s.name}&rsquo;s health forms.</p>}
+            </div>
+          );
+        })}
         <label className={fields.editFieldFull}>
           <span className={fields.editLabel}>Address Line 1</span>
           <input
@@ -236,11 +271,17 @@ export function AdultForm({
       </div>
 
       <p className={styles.editorHint}>
-        Roles, relationships and household moves are all editable afterwards by opening the person.
+        Roles, other relationships and household moves are all editable afterwards by opening the person.
       </p>
       </FormPanel>
 
       <div className={fields.editActions}>
+        {tried && unanswered.length > 0 && (
+          <span className={saveState.problem} role="alert">
+            Can&rsquo;t add yet: say how they&rsquo;re related to {unanswered[0].name}
+            {unanswered.length > 1 && <span className={saveState.problemMore}> (+{unanswered.length - 1} more)</span>}
+          </span>
+        )}
         <Button size="sm" onClick={onClose} disabled={isPending}>
           Cancel
         </Button>

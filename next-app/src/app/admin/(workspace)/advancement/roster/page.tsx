@@ -206,6 +206,19 @@ export default async function RosterPage({
     if (name) (householdMembers[m.household_id] ??= []).push(name);
   }
 
+  // Who Add adult must ask about: the scouts (and Webelos) in each household.
+  const youthByPerson = new Map(
+    allScouts
+      .filter((s) => s.person_id != null && (s.active || s.is_webelos))
+      .map((s) => [Number(s.person_id), s.display_name]),
+  );
+  for (const m of (membersRes.data ?? []) as { household_id: number; person_id: number }[]) {
+    const name = youthByPerson.get(m.person_id);
+    const h = name ? households.find((x) => x.id === m.household_id) : undefined;
+    if (h && name) (h.scouts ??= []).push({ personId: m.person_id, name });
+  }
+  for (const h of households) h.scouts?.sort((a, b) => a.name.localeCompare(b.name));
+
   const householdLabel = new Map(allHouseholds.map((h) => [h.id, h.label]));
   const guestRows = buildGuestTabRows({
     people: guestPeople,
