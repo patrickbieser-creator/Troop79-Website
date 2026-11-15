@@ -104,6 +104,11 @@ What the current page does wrong:
       "Add the school pick list now"): family sign-up, the family /profile editor (families pick from
       the list; their "+ Add" goes into the change request for a leader to approve, it does not insert
       the school directly), pending-update review, scout create form.
+      **Built as:** /profile editor and scout create form use the picker; pending-update review shows
+      the proposed school name beside the current one with Approve / Reject (no field to pick in).
+      Family sign-up has no school field: it is the event sign-up form, which ticks scouts already
+      on the roster, and families never create scouts. Patrick, 2026-11-15: nothing more is needed
+      there.
 - [ ] Grade stays derived from `graduation_year`. No change.
 
 ### Family links built everywhere
