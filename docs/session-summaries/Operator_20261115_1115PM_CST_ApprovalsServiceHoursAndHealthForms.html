@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 84 — Approvals, Service Hours, Health Forms</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>Approvals, a service-hours audit, and Health Forms in the admin</h1>
+        <p class="subtitle">Session 84. An approval that looked like a lost submission became a new Approvals list. The audits now catch service hours scouts have already earned. Health records got their own admin screen, designed by Brad and Jenna, with the first two of five phases live.</p>
+        <div class="meta">
+            <span>&#128197; November 15, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.273.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">8,770</div><div class="label">Tests passing on the last full run (was 8,685)</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Releases live (v1.271.0, v1.272.0, v1.273.0)</div></div>
+            <div class="stat"><div class="number">14</div><div class="label">Service-hours requirements the new audit found unsigned</div></div>
+            <div class="stat"><div class="number">0</div><div class="label">Database changes</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader can see every proof approval from the past two months and what it wrote to the ledger. The audit page finds scouts whose logged service hours already meet a rank requirement. Health-records leaders who are admins have a Health Forms list showing every person's documents and status, with each record opening beside the list.
+        </div>
+        <h3>Questions answered</h3>
+        <ul>
+            <li>The roster's Junior leader setting: "By position" actually means by grade (9&ndash;12 on the event date). The label needs renaming.</li>
+            <li>Veronica Kleinfeldt's Life 4 hadn't disappeared: Mindy approved it, and the ledger entry is on her record.</li>
+        </ul>
+        <h3>Advancement &rsaquo; Approvals (v1.271.0)</h3>
+        <ul>
+            <li>A new tab after Submit &amp; Present lists approved proof submissions from the past two months, newest first.</li>
+            <li>Each opens a view-only record: who filed it, the write-up and photos, who approved it, and the ledger entry it created, including whether it was later deleted.</li>
+        </ul>
+        <h3>Audits &rsaquo; Service Hours (v1.272.0)</h3>
+        <ul>
+            <li>Tenderfoot 7b, Second Class 8e and First Class 9d count all service hours logged; Star 4 and Life 4 count hours since the previous rank.</li>
+            <li>The sign-off date defaults to the day the hours were reached; Life 4 reminds the leader to check the conservation hours.</li>
+        </ul>
+        <h3>Admin &rsaquo; Health Forms (v1.273.0, phases 1&ndash;2)</h3>
+        <ul>
+            <li>Brad designed the screen, Jenna reviewed it, and Patrick settled who gets in, who is listed and what /health keeps.</li>
+            <li>People &amp; Setup now reads Roster &middot; Health Forms &middot; Access. Only admins on the health viewers list see it.</li>
+            <li>The list has a mark per document and a status, status tabs with totals, a Type switch, search and sortable columns. A record opens in a side panel with Prev and Next; opening is logged first.</li>
+            <li>Who can open health records and the Access log moved into the admin. qa-lead passed it with two fixes, both applied.</li>
+        </ul>
+        <div class="callout callout-teal">
+            <strong>Not yet proven:</strong> Approvals and Health Forms shipped on tests and the build without a click-through in a browser, and Health Forms hasn't had its accessibility check.
+        </div>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-498</td><td>Admin Health Forms is where health records are maintained; access needs admin entry and the health viewers list; /health becomes view-only for adults on a trip</td></tr>
+                <tr><td>D-499</td><td>Drawer behaviour lives once and is shared; the admin gets its own drawer markup</td></tr>
+                <tr><td>D-500</td><td>Service-hours audit rules: cumulative for the first three ranks, since the previous rank for Star and Life</td></tr>
+                <tr><td>D-501</td><td>Approvals is a view-only list of approved proof submissions from the past two months</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Patrick reviews Health Forms on the live site, then phase 3: upload, replace, remove, Mark complete, Remove all, Add someone.</li>
+            <li>Phase 4 (tick boxes, Trip filter, Print binder, Send update notices) and phase 5 (trim /health to view-only).</li>
+            <li>Click through Approvals and Health Forms in a browser; sign off the service-hours findings.</li>
+            <li>Rename the Junior leader "By position" choice.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>admin/advancement/approvals/, lib/proof-approvals</td><td>New: Approvals list and record page</td></tr>
+                <tr><td>admin/advancement/audits/checks/service-hours</td><td>New: Service Hours check</td></tr>
+                <tr><td>admin/health-forms/ (list, sheet, viewers, log, actions)</td><td>New: Health Forms screens</td></tr>
+                <tr><td>lib/health-store, health-access, health-marks</td><td>Roster loader, record opener, admin guard, marks</td></tr>
+                <tr><td>lib/use-drawer-dialog, _components/admin-drawer, public drawer</td><td>Shared drawer behaviour and the admin drawer</td></tr>
+                <tr><td>nav-data, layout, section-nav, admin-home, styleguide</td><td>Health Forms menu item for health viewers; drawer sample</td></tr>
+                <tr><td>Plans/Admin-Health-Forms.md</td><td>New: the approved design and phases</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
