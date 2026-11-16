@@ -11,6 +11,7 @@
  * panel needs to change.
  */
 
+import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/server';
 import { fieldLabel, type ChangeEntityType, type ChangeRequestRow } from '@/lib/change-requests';
@@ -533,4 +534,16 @@ export async function loadAttentionCategories(
   // A queue with nothing in it is noise, not signal — drop it rather than
   // showing a "0 waiting" row. Informational rows (the next sign-up) stay.
   return categories.filter((c) => c.count > 0 || c.informational);
+}
+
+/**
+ * loadAttentionCategories once per request for a given set of capabilities: the layout (the rail's group counts) and
+ * Home (Needs you today) both ask, and React's cache() keys on argument identity, so the set is reduced to a string.
+ */
+const attentionByKey = cache((capsKey: string) =>
+  loadAttentionCategories(new Set(capsKey ? (capsKey.split(',') as Capability[]) : []))
+);
+
+export function attentionCategoriesFor(capabilities: ReadonlySet<Capability>): Promise<AttentionCategory[]> {
+  return attentionByKey([...capabilities].sort().join(','));
 }

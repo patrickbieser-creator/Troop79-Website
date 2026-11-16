@@ -13,7 +13,7 @@ vi.mock('@/lib/admin-actor', () => ({
 vi.mock('@/lib/require-capability', () => ({ requireCapability: async () => undefined }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
 vi.mock('@/lib/wreaths/admin-data', () => ({ loadWreathSaleOpen: async () => false }));
-vi.mock('../src/app/admin/(workspace)/advancement/dashboard/attention-items', () => ({ loadAttentionCategories: async () => [] }));
+vi.mock('../src/app/admin/(workspace)/advancement/dashboard/attention-items', () => ({ loadAttentionCategories: async () => [], attentionCategoriesFor: async () => [] }));
 vi.mock('../src/app/admin/(workspace)/advancement/dashboard/suggestion-actions', () => ({
   loadSuggestionActor: async () => ({ name: 'Pat', email: 'pat@example.com' }),
   sendSuggestionAction: async () => ({ ok: true })

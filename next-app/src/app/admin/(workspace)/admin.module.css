@@ -98,12 +98,32 @@
   background: rgba(255,255,255,.12);
 }
 
-/* Workspace shell: the section bar + tabs (section-nav) stacked above main */
+/* Workspace shell: the rail (rail.tsx) beside main, as an app shell (Plans/Admin-Portal-Nav.md phase 3). The root is
+   exactly the viewport tall and MAIN is the page's scroller, so the rail always fits under the top bar and never
+   scrolls away. Sticky things on a page (EditBar, table heads) stick to the top of main. On phones the rail is a
+   sheet, so main takes the width. Print turns the shell back into one long page. */
+.workspaceRoot {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+}
 .workspace {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+}
+@media print {
+  .workspaceRoot {
+    height: auto;
+  }
+  .workspace {
+    overflow: visible;
+  }
+  .workspace > .main {
+    overflow: visible;
+  }
 }
 
 /* Main content area */

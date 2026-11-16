@@ -248,6 +248,17 @@ links to `/planner`, and there is no Meetings home under `/admin`.
      Add styleguide specimens for the rail, the area menu and the search dialog.
    - Tests: `AZ_ListsAllVisible_Alphabetical_NoTags()`, `AZ_TypeFilter_And_TextFilter()`, `AZ_OmitsRetiredDashboard()`.
 
+**As built (2026-11-16).**
+- Phase 3 also shipped `/admin/everything` (A–Z), since the rail links to it, and `/admin/pins` (Edit pins). Phase 6
+  keeps the cleanup and the styleguide.
+- **Styleguide waiver:** the specimens for the rail, the area menu and search land in phase 6 (this plan), not with
+  each phase as AGENTS.md normally asks. Phase 6 is not done until they exist.
+- **App shell:** the workspace root is the viewport's height and `main` is the page's scroller, so the rail always
+  fits under the top bar. Page-level `sticky` elements stick to the top of `main`. Print turns this back into one long
+  page.
+- **Counts and pins** refresh on a full page load or after a pin change; the layout persists across client navigation.
+- The menu panel is a labelled region, not a modal dialog: Tab can leave it, Escape and a click outside close it.
+
 **Gates and reviews.** Every phase passes the full gate (lint, typecheck, full test run, build): each touches logic,
 capability gating or a migration. qa-lead reviews phases 3–5 (capability filtering on menus, tiles and record
 search). jenna reviews the built rail and Home after phase 4, against the canvas (Troop 79 UI reviews route to

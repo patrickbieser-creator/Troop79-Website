@@ -6,7 +6,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server';
 import { resolveAdminActor } from '@/lib/admin-actor';
-import { loadAttentionCategories } from './attention-items';
+import { attentionCategoriesFor } from './attention-items';
 import { PageTitle } from '../../_components/page-title';
 import { AttentionInbox } from '../../_components/attention-inbox';
 import { AdminHub } from '../../_components/admin-hub';
@@ -27,7 +27,7 @@ export async function AdminHome() {
   // The Wreath Sale card orders by season; only a treasurer sees the card, so only they pay for the (one small) select.
   const wreathCardVisible = visible.some((s) => s.items.some((i) => i.seasonal));
   const [rows, suggestionActor, wreathOpen] = await Promise.all([
-    loadAttentionCategories(actor.capabilities),
+    attentionCategoriesFor(actor.capabilities),
     loadSuggestionActor(),
     wreathCardVisible ? loadWreathSaleOpen(createAdminClient()) : Promise.resolve(false)
   ]);

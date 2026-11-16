@@ -1,0 +1,379 @@
+/* The workspace rail and its area menus (Plans/Admin-Portal-Nav.md phase 3; canvas boards 1 and 2). Replaces the
+   section bar and tabs. Admin tokens only. Desktop: a sticky white rail at the left of the workspace; a group's menu
+   opens as a panel beside it over a scrim. Phones (<= 800px): the rail is a full-height sheet the top bar's Menu
+   button opens, and a menu is a full-screen sheet with a Back button. */
+
+.shell {
+  --rail-width: 232px;
+  /* Stretches the height of the workspace (the app shell in admin.module.css), so the rail always fits under the top
+     bar; it scrolls on its own when the pins make it tall. */
+  position: relative;
+  z-index: 40;
+  flex: none;
+  align-self: stretch;
+  width: var(--rail-width);
+}
+
+.rail {
+  position: relative;
+  z-index: 2;
+  box-sizing: border-box;
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--admin-space-8) var(--admin-space-5);
+  background: var(--admin-white);
+  border-right: 1px solid var(--admin-gray-200);
+}
+/* Local dev database: the same tripwire tint the section bar wore, so dev is never mistaken for production. */
+.devDb .rail {
+  background: var(--admin-status-error-bg);
+}
+
+.railItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-4);
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  padding: 0 var(--admin-space-6);
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-700);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.railItem:hover {
+  background: var(--admin-gray-50);
+  color: var(--admin-navy);
+}
+.railItem:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: -2px;
+}
+.railItem[data-active],
+.railItem[aria-current='page'] {
+  background: var(--admin-status-info-bg);
+  color: var(--admin-navy);
+  box-shadow: inset 3px 0 0 var(--admin-warning);
+}
+.railItem[data-open] {
+  background: var(--admin-tint-wheat-bg);
+  color: var(--admin-navy);
+}
+
+.count {
+  flex: none;
+  min-width: 20px;
+  box-sizing: border-box;
+  padding: 1px var(--admin-space-3);
+  border-radius: var(--admin-radius-pill);
+  background: var(--admin-status-warning-bg);
+  color: var(--admin-gray-800);
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-semibold);
+  text-align: center;
+}
+
+.pinHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--admin-space-9) var(--admin-space-6) var(--admin-space-3);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-600);
+}
+.pinEdit {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-navy);
+}
+.pinEmpty {
+  margin: 0;
+  padding: 0 var(--admin-space-6);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+
+.hairline {
+  width: 100%;
+  margin: var(--admin-space-6) 0 var(--admin-space-4);
+  border: 0;
+  border-top: 1px solid var(--admin-gray-200);
+}
+
+/* ── Area menu panel ─────────────────────────────────────────────────────────────────────────────────────────────── */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: rgba(26, 29, 33, 0.28);
+}
+.panel {
+  position: absolute;
+  z-index: 3;
+  top: var(--admin-space-6);
+  left: calc(100% + var(--admin-space-6));
+  box-sizing: border-box;
+  width: min(980px, calc(100vw - var(--rail-width) - 2 * var(--admin-space-6)));
+  max-height: calc(100% - 2 * var(--admin-space-6));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-8);
+  padding: var(--admin-space-9) var(--admin-space-10) var(--admin-space-8);
+  background: var(--admin-white);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-lg);
+}
+.panelHead {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-6);
+}
+.panelTitle {
+  flex: 1;
+  margin: 0;
+  font-size: var(--admin-text-xl);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
+}
+.panelTitle a {
+  color: inherit;
+  text-decoration: none;
+}
+.panelTitle a:hover {
+  text-decoration: underline;
+}
+.backButton,
+.closeButton {
+  min-height: 36px;
+  padding: 0 var(--admin-space-6);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-white);
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-700);
+  cursor: pointer;
+}
+.backButton {
+  display: none;
+}
+.sheetHead {
+  display: none;
+}
+
+.columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-10);
+}
+.column {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.columnTitle {
+  margin: 0 0 var(--admin-space-3);
+  padding: 0 var(--admin-space-5);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-600);
+}
+.none {
+  margin: 0;
+  padding: var(--admin-space-3) var(--admin-space-5);
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-500);
+}
+.items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.itemRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--admin-radius-sm);
+}
+.itemRow:hover,
+.itemRow:focus-within {
+  background: var(--admin-gray-50);
+}
+.itemRow[data-season='off'] .itemLabel {
+  color: var(--admin-gray-500);
+}
+.item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--admin-space-2) var(--admin-space-5);
+  text-decoration: none;
+}
+.item:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: -2px;
+  border-radius: var(--admin-radius-sm);
+}
+.itemLabel {
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-900);
+}
+.itemDesc {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+/* Quiet until the row is hovered or focused; a pinned item shows its Unpin while hovered too. */
+.pinButton {
+  flex: none;
+  margin-right: var(--admin-space-3);
+  padding: var(--admin-space-2) var(--admin-space-4);
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-forest);
+  cursor: pointer;
+  opacity: 0;
+}
+.itemRow:hover .pinButton,
+.itemRow:focus-within .pinButton,
+.pinButton:focus-visible {
+  opacity: 1;
+}
+.pinButton:focus-visible {
+  outline: 2px solid var(--admin-navy);
+}
+.pinButton[data-pinned] {
+  color: var(--admin-gray-600);
+}
+.pinError {
+  margin: 0;
+  padding: var(--admin-space-4) var(--admin-space-6);
+  border-radius: var(--admin-radius-sm);
+  background: var(--admin-status-error-bg);
+  color: var(--admin-danger-dark);
+  font-size: var(--admin-text-base);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* The top bar's Menu button: phones only. */
+.menuButton {
+  display: none;
+  min-height: 36px;
+  padding: 0 var(--admin-space-6);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  color: var(--admin-white);
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  cursor: pointer;
+}
+.sheetScrim {
+  display: none;
+}
+
+@media print {
+  .shell {
+    display: none;
+  }
+}
+
+/* ── Phones ──────────────────────────────────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 800px) {
+  .menuButton {
+    display: inline-flex;
+    align-items: center;
+  }
+  .shell {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(320px, 88vw);
+    height: auto;
+    display: none;
+  }
+  .shell[data-sheet-open] {
+    display: block;
+  }
+  .rail {
+    box-shadow: var(--admin-shadow-lg);
+  }
+  .sheetHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--admin-space-3) var(--admin-space-6);
+  }
+  .sheetTitle {
+    font-size: var(--admin-text-xl);
+    font-weight: var(--admin-weight-bold);
+    color: var(--admin-navy);
+  }
+  .railItem {
+    min-height: 44px;
+  }
+  .sheetScrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: rgba(26, 29, 33, 0.28);
+  }
+  .scrim {
+    display: none;
+  }
+  .panel {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    max-height: none;
+    border-radius: 0;
+    padding: var(--admin-space-8);
+  }
+  .backButton {
+    display: inline-flex;
+    align-items: center;
+  }
+  .panelHead .closeButton {
+    display: none;
+  }
+  .columns {
+    flex-direction: column;
+    gap: var(--admin-space-8);
+  }
+  .column {
+    flex: none;
+  }
+  /* No hover on a phone: the Pin control is always shown. */
+  .pinButton {
+    opacity: 1;
+  }
+}

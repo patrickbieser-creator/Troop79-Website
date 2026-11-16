@@ -189,7 +189,9 @@ export const UNLISTED: Readonly<Record<string, string>> = {
   '/admin/news/pages/[id]': 'detail: one page, opened from Pages',
   '/admin/styleguide/admin': 'sub-page of Styleguides',
   '/admin/styleguide/public': 'sub-page of Styleguides',
-  '/admin/styleguide/help-sample': 'sub-page of Styleguides (help badge tuning)'
+  '/admin/styleguide/help-sample': 'sub-page of Styleguides (help badge tuning)',
+  '/admin/everything': 'the rail’s own Everything A–Z entry, not a menu item',
+  '/admin/pins': 'Edit pins, opened from the rail’s Pinned heading'
 };
 
 /** The route part of an href: no query, no hash. */

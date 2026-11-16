@@ -17,14 +17,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { AdminNav } from './_components/section-nav';
+import { Rail, RailMenuButton } from './_components/rail';
 import { DirtyGuardProvider } from './_components/dirty-guard';
 import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import { actorCanEnterAdmin, resolveAdminActor } from '@/lib/admin-actor';
-import { adminIsHealthViewer } from '@/lib/health-access';
-import { isFullAdmin } from './_components/nav-data';
+import { createAdminClient } from '@/lib/supabase/server';
+import { loadWreathSaleOpen } from '@/lib/wreaths/admin-data';
+import { visibleFeaturesFor } from './_components/nav-visibility';
+import { railModel, areaCounts } from './_components/area-menu';
+import { loadPinKeys } from './_components/pins-store';
+import { attentionCategoriesFor } from './advancement/dashboard/attention-items';
 import styles from './admin.module.css';
 // Global --admin-* design tokens on :root (Plans/Admin-Design-System.md).
 // Must load with the workspace so every admin module and portal resolves them.
@@ -65,30 +69,37 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
     );
   }
 
-  // A partially-granted actor now gets a real workspace, not a "come back
-  // later" panel — the Advancement section's guards are converted (Phase B2),
-  // so `advancement.write` alone is a usable grant. The nav shows only what
-  // they can actually reach: converted sections they hold, and nothing else.
-  //
-  // `fullAdmin` still means "sees the unconverted sections too", because those
-  // pages guard with requireRole(), whose identity mapping deliberately admits
-  // only a full troop admin (see lib/require-role.ts). It stops being a
-  // meaningful distinction when the last call site is converted.
-  const fullAdmin = isFullAdmin(actor);
-  // Health Forms shows only to admins on the health viewers list (not a capability).
-  const healthViewer = await adminIsHealthViewer(actor);
+  // A partially-granted actor gets a real workspace: the rail offers exactly what they can open, from the feature
+  // registry (visibleFeatures), and each page still guards itself. The health viewers list and planner access are
+  // folded in by navVisibility.
+  const sb = createAdminClient();
+  const visible = await visibleFeaturesFor(actor);
+  const [wreathOpen, pinKeys] = await Promise.all([
+    // Only a treasurer sees the Wreath Sale item, so only they pay for the (one small) select that orders it. A
+    // failed read only costs the menu's seasonal ordering.
+    visible.some((f) => f.seasonal) ? loadWreathSaleOpen(sb).catch(() => false) : Promise.resolve(false),
+    // Pins are personal. A failed read (or the table not there yet) shows the rail without them, never an error.
+    actor.personId != null ? loadPinKeys(sb, actor.personId).catch(() => []) : Promise.resolve([])
+  ]);
+  const rail = railModel(visible, pinKeys, { wreathOpen });
+  // The group counts come from the same queries as Needs you today. Not awaited: the rail streams them in.
+  // Layouts persist across client navigation, so counts and pins refresh on a full load or after a pin change (the
+  // server action revalidates the layout), not on every click.
+  const counts = attentionCategoriesFor(actor.capabilities)
+    .then(areaCounts)
+    .catch(() => ({}));
 
   return (
-    <div className={styles.adminRoot}>
+    <div className={`${styles.adminRoot} ${styles.workspaceRoot}`}>
       {/* Same typography tokens the public pages get, so the editors' live
           preview panes show what will actually publish rather than the
           stylesheet defaults. */}
       <ArticleStyleTokens />
-      <TopBar actorLabel={actor.label} actorKind={actor.kind} />
+      <TopBar actorLabel={actor.label} actorKind={actor.kind} menuButton={<RailMenuButton />} />
       <div className={styles.workspace}>
-        {/* The provider wraps the bar and tabs as well as the page, so leaving a dirty form through them asks first. */}
+        {/* The provider wraps the rail as well as the page, so leaving a dirty form through it asks first. */}
         <DirtyGuardProvider>
-          <AdminNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} healthViewer={healthViewer} />
+          <Rail groups={rail.groups} pins={rail.pins} setup={rail.setup} counts={counts} canPin={actor.personId != null} devDb={IS_DEV_DB} />
           <main className={styles.main}>{children}</main>
         </DirtyGuardProvider>
       </div>

@@ -1,0 +1,86 @@
+/* Everything A–Z (canvas board 4). Admin tokens only. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-8);
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-8);
+}
+.letters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-2);
+}
+.letter,
+.letterOff {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: var(--admin-radius-sm);
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+}
+.letter {
+  color: var(--admin-navy);
+  text-decoration: none;
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+}
+.letter:hover {
+  background: var(--admin-status-info-bg);
+}
+.letter:focus-visible {
+  outline: 2px solid var(--admin-navy);
+}
+.letterOff {
+  color: var(--admin-gray-400);
+}
+.empty {
+  margin: 0;
+  color: var(--admin-gray-600);
+}
+.columns {
+  columns: 4 220px;
+  column-gap: var(--admin-space-12);
+}
+.group {
+  break-inside: avoid;
+  margin-bottom: var(--admin-space-8);
+}
+.groupLetter {
+  margin: 0 0 var(--admin-space-3);
+  padding-bottom: var(--admin-space-2);
+  border-bottom: 1px solid var(--admin-gray-200);
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-navy);
+  scroll-margin-top: var(--admin-space-10);
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.entry {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: var(--admin-text-lg);
+  color: var(--admin-gray-900);
+  text-decoration: none;
+}
+.entry:hover {
+  color: var(--admin-navy);
+  text-decoration: underline;
+}
+.entry:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
