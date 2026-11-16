@@ -243,7 +243,7 @@ describe('Section bar and tabs', () => {
 
   it('AdminNav_AdvancementTabs_StartWithDashboard_AndCarryNoReports', () => {
     const n = nav(['advancement.write', 'meeting_plan.use'], '/admin/advancement/ledger');
-    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present']);
+    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'Approvals']);
   });
 
   it.each([

@@ -128,6 +128,14 @@ export const SECTIONS: NavSection[] = [
         matchPath: '/admin/advancement/records',
         description: 'Council submissions and awards to hand out',
         capability: 'advancement.write'
+      },
+      {
+        // Read-only (Patrick, 2026-11-15): an approved proof leaves the Proof Queue, so approvals looked like losses.
+        label: 'Approvals',
+        href: '/admin/advancement/approvals',
+        matchPath: '/admin/advancement/approvals',
+        description: 'Proof submissions approved in the past two months',
+        capability: 'advancement.write'
       }
       // MB Progress retired 2026-11-09 (Patrick): the Library's merit badge pages show the same counts, grid and
       // counselors (to signed-in members); its old URLs redirect there (next.config.ts).

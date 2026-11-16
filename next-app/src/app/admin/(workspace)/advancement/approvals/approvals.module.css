@@ -1,0 +1,50 @@
+/* Advancement › Approvals — list (DataTable · Card) and the read-only detail. Tokens only. */
+
+.tableWrap { composes: cardWrap from '../../_components/data-table.module.css'; }
+.table { composes: card from '../../_components/data-table.module.css'; }
+.rowLink { composes: rowLink from '../../_components/data-table.module.css'; }
+.empty { composes: empty from '../../_components/data-table.module.css'; }
+.nowrap { white-space: nowrap; }
+.muted { color: var(--admin-gray-500); }
+
+.panels > * + * { margin-top: var(--admin-space-6); }
+
+.dl {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--admin-space-3) var(--admin-space-6);
+  margin: 0;
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-900);
+}
+.dl dt {
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-500);
+  padding-top: var(--admin-space-1);
+}
+.dl dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.writeup {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.deleted { color: var(--admin-danger-dark); font-weight: var(--admin-weight-semibold); }
+
+.thumbRow { display: flex; gap: var(--admin-space-3); flex-wrap: wrap; }
+.thumbLink { display: inline-flex; border-radius: var(--admin-radius); }
+.thumb {
+  max-width: 160px;
+  max-height: 160px;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--admin-gray-300);
+}
+.thumbLink:hover .thumb { border-color: var(--admin-navy); }
+.thumbLink:focus-visible .thumb { outline: 2px solid var(--admin-navy); outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  .dl { grid-template-columns: 1fr; }
+  .dl dt { padding-top: var(--admin-space-3); }
+}
