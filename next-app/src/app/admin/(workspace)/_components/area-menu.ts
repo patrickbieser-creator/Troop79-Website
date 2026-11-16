@@ -42,8 +42,10 @@ export interface MenuColumn {
 export interface AreaMenu {
   area: Area;
   title: string;
-  /** Where the menu's title goes: the group's first primary screen. Null when the person can open none. */
+  /** The group's home: its first primary screen ("Open Financial Ledger →"). Null when the person can open none. */
   homeHref: string | null;
+  /** That screen's name, for the link's text: "Financial Ledger", or "all reports" for Reports. */
+  homeLabel: string | null;
   columns: MenuColumn[];
 }
 
@@ -77,15 +79,18 @@ function ordered(features: Feature[], wreathOpen: boolean): MenuItem[] {
     .map(({ f }) => toItem(f, wreathOpen));
 }
 
-function homeHrefFor(visible: Feature[], area: Area): string | null {
-  if (area === 'reports') return visible.find((f) => f.key === 'reports.index')?.href ?? null;
+function homeFor(visible: Feature[], area: Area): { href: string; label: string } | null {
+  if (area === 'reports') {
+    const landing = visible.find((f) => f.key === 'reports.index');
+    return landing ? { href: landing.href, label: 'all reports' } : null;
+  }
   const own = visible.filter((f) => f.area === area);
   const pick =
     own.find((f) => f.kind === 'screen' && f.tier === 'primary') ??
     own.find((f) => f.kind === 'screen') ??
     own.find((f) => f.kind === 'setup') ??
     own[0];
-  return pick?.href ?? null;
+  return pick ? { href: pick.href, label: pick.label } : null;
 }
 
 /** One group's menu for this person. `visible` is visibleFeatures(...) for them. */
@@ -119,7 +124,8 @@ export function areaMenu(visible: Feature[], area: Area, opts: { wreathOpen: boo
       )
     }));
   }
-  return { area, title: AREA_LABELS[area], homeHref: homeHrefFor(visible, area), columns };
+  const home = homeFor(visible, area);
+  return { area, title: AREA_LABELS[area], homeHref: home?.href ?? null, homeLabel: home?.label ?? null, columns };
 }
 
 export function menuItemCount(menu: AreaMenu): number {

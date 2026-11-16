@@ -71,7 +71,7 @@ export async function fillMissingRankRequirements(formData: FormData): Promise<R
   if (error) return { ok: false, error: error.message, inserted: 0 };
 
   revalidatePath('/admin/advancement/audits');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath(`/scouts/${scoutId}`);
@@ -135,7 +135,7 @@ export async function resolveDuplicateLedgerEntries(formData: FormData): Promise
   await auditLedgerStatus(before, 'delete', reason);
 
   revalidatePath('/admin/advancement/audits');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
   if (scoutId) revalidatePath(`/scouts/${scoutId}`);
@@ -160,7 +160,7 @@ export async function resolveDuplicateLedgerEntries(formData: FormData): Promise
 
 const AUDIT_REVALIDATE_PATHS = [
   '/admin/advancement/audits',
-  '/admin/advancement/dashboard',
+  '/admin',
   '/admin/advancement/ledger',
   '/admin/advancement/fast-entry'
 ] as const;

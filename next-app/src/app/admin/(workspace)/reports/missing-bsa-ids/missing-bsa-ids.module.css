@@ -1,0 +1,31 @@
+/* Missing BSA IDs report. Admin tokens only; the table is DataTable · Card. */
+.group {
+  margin-bottom: var(--admin-space-11);
+}
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--admin-space-4);
+  margin: 0 0 var(--admin-space-5);
+  font-size: var(--admin-text-xl);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+}
+.count {
+  padding: 1px var(--admin-space-4);
+  border-radius: var(--admin-radius-pill);
+  background: var(--admin-gray-100);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-700);
+}
+.empty {
+  margin: 0;
+  color: var(--admin-gray-600);
+}
+.tableWrap {
+  composes: cardWrap from '../../_components/data-table.module.css';
+}
+.table {
+  composes: card from '../../_components/data-table.module.css';
+}

@@ -139,7 +139,7 @@ export async function updateLedgerEntry(formData: FormData): Promise<UpdateResul
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   return { ok: true };
 }
 
@@ -232,7 +232,7 @@ export async function bulkUpdateLedgerEntries(formData: FormData): Promise<BulkR
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   return { ok: true, updated: count ?? ids.length };
 }
 
@@ -267,7 +267,7 @@ export async function bulkArchiveLedgerEntries(formData: FormData): Promise<Bulk
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   return { ok: true, updated: count ?? ids.length };
 }
 
@@ -303,7 +303,7 @@ export async function bulkDeleteLedgerEntries(formData: FormData): Promise<BulkR
 
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   return { ok: true, updated: count ?? ids.length };
 }
 

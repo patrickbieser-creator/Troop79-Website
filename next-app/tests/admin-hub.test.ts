@@ -70,11 +70,10 @@ describe('AdminHome card grid', () => {
     expect(hubHrefs(groups)).not.toContain('/admin/reports');
   });
 
-  it('AdminHome_PutsDashboardFirstInAdvancement_ForAnAdvancementWriter', () => {
+  // The Advancement dashboard is retired (Plans/Admin-Portal-Nav.md decision 7): Fast Entry leads the group.
+  it('AdminHome_PutsFastEntryFirstInAdvancement_ForAnAdvancementWriter', () => {
     const adv = hubGroups(visible(['advancement.write']), { wreathOpen: false }).find((g) => g.title === 'Advancement')!;
-    expect(adv.cards[0].title).toBe('Dashboard');
-    expect(adv.cards[0].href).toBe('/admin/advancement/dashboard');
-    expect(adv.cards[1].title).toBe('Fast Entry');
+    expect([adv.cards[0].title, adv.cards[0].href]).toEqual(['Fast Entry', '/admin/advancement/fast-entry']);
   });
 
   it('AdminHome_OffersNoDashboard_ToALeaderWithoutAdvancementWrite', () => {
@@ -236,14 +235,14 @@ describe('Section bar and tabs', () => {
 
   it('AdminNav_LinksEachBarEntry_ToItsFirstTab', () => {
     const n = nav(ALL_CAPS, '/admin', true);
-    expect(n.bar.find((b) => b.label === 'Advancement')!.href).toBe('/admin/advancement/dashboard');
+    expect(n.bar.find((b) => b.label === 'Advancement')!.href).toBe('/admin/advancement/fast-entry');
     expect(n.bar.find((b) => b.label === 'Reports')!.href).toBe('/admin/reports');
     expect(n.bar.find((b) => b.label === 'Home')!.href).toBe('/admin');
   });
 
-  it('AdminNav_AdvancementTabs_StartWithDashboard_AndCarryNoReports', () => {
+  it('AdminNav_AdvancementTabs_StartWithFastEntry_AndCarryNoReports', () => {
     const n = nav(['advancement.write', 'meeting_plan.use'], '/admin/advancement/ledger');
-    expect(labels(n.tabs)).toEqual(['Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'Approvals']);
+    expect(labels(n.tabs)).toEqual(['Fast Entry', 'Ledger', 'Submit & Present', 'Approvals']);
   });
 
   it.each([
@@ -277,10 +276,10 @@ describe('Section bar and tabs', () => {
     expect(nav(['finance.manage'], '/admin/finance/scout-accounts').activeKey).toBe('/admin/finance/scout-accounts');
   });
 
-  it('AdminNav_LightsAdvancementAndItsDashboardTab_OnTheDashboardUrl', () => {
-    const n = nav(['advancement.write'], '/admin/advancement/dashboard');
+  it('AdminNav_LightsAdvancementAndItsFastEntryTab_OnTheFastEntryUrl', () => {
+    const n = nav(['advancement.write'], '/admin/advancement/fast-entry');
     expect(n.bar.find((b) => b.active)!.label).toBe('Advancement');
-    expect(n.activeKey).toBe('/admin/advancement/dashboard');
+    expect(n.activeKey).toBe('/admin/advancement/fast-entry');
   });
 
   it('AdminNav_LightsHome_OnlyOnSlashAdmin', () => {

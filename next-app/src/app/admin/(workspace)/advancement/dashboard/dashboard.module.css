@@ -70,7 +70,8 @@
   align-items: baseline;
   margin-bottom: 10px;
 }
-.cardHeader h3 {
+.cardHeader :is(h2, h3) {
+  margin: 0;
   font-size: 14px;
   font-weight: 700;
   color: var(--admin-navy);

@@ -113,7 +113,6 @@ const LEGACY_SECTIONS: LegacySection[] = [
     title: 'Advancement',
     tint: 'moss',
     entries: [
-      { key: 'advancement.dashboard', label: 'Dashboard' },
       { key: 'advancement.fast-entry' },
       { key: 'advancement.ledger', label: 'Ledger' },
       { key: 'advancement.records' },

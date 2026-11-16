@@ -24,6 +24,7 @@ import { activeAreaFor, type AreaMenu, type MenuItem } from './area-menu';
 import type { Area } from './feature-registry';
 import { useGuardedNav } from './guarded-nav';
 import { pinFeatureAction, unpinFeatureAction } from './pin-actions';
+import { beaconNavOpen } from './nav-beacon';
 import styles from './rail.module.css';
 
 /** The phone Menu button and the rail talk through one window event; they sit in different parts of the layout. */
@@ -88,6 +89,8 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
   const [openArea, setOpenArea] = useState<Area | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
+  /** Read out after a pin or unpin lands (a polite live region): the change is otherwise silent. */
+  const [announce, setAnnounce] = useState('');
   const [, startPin] = useTransition();
   const [pins, applyPin] = useOptimistic(savedPins, (cur: MenuItem[], p: PinOp) =>
     p.op === 'add' ? (cur.some((i) => i.key === p.item.key) ? cur : [...cur, p.item]) : cur.filter((i) => i.key !== p.key)
@@ -124,6 +127,8 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
   }, []);
   useEffect(() => {
     window.dispatchEvent(new CustomEvent(STATE_EVENT, { detail: sheetOpen }));
+    // The phone sheet takes focus to its first entry when it opens.
+    if (sheetOpen) document.querySelector<HTMLElement>('#admin-rail a, #admin-rail button[data-area]')?.focus();
   }, [sheetOpen]);
 
   function closeSheet() {
@@ -155,7 +160,9 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
     return () => document.removeEventListener('keydown', onKey);
   }, [openArea, sheetOpen]);
 
-  function go(e: MouseEvent<HTMLAnchorElement>, href: string) {
+  function go(e: MouseEvent<HTMLAnchorElement>, href: string, key?: string) {
+    // Shortcut tracking (decision 12): fire-and-forget, even for a new-tab click.
+    if (key) beaconNavOpen(key);
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
     e.preventDefault();
     setOpenArea(null);
@@ -171,6 +178,7 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
       // The action revalidates the layout, so the saved pins arrive with its response; no separate refresh.
       const res = removing ? await unpinFeatureAction(item.key) : await pinFeatureAction(item.key);
       if (!res.ok) setPinError(res.error);
+      else setAnnounce(`${removing ? 'Unpinned' : 'Pinned'} ${item.label}`);
     });
   }
 
@@ -194,7 +202,12 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
           {g.title}
           {isActive ? <span className={styles.srOnly}> (current section)</span> : null}
         </span>
-        <CountChip n={countByArea[g.area]} />
+        <span className={styles.groupEnd}>
+          <CountChip n={countByArea[g.area]} />
+          <span className={styles.chevron} aria-hidden="true">
+            ›
+          </span>
+        </span>
       </button>
     );
   }
@@ -224,7 +237,7 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
 
         {pins.length > 0 || canPin ? (
           <div className={styles.pinHead}>
-            <span>Pinned</span>
+            <span id="admin-rail-pinned">Pinned</span>
             {pins.length > 0 ? (
               <Link href="/admin/pins" className={styles.pinEdit} onClick={(e) => go(e, '/admin/pins')}>
                 Edit pins
@@ -233,17 +246,22 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
           </div>
         ) : null}
         {pins.length === 0 && canPin ? <p className={styles.pinEmpty}>Open a menu and choose + Pin to keep an item here.</p> : null}
-        {pins.map((p) => (
-          <Link
-            key={p.key}
-            href={p.href}
-            className={styles.railItem}
-            aria-current={pathname === p.href ? 'page' : undefined}
-            onClick={(e) => go(e, p.href)}
-          >
-            {p.label}
-          </Link>
-        ))}
+        {pins.length > 0 ? (
+          <ul className={styles.pinList} aria-labelledby="admin-rail-pinned">
+            {pins.map((p) => (
+              <li key={p.key}>
+                <Link
+                  href={p.href}
+                  className={styles.railItem}
+                  aria-current={pathname === p.href ? 'page' : undefined}
+                  onClick={(e) => go(e, p.href, p.key)}
+                >
+                  {p.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <hr className={styles.hairline} />
         {setup ? groupButton(setup) : null}
@@ -259,21 +277,20 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
 
       {menu ? (
         <>
-          <div className={styles.scrim} aria-hidden="true" onClick={() => closeMenu(false)} />
+          <div className={styles.scrim} aria-hidden="true" onClick={() => closeMenu()} />
           <section ref={panelRef} id={panelId} className={styles.panel} aria-label={`${menu.title} menu`}>
             <div className={styles.panelHead}>
               <button type="button" className={styles.backButton} onClick={() => closeMenu()}>
                 ← Back
               </button>
-              <h2 className={styles.panelTitle}>
-                {menu.homeHref ? (
-                  <Link href={menu.homeHref} data-first-focus onClick={(e) => go(e, menu.homeHref!)}>
-                    {menu.title}
+              <div className={styles.panelTitleBox}>
+                <h2 className={styles.panelTitle}>{menu.title}</h2>
+                {menu.homeHref && menu.homeLabel ? (
+                  <Link href={menu.homeHref} className={styles.homeLink} data-first-focus onClick={(e) => go(e, menu.homeHref!)}>
+                    Open {menu.homeLabel} →
                   </Link>
-                ) : (
-                  menu.title
-                )}
-              </h2>
+                ) : null}
+              </div>
               <button type="button" className={styles.closeButton} onClick={() => closeMenu()} aria-label={`Close ${menu.title} menu`}>
                 Close
               </button>
@@ -291,7 +308,7 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
                   <ul className={styles.items}>
                     {col.items.map((item) => (
                       <li key={item.key} className={styles.itemRow} data-season={item.season}>
-                        <Link href={item.href} className={styles.item} onClick={(e) => go(e, item.href)}>
+                        <Link href={item.href} className={styles.item} onClick={(e) => go(e, item.href, item.key)}>
                           <span className={styles.itemLabel}>{item.label}</span>
                           {item.description ? <span className={styles.itemDesc}>{item.description}</span> : null}
                         </Link>
@@ -315,6 +332,9 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
           </section>
         </>
       ) : null}
+      <p className={styles.srOnly} role="status" aria-live="polite">
+        {announce}
+      </p>
       {sheetOpen ? <div className={styles.sheetScrim} aria-hidden="true" onClick={closeSheet} /> : null}
       {dialog}
     </div>

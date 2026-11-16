@@ -187,7 +187,7 @@ describe('admin nav contents', () => {
   it('Home_LightsUpOnlyOnTheHomePages_NotOnEveryAdminPage', () => {
     const visible = visibleNavSections(RAIL, { fullAdmin: true, capabilities: new Set<Capability>(['finance.manage', 'finance.view']) });
     expect(activeMatchPathFor(visible, '/admin')).toBe('/admin');
-    expect(activeMatchPathFor(visible, '/admin/advancement/dashboard')).toBe('/admin/advancement/dashboard');
+    expect(activeMatchPathFor(visible, '/admin/advancement/fast-entry')).toBe('/admin/advancement/fast-entry');
     expect(activeMatchPathFor(visible, '/admin/news/articles')).toBe('/admin/news/articles');
   });
 

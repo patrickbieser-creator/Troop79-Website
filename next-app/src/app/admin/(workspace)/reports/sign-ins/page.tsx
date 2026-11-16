@@ -1,5 +1,5 @@
 /**
- * /admin/advancement/dashboard/logins — full Recent Logins history, "View
+ * /admin/reports/sign-ins — full Recent Logins history, "View
  * all" from the Leader Dashboard's Recent Logins card
  * (Plans/Recent-Logins-Dashboard.md). Paginated successful-login list, plus
  * a distinct Recent Failed Attempts section (Patrick, 2026-08-17: repeated
@@ -10,9 +10,9 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAllLogins, loadRecentFailedLogins, type LoginMethod } from '@/lib/login-events';
-import styles from '../dashboard.module.css';
-import { PageTitle } from '../../../_components/page-title';
-import { Button } from '../../../../_components/button';
+import styles from '../../advancement/dashboard/dashboard.module.css';
+import { PageTitle } from '../../_components/page-title';
+import { Button } from '../../../_components/button';
 
 import { fmtDateTime } from '@/lib/format-date';
 const PAGE_SIZE = 50;
@@ -37,7 +37,7 @@ export default async function AllLoginsPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
-  await requireCapability('advancement.write');
+  await requireCapability('roster.manage');
   const { page: pageParam } = await searchParams;
   const page = Math.max(1, Number(pageParam) || 1);
   const offset = (page - 1) * PAGE_SIZE;
@@ -52,7 +52,7 @@ export default async function AllLoginsPage({
   return (
     <>
       <PageTitle
-        back={{ label: 'Dashboard', href: '/admin/advancement/dashboard' }}
+        back={{ label: 'Reports', href: '/admin/reports' }}
         title="Recent Logins"
         sub="Every successful sign-in, family and leader alike — same flow since the identity unification."
       >
@@ -98,10 +98,10 @@ export default async function AllLoginsPage({
         {totalPages > 1 && (
           <div className={`${styles.actions} ${styles.actionsEnd}`}>
             {page > 1 && (
-              <Button href={`/admin/advancement/dashboard/logins?page=${page - 1}`}>← Newer</Button>
+              <Button href={`/admin/reports/sign-ins?page=${page - 1}`}>← Newer</Button>
             )}
             {page < totalPages && (
-              <Button href={`/admin/advancement/dashboard/logins?page=${page + 1}`}>Older →</Button>
+              <Button href={`/admin/reports/sign-ins?page=${page + 1}`}>Older →</Button>
             )}
           </div>
         )}

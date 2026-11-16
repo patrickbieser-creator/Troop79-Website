@@ -52,10 +52,10 @@ describe('AdminNav (section bar + tabs)', () => {
     render(<Shell caps={['advancement.write']} />);
     const tabs = within(screen.getByRole('navigation', { name: 'Advancement section' }));
     expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual([
-      'Dashboard', 'Fast Entry', 'Ledger', 'Submit & Present', 'Approvals'
+      'Fast Entry', 'Ledger', 'Submit & Present', 'Approvals'
     ]);
     expect(tabs.getByRole('tab', { name: 'Ledger' }).getAttribute('aria-selected')).toBe('true');
-    expect(tabs.getByRole('tab', { name: 'Dashboard' }).getAttribute('aria-selected')).toBe('false');
+    expect(tabs.getByRole('tab', { name: 'Fast Entry' }).getAttribute('aria-selected')).toBe('false');
   });
 
   it('SectionBar_LightsReportsWithNoTabStrip_OnAReportPage', () => {
@@ -95,7 +95,7 @@ describe('AdminNav (section bar + tabs)', () => {
 
   it('SectionTabs_AskToDiscard_WhenAFormIsDirty', async () => {
     render(<Shell caps={['advancement.write']} dirty />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Fast Entry' }));
     expect(push).not.toHaveBeenCalled();
     expect(screen.getByText('Discard changes?')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
@@ -104,7 +104,7 @@ describe('AdminNav (section bar + tabs)', () => {
 
   it('SectionTabs_NavigateStraightAway_WhenNothingIsDirty', async () => {
     render(<Shell caps={['advancement.write']} />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Dashboard' }));
-    expect(push).toHaveBeenCalledWith('/admin/advancement/dashboard');
+    await userEvent.click(screen.getByRole('tab', { name: 'Fast Entry' }));
+    expect(push).toHaveBeenCalledWith('/admin/advancement/fast-entry');
   });
 });

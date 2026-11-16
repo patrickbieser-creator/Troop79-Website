@@ -146,7 +146,7 @@ describe('active group', () => {
   });
 
   it('ActiveGroup_SignInsReportLightsReports', () => {
-    expect(activeAreaFor('/admin/advancement/dashboard/logins')).toBe('reports');
+    expect(activeAreaFor('/admin/reports/sign-ins')).toBe('reports');
   });
 
   it('ActiveGroup_AZAndPinsLightNothing', () => {

@@ -71,6 +71,24 @@
   color: var(--admin-navy);
 }
 
+.groupEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--admin-space-3);
+}
+.chevron {
+  font-size: var(--admin-text-lg);
+  color: var(--admin-gray-500);
+}
+.pinList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 .count {
   flex: none;
   min-width: 20px;
@@ -141,19 +159,23 @@
   align-items: center;
   gap: var(--admin-space-6);
 }
-.panelTitle {
+.panelTitleBox {
   flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--admin-space-3) var(--admin-space-8);
+}
+.homeLink {
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-navy);
+}
+.panelTitle {
   margin: 0;
   font-size: var(--admin-text-xl);
   font-weight: var(--admin-weight-bold);
   color: var(--admin-navy);
-}
-.panelTitle a {
-  color: inherit;
-  text-decoration: none;
-}
-.panelTitle a:hover {
-  text-decoration: underline;
 }
 .backButton,
 .closeButton {
@@ -281,6 +303,13 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* No hover on a touch screen (a tablet, a touch laptop): the Pin control is always shown. */
+@media (hover: none) {
+  .pinButton {
+    opacity: 1;
+  }
 }
 
 /* The top bar's Menu button: phones only. */

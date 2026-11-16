@@ -16,7 +16,7 @@ export const metadata = { title: 'Edit pins — Troop 79' };
 export default async function EditPinsPage() {
   const actor = await resolveAdminActor();
   if (!actor) redirect('/admin/login');
-  const back = { label: 'Back to Home', href: '/admin' };
+  const back = { label: 'Home', href: '/admin' };
   if (actor.personId == null) {
     return (
       <>

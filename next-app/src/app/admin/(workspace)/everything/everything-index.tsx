@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { SegmentedControl } from '../_components/segmented-control';
 import { SearchField } from '../_components/search-field';
 import type { FeatureKind } from '../_components/feature-registry';
+import { beaconNavOpen } from '../_components/nav-beacon';
 import { azGroups, type AzEntry } from './az';
 import styles from './everything.module.css';
 
@@ -23,7 +24,10 @@ const TYPE_OPTIONS: { value: TypeFilter; label: string }[] = [
   { value: 'setup', label: 'Setup' }
 ];
 
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+/** '#' collects names that start with a digit or a symbol (az.ts). */
+const LETTERS = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+/** A fragment-safe id for a letter group. */
+const groupId = (letter: string) => `az-${letter === '#' ? 'num' : letter}`;
 
 export function EverythingIndex({ entries }: { entries: AzEntry[] }) {
   const [type, setType] = useState<TypeFilter>('all');
@@ -41,7 +45,7 @@ export function EverythingIndex({ entries }: { entries: AzEntry[] }) {
       <nav className={styles.letters} aria-label="Jump to letter">
         {LETTERS.map((l) =>
           present.has(l) ? (
-            <a key={l} href={`#az-${l}`} className={styles.letter}>
+            <a key={l} href={`#${groupId(l)}`} className={styles.letter}>
               {l}
             </a>
           ) : (
@@ -54,14 +58,14 @@ export function EverythingIndex({ entries }: { entries: AzEntry[] }) {
       {groups.length === 0 ? <p className={styles.empty}>Nothing matches. Clear the filter to see everything.</p> : null}
       <div className={styles.columns}>
         {groups.map((g) => (
-          <section key={g.letter} className={styles.group} aria-labelledby={`az-${g.letter}`}>
-            <h2 id={`az-${g.letter}`} className={styles.groupLetter}>
+          <section key={g.letter} className={styles.group} aria-labelledby={groupId(g.letter)}>
+            <h2 id={groupId(g.letter)} className={styles.groupLetter}>
               {g.letter}
             </h2>
             <ul className={styles.list}>
               {g.entries.map((e) => (
                 <li key={e.key}>
-                  <Link href={e.href} className={styles.entry}>
+                  <Link href={e.href} className={styles.entry} onClick={() => beaconNavOpen(e.key)}>
                     {e.label}
                   </Link>
                 </li>

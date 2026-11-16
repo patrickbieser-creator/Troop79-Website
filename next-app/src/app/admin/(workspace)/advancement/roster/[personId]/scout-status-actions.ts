@@ -40,7 +40,7 @@ function revalidateAll() {
   // Same fan-out as updateScout — everything that lists scouts by status.
   revalidatePath('/admin/advancement/lookups');
   revalidatePath('/admin/advancement/roster');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   revalidatePath('/admin/advancement/ledger');
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/advancement');

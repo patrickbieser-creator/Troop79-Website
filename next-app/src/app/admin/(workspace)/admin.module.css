@@ -98,6 +98,21 @@
   background: rgba(255,255,255,.12);
 }
 
+/* Phones: the top bar wraps instead of pushing Logout off the screen, and the name gives way to the Menu button. */
+@media (max-width: 800px) {
+  .topBar {
+    flex-wrap: wrap;
+    gap: var(--admin-space-4);
+    padding: var(--admin-space-4) var(--admin-space-6);
+  }
+  .topBarRight {
+    gap: var(--admin-space-4);
+  }
+  .topBarUser {
+    display: none;
+  }
+}
+
 /* Workspace shell: the rail (rail.tsx) beside main, as an app shell (Plans/Admin-Portal-Nav.md phase 3). The root is
    exactly the viewport tall and MAIN is the page's scroller, so the rail always fits under the top bar and never
    scrolls away. Sticky things on a page (EditBar, table heads) stick to the top of main. On phones the rail is a

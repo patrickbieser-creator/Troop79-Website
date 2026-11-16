@@ -13,8 +13,8 @@ describe('Everything A–Z', () => {
     expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' })));
   });
 
-  it('AZ_ListsEveryVisibleItemButHomeAndTheRetiredDashboard', () => {
-    expect(azEntries(ALL).length).toBe(ALL.length - 2);
+  it('AZ_ListsEveryVisibleItemButHome', () => {
+    expect(azEntries(ALL).length).toBe(ALL.length - 1);
   });
 
   it('AZ_OmitsRetiredDashboard', () => {

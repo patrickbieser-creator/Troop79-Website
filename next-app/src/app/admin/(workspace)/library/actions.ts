@@ -189,7 +189,7 @@ export async function approveSubmissionAction(formData: FormData): Promise<void>
   revalidatePath(ADMIN_PATH);
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/admin/advancement/ledger');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   redirect(`${ADMIN_PATH}?tab=proof`);
 }
 

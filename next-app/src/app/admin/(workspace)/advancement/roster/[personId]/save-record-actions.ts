@@ -164,7 +164,7 @@ export async function savePersonRecord(personId: number, draft: RecordDraft, bas
     `/admin/advancement/roster/${personId}`,
     '/admin/advancement/roster',
     '/admin/advancement/lookups',
-    '/admin/advancement/dashboard',
+    '/admin',
     '/admin/advancement/fast-entry',
     '/admin/advancement/ledger',
     '/advancement'

@@ -1,5 +1,5 @@
 /**
- * /admin/advancement/dashboard/analytics — Site Analytics, "View analytics"
+ * /admin/reports/analytics — Site Analytics, "View analytics"
  * from the Leader Dashboard's Site Analytics card.
  *
  * Embeds a Looker Studio report connected to the site's GA4 property
@@ -14,8 +14,8 @@
  */
 
 import { requireCapability } from '@/lib/require-capability';
-import styles from '../dashboard.module.css';
-import { PageTitle } from '../../../_components/page-title';
+import styles from '../../advancement/dashboard/dashboard.module.css';
+import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {
   title: 'Site Analytics — Troop 79'
@@ -29,7 +29,7 @@ export default async function AnalyticsPage() {
   return (
     <>
       <PageTitle
-        back={{ label: 'Dashboard', href: '/admin/advancement/dashboard' }}
+        back={{ label: 'Reports', href: '/admin/reports' }}
         title="Site Analytics"
         sub="Traffic and engagement for troop-79.com, via Google Analytics 4 and Looker Studio."
       >

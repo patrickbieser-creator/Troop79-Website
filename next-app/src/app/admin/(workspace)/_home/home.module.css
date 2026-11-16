@@ -1,0 +1,189 @@
+/* Home (Plans/Admin-Portal-Nav.md decision 5; canvas board 1). Admin tokens only. Rows of two that stack on narrow
+   screens: Needs you today | This week, Your shortcuts (full width), Reports | At a glance, Recent ledger activity |
+   Likely ready for review, Recent logins (full width). */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-10);
+}
+
+/* A titled block without a card (shortcuts, At a glance): heading, then its tiles. */
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-6);
+  min-width: 0;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--admin-space-10);
+  align-items: start;
+}
+.pair > * {
+  min-width: 0;
+}
+/* Needs you today takes the wider share beside This week. */
+.pairWide {
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+}
+@media (max-width: 900px) {
+  .pairWide {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-6);
+  padding: var(--admin-space-8);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-sm);
+}
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--admin-space-4);
+}
+.heading {
+  margin: 0;
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+}
+.headLink {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-navy);
+}
+.muted {
+  margin: 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+
+/* This week */
+.meeting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-3);
+  padding: var(--admin-space-6);
+  border-radius: var(--admin-radius-lg);
+  background: var(--admin-status-info-bg);
+}
+.meetingTitle {
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+}
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-4);
+  margin-top: var(--admin-space-2);
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.listRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--admin-space-6);
+  min-height: 32px;
+  font-size: var(--admin-text-base);
+}
+.listRow a {
+  color: var(--admin-navy);
+}
+
+/* Shortcuts and tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--admin-space-6);
+}
+.glance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--admin-space-6);
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-2);
+  min-height: 44px;
+  padding: var(--admin-space-6) var(--admin-space-7);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-sm);
+  color: inherit;
+  text-decoration: none;
+}
+a.tile:hover {
+  box-shadow: var(--admin-shadow-md);
+}
+a.tile:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
+.tileLabel {
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-600);
+}
+.tileName {
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-900);
+}
+.tileValue {
+  font-size: var(--admin-text-3xl);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+}
+.tileFailed {
+  border-color: var(--admin-danger);
+  background: var(--admin-status-error-bg);
+}
+.tileError {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-danger-dark);
+}
+.tileSub {
+  font-size: var(--admin-text-xs);
+  color: var(--admin-gray-600);
+}
+
+/* Reports shelf */
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--admin-space-2) var(--admin-space-10);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shelf a {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  font-size: var(--admin-text-base);
+  color: var(--admin-navy);
+}
+@media (max-width: 480px) {
+  .shelf,
+  .glance {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -1,19 +1,18 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { CAPABILITIES } from '../src/lib/capabilities';
+import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
 /**
- * Home (/admin) and the Dashboard page (/admin/advancement/dashboard) are two pages now: Home is the inbox and the card
- * grid only; the old overview lives on its own page, reached from the first Advancement card. Collaborators that need a
- * database or the router are stubbed - this asserts what each page puts on screen, not how it loads.
+ * Home (/admin), Plans/Admin-Portal-Nav.md decisions 5–7: what each kind of leader sees. Loaders that need a database
+ * are stubbed; the registry, the visibility rules and the shortcut/shelf logic are real.
  */
+let caps: Capability[] = [...CAPABILITIES];
 vi.mock('@/lib/admin-actor', () => ({
-  resolveAdminActor: async () => ({ legacyRole: null, capabilities: new Set(CAPABILITIES) })
+  resolveAdminActor: async () => ({ legacyRole: null, personId: 82, capabilities: new Set(caps), subjectKind: 'adult' })
 }));
-vi.mock('@/lib/require-capability', () => ({ requireCapability: async () => undefined }));
+vi.mock('@/lib/health-access', () => ({ adminIsHealthViewer: async () => false }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
-vi.mock('@/lib/wreaths/admin-data', () => ({ loadWreathSaleOpen: async () => false }));
-vi.mock('../src/app/admin/(workspace)/advancement/dashboard/attention-items', () => ({ loadAttentionCategories: async () => [], attentionCategoriesFor: async () => [] }));
+vi.mock('../src/app/admin/(workspace)/advancement/dashboard/attention-items', () => ({ attentionCategoriesFor: async () => [] }));
 vi.mock('../src/app/admin/(workspace)/advancement/dashboard/suggestion-actions', () => ({
   loadSuggestionActor: async () => ({ name: 'Pat', email: 'pat@example.com' }),
   sendSuggestionAction: async () => ({ ok: true })
@@ -25,47 +24,79 @@ vi.mock('../src/app/admin/(workspace)/_components/attention-inbox', () => ({
 vi.mock('../src/app/admin/(workspace)/_components/page-title', () => ({
   PageTitle: ({ title }: { title: string }) => <h1>{title}</h1>
 }));
-vi.mock('../src/app/admin/(workspace)/advancement/dashboard/advancement-overview', () => ({
-  AdvancementOverview: () => <div data-testid="overview">Recent Ledger Activity</div>
+vi.mock('../src/app/admin/(workspace)/_components/pins-store', () => ({ loadPinKeys: async () => ['money.ledger'] }));
+vi.mock('../src/app/admin/(workspace)/_components/nav-events', () => ({
+  mostOpened: async () => [
+    { key: 'content.calendar', count: 9 },
+    { key: 'money.ledger', count: 4 }
+  ]
+}));
+vi.mock('../src/app/admin/(workspace)/_home/advancement-cards', () => ({
+  RecentLedgerCard: () => <div data-testid="ledger-card" />,
+  LikelyReadyCard: () => <div data-testid="ready-card" />,
+  RecentLoginsCard: () => <div data-testid="logins-card" />
+}));
+vi.mock('../src/app/admin/(workspace)/_home/home-data', async (orig) => ({
+  ...(await orig<typeof import('../src/app/admin/(workspace)/_home/home-data')>()),
+  loadThisWeek: async () => ({
+    meeting: { entryId: 7, date: '2026-11-22', title: 'Troop Meeting', startTime: '19:00:00', location: null, closed: false },
+    comingUp: [{ id: 8, date: '2026-12-14', title: 'Court of Honor' }]
+  })
+}));
+vi.mock('../src/app/admin/(workspace)/_home/at-a-glance', () => ({
+  AtAGlance: ({ financeManage }: { financeManage: boolean }) => <div data-testid="glance" data-finance={String(financeManage)} />
 }));
 
-describe('AdminHome', () => {
-  async function renderHome() {
-    const { AdminHome } = await import('../src/app/admin/(workspace)/advancement/dashboard/admin-home');
-    render(await AdminHome());
-  }
+async function renderHome() {
+  const { AdminHome } = await import('../src/app/admin/(workspace)/advancement/dashboard/admin-home');
+  render(await AdminHome());
+}
 
-  it('AdminHome_RendersNoAdvancementOverviewButton', async () => {
-    await renderHome();
-    expect(screen.queryByRole('link', { name: 'Advancement overview' })).toBeNull();
-  });
-
-  it('AdminHome_RendersNoOverview', async () => {
-    await renderHome();
-    expect(screen.queryByTestId('overview')).toBeNull();
-  });
-
-  it('AdminHome_RendersTheInbox', async () => {
-    await renderHome();
-    expect(screen.getByTestId('inbox')).toBeTruthy();
-  });
-
-  it('AdminHome_OffersTheDashboardAsACard_InTheAdvancementGroup', async () => {
-    const { AdminHome } = await import('../src/app/admin/(workspace)/advancement/dashboard/admin-home');
-    render(await AdminHome());
-    const dashboard = screen.getByRole('link', { name: 'Dashboard' });
-    expect(dashboard.getAttribute('href')).toBe('/admin/advancement/dashboard');
-    expect(dashboard.closest('section')!.getAttribute('data-tint')).toBe('moss');
-  });
+beforeEach(() => {
+  caps = [...CAPABILITIES];
 });
 
-describe('Dashboard page', () => {
-  it('DashboardPage_RendersTheOverviewUnderItsOwnTitle_NotTheHomeInbox', async () => {
-    const { default: DashboardPage, metadata } = await import('../src/app/admin/(workspace)/advancement/dashboard/page');
-    render(await DashboardPage());
-    expect(screen.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeTruthy();
-    expect(screen.getByTestId('overview')).toBeTruthy();
-    expect(screen.queryByTestId('inbox')).toBeNull();
-    expect(metadata.title).toBe('Dashboard — Troop 79');
+describe('Home', () => {
+  it('Home_ShowsNeedsYouTodayAndThisWeek', async () => {
+    await renderHome();
+    expect([screen.getByTestId('inbox') != null, screen.getByRole('heading', { name: 'This week' }) != null]).toEqual([true, true]);
+  });
+
+  it('Shortcuts_PinsFirst_ThenMostOpened', async () => {
+    await renderHome();
+    const tiles = screen.getByRole('region', { name: 'Your shortcuts' }).querySelectorAll('a[href]:not([href="/admin/pins"])');
+    expect([...tiles].map((a) => a.textContent)).toEqual(['Financial LedgerMoney · pinned', 'CalendarWebsite Content · opened 9 times in 30 days']);
+  });
+
+  it('AtAGlance_StreamsBesideTheReportsShelf', async () => {
+    await renderHome();
+    expect(screen.getByTestId('glance').getAttribute('data-finance')).toBe('true');
+  });
+
+  it('AdvancementCards_HiddenWithoutAdvancementWrite', async () => {
+    caps = ['calendar.write'];
+    await renderHome();
+    expect([screen.queryByTestId('ledger-card'), screen.queryByTestId('ready-card')]).toEqual([null, null]);
+  });
+
+  it('AdvancementCards_ShownWithAdvancementWrite', async () => {
+    await renderHome();
+    expect([screen.getByTestId('ledger-card') != null, screen.getByTestId('ready-card') != null]).toEqual([true, true]);
+  });
+
+  it('RecentLogins_HiddenWithoutRosterManage', async () => {
+    caps = ['advancement.write'];
+    await renderHome();
+    expect(screen.queryByTestId('logins-card')).toBeNull();
+  });
+
+  it('ReportsShelf_LinksToAllReports', async () => {
+    await renderHome();
+    expect(screen.getByRole('link', { name: /^All \d+ reports/ }).getAttribute('href')).toBe('/admin/reports');
+  });
+
+  it('Home_HasNoCardGridAndNoDashboardLink', async () => {
+    await renderHome();
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
   });
 });

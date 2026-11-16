@@ -17,13 +17,6 @@
     "tint": "moss",
     "items": [
       {
-        "label": "Dashboard",
-        "href": "/admin/advancement/dashboard",
-        "matchPath": "/admin/advancement/dashboard",
-        "description": "Active scouts, ledger, Court of Honor candidates and recent sign-ins",
-        "capability": "advancement.write"
-      },
-      {
         "label": "Fast Entry",
         "href": "/admin/advancement/fast-entry",
         "matchPath": "/admin/advancement/fast-entry",

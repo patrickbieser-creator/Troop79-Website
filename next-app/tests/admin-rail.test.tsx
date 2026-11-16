@@ -28,7 +28,7 @@ function renderRail(pinKeys: string[] = [], canPin = true) {
 
 const railNames = () =>
   [...screen.getByRole('navigation', { name: 'Workspace' }).querySelectorAll('a, button')]
-    .map((el) => el.textContent?.replace(' (current section)', '').replace(/\d+$/, '').trim())
+    .map((el) => el.textContent?.replace(' (current section)', '').replace(/(\d+ waiting)?›$/, '').trim())
     .filter((t) => t && t !== 'Close' && t !== 'Edit pins');
 
 describe('rail', () => {
@@ -90,6 +90,29 @@ describe('rail', () => {
     expect(pinFeatureAction).toHaveBeenCalledWith('money.bucket-report');
   });
 
+  it('Menu_HeaderLinksToTheGroupsFirstScreen_InWords', () => {
+    renderRail();
+    fireEvent.click(screen.getByRole('button', { name: /^Money/ }));
+    expect(screen.getByRole('link', { name: 'Open Financial Ledger →' }).getAttribute('href')).toBe('/admin/finance');
+  });
+
+  it('Pins_AreAListNamedPinned', () => {
+    renderRail(['advancement.fast-entry', 'money.ledger']);
+    expect(within(screen.getByRole('list', { name: 'Pinned' })).getAllByRole('link').map((a) => a.textContent)).toEqual([
+      'Fast Entry',
+      'Financial Ledger'
+    ]);
+  });
+
+  it('Pin_IsAnnounced', async () => {
+    renderRail();
+    fireEvent.click(screen.getByRole('button', { name: /^Money/ }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Pin Ledger Audit' }));
+    });
+    expect(screen.getByRole('status').textContent).toBe('Pinned Ledger Audit');
+  });
+
   it('Pin_HiddenWithoutAPersonalSignIn', () => {
     renderRail([], false);
     fireEvent.click(screen.getByRole('button', { name: /^Money/ }));
@@ -128,6 +151,6 @@ describe('rail', () => {
 
   it('Counts_ShowOnTheirGroup', async () => {
     renderRail();
-    expect(await screen.findByText('waiting', { exact: false })).toBeTruthy();
+    expect((await screen.findByText('waiting', { exact: false })).parentElement?.textContent).toBe('9 waiting');
   });
 });

@@ -33,7 +33,7 @@ const REPORT_READERS = [
   'lib/past-meeting-db.ts',
   'lib/meeting-suggest/load-input.ts',
   'app/admin/(workspace)/advancement/audits/audit-input.ts',
-  'app/admin/(workspace)/advancement/dashboard/advancement-overview.tsx',
+  'app/admin/(workspace)/_home/advancement-cards.tsx',
   'app/admin/(workspace)/advancement/meetings/report/page.tsx',
   'app/(public)/library/mb/[mbId]/page.tsx',
   'app/(public)/library/rank/[rankId]/[code]/page.tsx',

@@ -1,0 +1,52 @@
+/* Reports landing: one card per subject, the reports as links. Admin tokens only. */
+.groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--admin-space-10);
+  align-items: start;
+}
+.group {
+  padding: var(--admin-space-8);
+  background: var(--admin-white);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius-lg);
+  box-shadow: var(--admin-shadow-sm);
+}
+.heading {
+  margin: 0 0 var(--admin-space-4);
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-900);
+}
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--admin-space-2) 0;
+  text-decoration: none;
+}
+.item:focus-visible {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 2px;
+}
+.label {
+  font-size: var(--admin-text-lg);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-navy);
+}
+.item:hover .label {
+  text-decoration: underline;
+}
+.desc {
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.empty {
+  color: var(--admin-gray-600);
+}

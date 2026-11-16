@@ -173,7 +173,7 @@ export async function addLedgerEntries(formData: FormData): Promise<SaveResult> 
 
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/admin/advancement/ledger');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   return { ok: true, inserted: rows.length, skipped };
 }
 
@@ -514,7 +514,7 @@ export async function undoCompletion(formData: FormData): Promise<SaveResult> {
 
   revalidatePath('/admin/advancement/fast-entry');
   revalidatePath('/admin/advancement/ledger');
-  revalidatePath('/admin/advancement/dashboard');
+  revalidatePath('/admin');
   return { ok: true, inserted: 1 };
 }
 

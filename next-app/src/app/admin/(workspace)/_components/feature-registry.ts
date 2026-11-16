@@ -88,8 +88,6 @@ export const FEATURES: Feature[] = [
   { key: 'advancement.ledger', label: 'Advancement Ledger', description: 'Every requirement, rank and badge on record', area: 'advancement', kind: 'screen', href: '/admin/advancement/ledger', capability: ADV },
   { key: 'advancement.records', label: 'Submit & Present', description: 'Council submissions and awards to hand out', area: 'advancement', kind: 'screen', href: '/admin/advancement/records', capability: ADV, aliases: ['scoutbook', 'awards'] },
   { key: 'advancement.approvals', label: 'Approvals', description: 'Proof submissions approved in the past two months', area: 'advancement', kind: 'screen', href: '/admin/advancement/approvals', capability: ADV },
-  // Retired in phase 4 (decision 7): its cards move to Home, the old URL redirects to /admin.
-  { key: 'advancement.dashboard', label: 'Advancement Dashboard', description: 'Active scouts, ledger, Court of Honor candidates and recent sign-ins', area: 'advancement', kind: 'screen', href: '/admin/advancement/dashboard', capability: ADV },
   { key: 'advancement.report', label: 'Advancement Report', description: 'What got signed off in a date range, for the Bugle and the public site', area: 'advancement', kind: 'report', href: '/admin/advancement/report', alsoIn: ['reports'], capability: ADV },
   { key: 'advancement.court-of-honor', label: 'Court of Honor', description: 'Ranks, merit badges and awards earned in a date range', area: 'advancement', kind: 'report', href: '/admin/advancement/court-of-honor', alsoIn: ['reports'], capability: ADV, aliases: ['coh'] },
   { key: 'advancement.scoutbook-export', label: 'Scoutbook Export', description: "Awards in a date range, formatted for Scoutbook's bulk upload", area: 'advancement', kind: 'report', href: '/admin/advancement/scoutbook-export', alsoIn: ['reports'], capability: ADV },
@@ -141,6 +139,7 @@ export const FEATURES: Feature[] = [
   { key: 'people.health-forms', label: 'Health Forms', description: 'Forms, reviews and the binder', area: 'people', kind: 'screen', href: '/admin/health-forms', healthViewersOnly: true, aliases: ['medical'] },
   { key: 'people.access', label: 'Access', description: 'Who can use which admin tools', area: 'people', kind: 'screen', href: '/admin/access', alsoIn: ['setup'], capability: ROSTER, aliases: ['permissions', 'capabilities'] },
   { key: 'people.family-roster', label: 'Family Roster print', area: 'people', kind: 'report', href: '/admin/roster-print', alsoIn: ['reports'], capability: ROSTER, aliases: ['pdf', 'directory'] },
+  { key: 'people.missing-bsa-ids', label: 'Missing BSA IDs', description: 'Active scouts and adult leaders with no BSA member ID', area: 'people', kind: 'report', href: '/admin/reports/missing-bsa-ids', alsoIn: ['reports'], capability: ROSTER, aliases: ['member id', 'scoutbook'] },
   { key: 'people.health-log', label: 'Health access log', area: 'people', kind: 'report', href: '/admin/health-forms/log', alsoIn: ['reports'], healthViewersOnly: true },
   { key: 'people.households', label: 'Households', area: 'people', kind: 'setup', href: '/admin/advancement/lookups?card=households', alsoIn: ['setup'], capability: ROSTER, aliases: ['families'] },
   { key: 'people.schools', label: 'Schools', area: 'people', kind: 'setup', href: '/admin/advancement/lookups?card=schools', alsoIn: ['setup'], capability: ROSTER },
@@ -148,8 +147,8 @@ export const FEATURES: Feature[] = [
 
   // ── Reports (the site's own; every other report lives in its area and is alsoIn Reports) ────────────────────────────
   { key: 'reports.index', label: 'Reports', area: 'reports', kind: 'screen', href: '/admin/reports', landing: 'report' },
-  { key: 'reports.sign-ins', label: 'Recent Sign-ins', area: 'reports', kind: 'report', href: '/admin/advancement/dashboard/logins', capability: ADV, aliases: ['logins'] },
-  { key: 'reports.analytics', label: 'Site Analytics', area: 'reports', kind: 'report', href: '/admin/advancement/dashboard/analytics', capability: ADV, aliases: ['traffic', 'visits'] },
+  { key: 'reports.sign-ins', label: 'Recent Sign-ins', area: 'reports', kind: 'report', href: '/admin/reports/sign-ins', capability: ROSTER, aliases: ['logins'] },
+  { key: 'reports.analytics', label: 'Site Analytics', area: 'reports', kind: 'report', href: '/admin/reports/analytics', capability: ADV, aliases: ['traffic', 'visits'] },
 
   // ── Setup ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   { key: 'setup.emailoctopus', label: 'Sync the EmailOctopus list', area: 'setup', kind: 'action', href: '/admin/newsletter', capability: ROSTER, aliases: ['mailing list', 'newsletter'] },

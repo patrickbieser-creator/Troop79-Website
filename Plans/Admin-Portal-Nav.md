@@ -258,6 +258,21 @@ links to `/planner`, and there is no Meetings home under `/admin`.
   page.
 - **Counts and pins** refresh on a full page load or after a pin change; the layout persists across client navigation.
 - The menu panel is a labelled region, not a modal dialog: Tab can leave it, Escape and a click outside close it.
+- **Phase 4:**
+  - **Shortcut tracking** uses `navigator.sendBeacon` to `POST /admin/nav-open`, not a server action. Next runs server
+    actions one at a time, so an action would delay the navigation it records. The same open within 5 seconds counts
+    once.
+  - **Uncollected event fees** count every sign-up entry with a balance left, including entries marked Not going. A
+    Not going entry still owes unless its amount was set to Not paying (D-489).
+  - **Missing BSA IDs:** an adult leader is an active person with a `leaders` row that carries a role, so
+    sign-off-initials rows don't count. A scout who aged out and now holds a position counts as a leader. Active scouts
+    and Missing BSA IDs come from one read, so the two tiles always agree, with test people left out of both.
+  - **Recent Sign-ins** now requires `roster.manage`, the same as the Home logins card, since it names people. Site
+    Analytics keeps `advancement.write`.
+  - **This week** shows the next meeting, its time and place, and the next three calendar entries. The plan's status
+    line ("Plan published · 6 stations · 21 scouts expected") is not built: the planner has no cheap read for it.
+  - **Moves deferred to phase 6:** the Home component and its helpers still live in `advancement/dashboard/` (no page
+    there any more), and they move to `_home/` in phase 6.
 
 **Gates and reviews.** Every phase passes the full gate (lint, typecheck, full test run, build): each touches logic,
 capability gating or a migration. qa-lead reviews phases 3–5 (capability filtering on menus, tiles and record
