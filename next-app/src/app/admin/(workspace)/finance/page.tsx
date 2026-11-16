@@ -7,6 +7,7 @@
  * again server-side in actions.ts (the UI hiding a button is not the
  * security boundary, requireCapability() in each action is).
  */
+import { financeModalFromParam } from './finance-do';
 import { listBucketsAction } from './bucket-actions';
 import Link from 'next/link';
 import { requireAnyOf } from '@/lib/require-capability';
@@ -42,6 +43,8 @@ interface SearchParams {
   sort?: string;
   dir?: string;
   page?: string;
+  /** Opens an Actions dialog on arrival (finance-do.ts). Never carried into the pager or sort links. */
+  do?: string;
 }
 
 const SORT_KEYS: LedgerSortKey[] = ['date', 'account', 'kind', 'amount'];
@@ -55,7 +58,8 @@ function isSortKey(value: string): value is LedgerSortKey {
 }
 
 function urlWith(base: SearchParams, overrides: Partial<SearchParams>): string {
-  const merged = { ...base, ...overrides };
+  const merged: SearchParams = { ...base, ...overrides };
+  delete merged.do;
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(merged)) {
     if (v) params.set(k, String(v));
@@ -276,6 +280,7 @@ export default async function FinancePage({
         }}
         buckets={buckets}
         kinds={kinds}
+        initialModal={financeModalFromParam(raw.do, canManage)}
       />
 
       <div className={styles.pager}>

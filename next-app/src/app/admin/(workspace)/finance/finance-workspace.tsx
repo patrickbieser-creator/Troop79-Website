@@ -59,7 +59,18 @@ import { fmtDate } from '@/lib/format-date';
 import { centralToday } from '@/lib/dates';
 import { EARLIEST_DATE } from '@/lib/date-entry';
 
-type FinanceModal = 'record' | 'transfer' | 'reconcile' | 'kinds';
+import type { FinanceModal } from './finance-do';
+/**
+ * Closing a dialog opened by ?do= takes the parameter off the address, so a reload or a shared link shows the plain
+ * ledger. history.replaceState keeps Next's router in step without a server round trip.
+ */
+function dropDoParam() {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has('do')) return;
+  url.searchParams.delete('do');
+  window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+}
+
 const MODAL_TITLES: Record<FinanceModal, string> = {
   record: 'Record a transaction',
   transfer: 'Transfer between checking and savings',
@@ -106,7 +117,8 @@ export function FinanceWorkspace({
   dir,
   filters,
   buckets,
-  kinds
+  kinds,
+  initialModal = null
 }: {
   canManage: boolean;
   rows: LedgerRow[];
@@ -126,6 +138,8 @@ export function FinanceWorkspace({
   };
   buckets: Bucket[];
   kinds: TransactionKindRow[];
+  /** Opened on arrival from /admin/finance?do=… (finance-do.ts). */
+  initialModal?: FinanceModal | null;
 }) {
   const [pending, start] = useTransition();
   const editFeedback = useSavePhase(); // Save standard: Done flash after the edit dialog closes
@@ -137,7 +151,7 @@ export function FinanceWorkspace({
   // same imperative <dialog> sync pattern as edit-transaction-dialog.tsx's
   // own useEffect: no setState-in-effect, just mirroring `activeModal` onto
   // the DOM element's real open/closed state.
-  const [activeModal, setActiveModal] = useState<FinanceModal | null>(null);
+  const [activeModal, setActiveModal] = useState<FinanceModal | null>(canManage ? initialModal : null);
   const actionModalRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dlg = actionModalRef.current;
@@ -290,7 +304,10 @@ export function FinanceWorkspace({
         <Dialog
           ref={actionModalRef}
           className={styles.actionModal}
-          onClose={() => setActiveModal(null)}
+          onClose={() => {
+            setActiveModal(null);
+            dropDoParam();
+          }}
         >
           <DialogHeader title={activeModal ? MODAL_TITLES[activeModal] : ''} />
           <DialogBody>
