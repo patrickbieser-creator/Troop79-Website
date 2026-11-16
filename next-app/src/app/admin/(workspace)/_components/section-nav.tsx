@@ -100,10 +100,18 @@ export function SectionTabs({
   );
 }
 
-export function AdminNav({ fullAdmin, capabilities }: { fullAdmin: boolean; capabilities: Capability[] }) {
+export function AdminNav({
+  fullAdmin,
+  capabilities,
+  healthViewer = false
+}: {
+  fullAdmin: boolean;
+  capabilities: Capability[];
+  healthViewer?: boolean;
+}) {
   const pathname = usePathname();
   const { navigate, dialog } = useGuardedNav();
-  const visible = visibleNavSections(SECTIONS, { fullAdmin, capabilities: new Set(capabilities) });
+  const visible = visibleNavSections(SECTIONS, { fullAdmin, capabilities: new Set(capabilities), healthViewer });
   const model = sectionNav(visible, pathname);
   const activeBar = model.bar.find((b) => b.active);
   return (

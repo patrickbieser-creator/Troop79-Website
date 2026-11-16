@@ -8,7 +8,8 @@
  * The header (eyebrow, title, subtitle, Close) and the footer stay put; only the body scrolls. Clicking the dimmed
  * page closes it. Focus goes back to whatever opened it, and the page behind doesn't scroll while it's open.
  */
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
+import { useDrawerDialog } from '@/lib/use-drawer-dialog';
 import s from './drawer.module.css';
 
 export function Drawer({
@@ -28,39 +29,11 @@ export function Drawer({
   footer?: ReactNode;
 }) {
   const uid = useId();
-  const ref = useRef<HTMLDialogElement | null>(null);
-
-  useEffect(() => {
-    const dlg = ref.current;
-    if (!dlg) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    if (typeof dlg.showModal === 'function') {
-      if (!dlg.open) dlg.showModal();
-    } else {
-      dlg.setAttribute('open', '');
-    }
-    return () => {
-      document.body.style.overflow = overflow;
-      opener?.focus();
-    };
-  }, []);
+  // Open as a modal, lock the page, return focus on close: shared with the admin twin (lib/use-drawer-dialog).
+  const dialogProps = useDrawerDialog(onClose);
 
   return (
-    <dialog
-      ref={ref}
-      className={s.drawer}
-      aria-labelledby={`${uid}-t`}
-      onCancel={(e) => {
-        e.preventDefault();
-        onClose();
-      }}
-      onClick={(e) => {
-        // A click on the dialog box itself (outside the panel) is a click on the dimmed page.
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
+    <dialog {...dialogProps} className={s.drawer} aria-labelledby={`${uid}-t`}>
       <div className={s.panel}>
         <header className={s.head}>
           <div className={s.headText}>

@@ -230,3 +230,22 @@ describe('Reports landing entries by capability', () => {
     );
   });
 });
+
+/**
+ * Health Forms (Plans/Admin-Health-Forms.md): shown only to an admin on the health viewers list — never implied by
+ * full admin, since the list is not a capability.
+ */
+describe('Health Forms nav item', () => {
+  const people = (opts: { fullAdmin: boolean; healthViewer: boolean }) =>
+    visibleNavSections(RAIL, { fullAdmin: opts.fullAdmin, capabilities: new Set<Capability>(['roster.manage']), healthViewer: opts.healthViewer })
+      .find((s) => s.title === 'People & Setup')
+      ?.items.map((i) => i.label) ?? [];
+
+  it('HealthViewerAdmin_SeesNavItem_BetweenRosterAndAccess', () => {
+    expect(people({ fullAdmin: false, healthViewer: true })).toEqual(['Roster', 'Health Forms', 'Access']);
+  });
+
+  it('AdminNonViewer_DoesNotSeeHealthForms_EvenAsFullAdmin', () => {
+    expect(people({ fullAdmin: true, healthViewer: false })).not.toContain('Health Forms');
+  });
+});

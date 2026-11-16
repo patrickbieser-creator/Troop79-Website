@@ -23,7 +23,7 @@
  */
 import Link from 'next/link';
 import sg from './styleguide.module.css';
-import { DialogDemo } from './dialog-demo';
+import { AdminDrawerDemo, DialogDemo } from './dialog-demo';
 import { EditorPromptsSpecimen } from './editor-prompts-specimen';
 import { FoodListRowsSpecimen } from './food-list-rows-specimen';
 import { BlockedSaveDemo, SaveDemo, SegmentedDemo } from './save-demo';
@@ -1574,6 +1574,10 @@ export default function StyleguidePage() {
             </div>
           </div>
           <DialogDemo />
+          <div className={sg.specimen}>
+            <div className={sg.specimenLabel}>AdminDrawer &mdash; a record sheet from the right over a full-width list (Health Forms, 2026-11-15)</div>
+            <AdminDrawerDemo />
+          </div>
           <div className={sg.specimen}>
             <div className={sg.specimenLabel}>DangerConfirm &mdash; a destructive control&rsquo;s confirm, naming the consequence (D-332)</div>
             <DangerConfirmSpecimen />

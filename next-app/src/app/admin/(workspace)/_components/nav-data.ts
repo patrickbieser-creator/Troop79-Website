@@ -59,6 +59,11 @@ export interface NavItem {
   navHidden?: boolean;
   /** Seasonal (Wreath Sale): first in its group while its season is open, last and greyed otherwise. */
   seasonal?: boolean;
+  /**
+   * Shown only to an admin on the health viewers list (Health Forms, Plans/Admin-Health-Forms.md). That list is not a
+   * capability, so this is never implied by full admin; the layout passes `healthViewer`. Pages still gate themselves.
+   */
+  healthViewersOnly?: boolean;
 }
 
 /** The earth tone a section's Home group wears (admin.css --admin-tint-*). The quiet tools group has none. */
@@ -362,6 +367,13 @@ export const SECTIONS: NavSection[] = [
         capability: 'roster.manage'
       },
       {
+        label: 'Health Forms',
+        href: '/admin/health-forms',
+        matchPath: '/admin/health-forms',
+        description: 'Forms, reviews and the binder',
+        healthViewersOnly: true
+      },
+      {
         label: 'Access',
         href: '/admin/access',
         matchPath: '/admin/access',
@@ -449,7 +461,7 @@ const NEVER_IMPLIED_BY_FULL_ADMIN: ReadonlySet<Capability> = new Set(['finance.m
  */
 export function visibleNavSections(
   sections: NavSection[],
-  opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability> }
+  opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability>; healthViewer?: boolean }
 ) {
   return pruneEmptyLandings(filterByCapability(sections, opts));
 }
@@ -464,19 +476,22 @@ function pruneEmptyLandings<S extends { items: NavItem[] }>(sections: S[]): S[] 
 
 function filterByCapability(
   sections: NavSection[],
-  opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability> }
+  opts: { fullAdmin: boolean; capabilities: ReadonlySet<Capability>; healthViewer?: boolean }
 ) {
+  // The health viewers list is not a capability: it decides the Health Forms item alone, whatever else is held.
+  const health = (i: NavItem) => (i.healthViewersOnly ? opts.healthViewer === true : null);
   if (opts.fullAdmin) {
     return sections
       .map((s) => ({
         ...s,
         items: s.items.filter(
           (i) =>
-            i.everyone ||
+            health(i) ??
+            (i.everyone ||
             i.folderLanding != null ||
             i.capability == null ||
             !NEVER_IMPLIED_BY_FULL_ADMIN.has(i.capability) ||
-            opts.capabilities.has(i.capability)
+            opts.capabilities.has(i.capability))
         )
       }))
       .filter((s) => s.items.length > 0);
@@ -484,7 +499,9 @@ function filterByCapability(
   return sections
     .map((s) => ({
       ...s,
-      items: s.items.filter((i) => i.everyone || i.folderLanding != null || (i.capability != null && opts.capabilities.has(i.capability)))
+      items: s.items.filter(
+        (i) => health(i) ?? (i.everyone || i.folderLanding != null || (i.capability != null && opts.capabilities.has(i.capability)))
+      )
     }))
     .filter((s) => s.items.length > 0);
 }

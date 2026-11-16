@@ -1,6 +1,7 @@
 import 'server-only';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import { openHealthFile, sealHealthFile, type HealthStorage } from '@/lib/health-files';
 import {
   TRIP_DAYS_AFTER,
@@ -409,6 +410,127 @@ export async function listHealthReviews(sb: SupabaseClient, personIds: number[])
   const { data, error } = await sb.from('health_reviews').select('person_id, reviewed_by_name, reviewed_at').in('person_id', personIds);
   if (error) throw new Error(error.message);
   return new Map(((data ?? []) as { person_id: number; reviewed_by_name: string; reviewed_at: string }[]).map((r) => [Number(r.person_id), { personId: Number(r.person_id), byName: r.reviewed_by_name, at: r.reviewed_at }]));
+}
+
+export type HealthRosterType = 'scout' | 'adult' | 'other';
+
+export interface HealthRosterRow {
+  personId: number;
+  /** display_name — what the troop calls them. */
+  name: string;
+  /** Legal names, for matching against BSA paperwork. */
+  firstName: string | null;
+  lastName: string | null;
+  type: HealthRosterType;
+  pages: HealthPage[];
+  review: HealthReview | null;
+  /** The newest upload; null when nothing is on file. A removal doesn't move it. */
+  lastUpload: string | null;
+}
+
+/**
+ * Who the admin Health Forms list shows (Plans/Admin-Health-Forms.md, decision 6, R3, R4): active scouts and active
+ * leaders always; anyone else once they have a document or a review. Type from person_directory: an active scout is
+ * a Scout; an active leader or roster adult is an Adult; everyone else (Webelos, inactive scouts and people, sign-up
+ * guests, who aren't in the directory at all) is Other.
+ */
+export async function loadHealthRoster(sb: SupabaseClient): Promise<HealthRosterRow[]> {
+  const [dir, docs, reviewRows] = await Promise.all([
+    fetchAllRows<{ person_id: number; tab: string; active: boolean | null }>((from, to) =>
+      sb.from('person_directory').select('person_id, tab, active').order('person_id').range(from, to)
+    ),
+    fetchAllRows<Row>((from, to) => sb.from('health_documents').select(COLS).order('id').range(from, to)),
+    fetchAllRows<{ person_id: number; reviewed_by_name: string; reviewed_at: string }>((from, to) =>
+      sb.from('health_reviews').select('person_id, reviewed_by_name, reviewed_at').order('person_id').range(from, to)
+    )
+  ]);
+
+  const tabOf = new Map(dir.map((d) => [Number(d.person_id), d]));
+  const pagesBy = new Map<number, HealthPage[]>();
+  for (const r of docs) {
+    const p = pageOf(r);
+    pagesBy.set(p.personId, [...(pagesBy.get(p.personId) ?? []), p]);
+  }
+  const reviews = new Map(reviewRows.map((r) => [Number(r.person_id), { personId: Number(r.person_id), byName: r.reviewed_by_name, at: r.reviewed_at }]));
+
+  const ids = new Set<number>();
+  for (const d of dir) if (d.tab === 'active_scout' || (d.tab === 'leader' && d.active)) ids.add(Number(d.person_id));
+  for (const id of pagesBy.keys()) ids.add(id);
+  for (const id of reviews.keys()) ids.add(id);
+  if (ids.size === 0) return [];
+
+  const people = await fetchAllRows<{ id: number; display_name: string; first_name: string | null; last_name: string | null }>((from, to) =>
+    sb.from('people').select('id, display_name, first_name, last_name').in('id', [...ids]).order('id').range(from, to)
+  );
+
+  return people.map((p) => {
+    const id = Number(p.id);
+    const d = tabOf.get(id);
+    const type: HealthRosterType =
+      d?.tab === 'active_scout' ? 'scout' : (d?.tab === 'leader' || d?.tab === 'adult') && d.active ? 'adult' : 'other';
+    const pages = pagesBy.get(id) ?? [];
+    const lastUpload = pages.map((x) => x.uploadedAt).sort().at(-1) ?? null;
+    return {
+      personId: id,
+      name: p.display_name,
+      firstName: p.first_name,
+      lastName: p.last_name,
+      type,
+      pages,
+      review: reviews.get(id) ?? null,
+      lastUpload
+    };
+  });
+}
+
+export interface HealthRecordView {
+  personId: number;
+  name: string;
+  /** "Things we should know", typed by the family. */
+  told: string | null;
+  /** Parents and guardians, with a phone when one is on file. */
+  contacts: { personId: number; name: string; phone: string | null }[];
+  pages: HealthPage[];
+  review: HealthReview | null;
+  lastUpload: string | null;
+}
+
+/**
+ * One person's record for the admin sheet (Plans/Admin-Health-Forms.md). The access-log line is written FIRST; if it
+ * can't be, nothing about the person is returned. The caller has already decided the viewer may open it.
+ */
+export async function openHealthRecord(personId: number, viewer: HealthViewer, deps: HealthDeps): Promise<HealthRecordView | null> {
+  try {
+    await logHealthRecordOpen(personId, viewer, deps);
+  } catch {
+    return null;
+  }
+  const sb = deps.supabase;
+  const [{ data: person }, { data: parentRows }, pages, reviews] = await Promise.all([
+    sb.from('people').select('id, display_name, things_we_should_know').eq('id', personId).maybeSingle(),
+    sb.from('relationships').select('person_id').eq('related_person_id', personId).in('type', ['parent_of', 'guardian_of']),
+    listHealthPages(sb, [personId]),
+    listHealthReviews(sb, [personId])
+  ]);
+  if (!person) return null;
+  const parentIds = ((parentRows ?? []) as { person_id: number }[]).map((r) => Number(r.person_id));
+  const { data: parents } = parentIds.length
+    ? await sb.from('people').select('id, display_name, primary_phone').in('id', parentIds).order('display_name')
+    : { data: [] };
+  const p = person as { id: number; display_name: string; things_we_should_know: string | null };
+  return {
+    personId,
+    name: p.display_name,
+    told: p.things_we_should_know?.trim() || null,
+    contacts: ((parents ?? []) as { id: number; display_name: string; primary_phone: string | null }[]).map((c) => ({
+      personId: Number(c.id),
+      name: c.display_name,
+      phone: c.primary_phone
+    })),
+    pages,
+    review: reviews.get(personId) ?? null,
+    lastUpload: pages.map((x) => x.uploadedAt).sort().at(-1) ?? null
+  };
 }
 
 /** "Reviewed, complete" on or off for one person. */

@@ -1,0 +1,126 @@
+/* Admin › Health Forms (Plans/Admin-Health-Forms.md): DataTable · Compact list and the sheet body. Tokens only. */
+
+.headActions { display: flex; align-items: center; gap: var(--admin-space-3); }
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-4);
+  margin: var(--admin-space-4) 0;
+}
+
+.tableWrap { overflow-x: auto; }
+.table { composes: compact from '../_components/data-table.module.css'; }
+.rowLink { composes: rowLink from '../_components/data-table.module.css'; }
+.actionsCell { composes: actionsCell from '../_components/data-table.module.css'; }
+.empty { composes: empty from '../_components/data-table.module.css'; }
+.nowrap { white-space: nowrap; }
+.nameCell { white-space: nowrap; font-weight: var(--admin-weight-semibold); }
+.markCell { white-space: nowrap; }
+
+/* R1: marks read as words; colour is never the only signal (each cell also carries screen-reader text). */
+.mark_ok { color: var(--admin-forest-dark); font-weight: var(--admin-weight-bold); }
+.mark_soon { color: var(--admin-accent-gold); font-weight: var(--admin-weight-semibold); }
+.mark_bad { color: var(--admin-danger-dark); font-weight: var(--admin-weight-semibold); }
+.mark_none { color: var(--admin-gray-400); }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.muted { color: var(--admin-gray-500); }
+.problem {
+  margin: 0;
+  padding: var(--admin-space-3) var(--admin-space-4);
+  border: 1px solid var(--admin-danger);
+  border-radius: var(--admin-radius);
+  background: var(--admin-status-error-bg);
+  color: var(--admin-danger-dark);
+}
+
+/* Last and First hide below desktop; Name carries the person. */
+@media (max-width: 1023px) {
+  .wide { display: none; }
+}
+
+/* ── Sheet body ─────────────────────────────────────────────────────── */
+.sheet > * + * { margin-top: var(--admin-space-6); }
+
+.dl {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: var(--admin-space-3) var(--admin-space-5);
+  margin: 0;
+}
+.dl dt {
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-500);
+  padding-top: var(--admin-space-1);
+}
+.dl dd { margin: 0; overflow-wrap: anywhere; }
+.hint {
+  display: block;
+  margin-top: var(--admin-space-1);
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-500);
+}
+.contacts { margin: 0; padding: 0; list-style: none; }
+.contacts li + li { margin-top: var(--admin-space-2); }
+.contacts a { margin-left: var(--admin-space-2); }
+
+.docs {
+  margin: 0;
+  padding: var(--admin-space-5) 0 0;
+  list-style: none;
+  border-top: 1px solid var(--admin-gray-200);
+}
+.doc + .doc { margin-top: var(--admin-space-5); }
+.docHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-3);
+}
+.docName { font-weight: var(--admin-weight-semibold); }
+.pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-2) var(--admin-space-5);
+  margin: var(--admin-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.review {
+  margin: 0;
+  padding-top: var(--admin-space-5);
+  border-top: 1px solid var(--admin-gray-200);
+  color: var(--admin-gray-700);
+}
+
+@media (max-width: 640px) {
+  .dl { grid-template-columns: 1fr; }
+}
+
+/* Who can open health records: the one quiet add row under the list. */
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--admin-space-3);
+  margin-top: var(--admin-space-5);
+}
+.addRow > :first-child { min-width: 260px; }
+
+/* Access log */
+.logWhen { white-space: nowrap; color: var(--admin-gray-500); }

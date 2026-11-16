@@ -12,6 +12,7 @@ import { AttentionInbox } from '../../_components/attention-inbox';
 import { AdminHub } from '../../_components/admin-hub';
 import { SECTIONS, visibleNavSections, hubGroups, isFullAdmin } from '../../_components/nav-data';
 import { loadWreathSaleOpen } from '@/lib/wreaths/admin-data';
+import { adminIsHealthViewer } from '@/lib/health-access';
 import { SuggestionButton } from './suggestion-button';
 import { loadSuggestionActor, sendSuggestionAction } from './suggestion-actions';
 
@@ -20,7 +21,8 @@ export async function AdminHome() {
   if (!actor) throw new Error('Not authenticated');
   const visible = visibleNavSections(SECTIONS, {
     fullAdmin: isFullAdmin(actor),
-    capabilities: actor.capabilities
+    capabilities: actor.capabilities,
+    healthViewer: await adminIsHealthViewer(actor)
   });
   // The Wreath Sale card orders by season; only a treasurer sees the card, so only they pay for the (one small) select.
   const wreathCardVisible = visible.some((s) => s.items.some((i) => i.seasonal));

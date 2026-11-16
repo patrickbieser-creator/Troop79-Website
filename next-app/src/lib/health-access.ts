@@ -3,6 +3,7 @@ import { getIdentitySessionIfValid } from '@/lib/family-access';
 import { isEpochCurrent } from '@/lib/identity-session';
 import { resolveFamilyScope } from '@/lib/household-scope';
 import { createAdminClient } from '@/lib/supabase/server';
+import { actorCanEnterAdmin, resolveAdminActor } from '@/lib/admin-actor';
 import { healthStorage } from '@/lib/health-files';
 import { centralToday } from '@/lib/dates';
 import { isHealthViewer, isYouthOnRoster, loadTripsForAdult, type HealthAccess, type HealthDeps, type HealthViewer } from '@/lib/health-store';
@@ -56,4 +57,34 @@ export async function healthAccess(): Promise<HealthAccess | null> {
 
 export function healthDeps(): HealthDeps {
   return { supabase: createAdminClient(), storage: healthStorage(), today: centralToday };
+}
+
+/**
+ * Is this admin on the health viewers list? Decides only whether the Health Forms menu item shows
+ * (Plans/Admin-Health-Forms.md, decision 3): every Health Forms page still gates itself. A password session has no
+ * person, so it is never a viewer. Fails closed: the layout calls this on every admin page, and a failed lookup must
+ * hide one menu item, not break the workspace (qa-lead, 2026-11-15).
+ */
+export async function adminIsHealthViewer(actor: { kind: 'legacy' | 'identity'; personId: number | null }): Promise<boolean> {
+  if (actor.kind !== 'identity' || actor.personId == null) return false;
+  try {
+    return await isHealthViewer(createAdminClient(), actor.personId);
+  } catch (e) {
+    console.error('[health] viewer lookup failed:', e instanceof Error ? e.message : e);
+    return false;
+  }
+}
+
+/** The admin Health Forms rule (decision 3): able to enter admin AND on the health viewers list. Pure, so it is tested. */
+export function healthAdminAllowed(canEnterAdmin: boolean, access: Pick<HealthAccess, 'named'> | null): boolean {
+  return canEnterAdmin && access?.named === true;
+}
+
+/**
+ * The gate every admin Health Forms page and action calls on the request. Returns the health access (who is acting)
+ * when allowed, null otherwise.
+ */
+export async function healthAdminAccess(): Promise<HealthAccess | null> {
+  const [actor, access] = await Promise.all([resolveAdminActor(), healthAccess()]);
+  return healthAdminAllowed(actorCanEnterAdmin(actor), access) ? access : null;
 }

@@ -22,6 +22,27 @@ export interface HelpEntry {
 }
 
 export const HELP = {
+  'health.marks': {
+    title: 'Marks and status',
+    body: (
+      <>
+        <dl>
+          <dt>✓</dt>
+          <dd>On file and current.</dd>
+          <dt>✓ Soon</dt>
+          <dd>Runs out within 60 days.</dd>
+          <dt>Expired · Missing</dt>
+          <dd>Needs a new copy. Parts A and B and the insurance card are needed for every outing.</dd>
+          <dt>—</dt>
+          <dd>Not on file. Part C is only for summer camp and long trips; immunizations are often on the BSA form.</dd>
+        </dl>
+        <p>
+          <strong>Status</strong> adds the review: with every needed file current, a person reads Ready for review until a
+          health officer marks them complete.
+        </p>
+      </>
+    )
+  },
   'calendar.status': {
     title: 'Status pills',
     body: (

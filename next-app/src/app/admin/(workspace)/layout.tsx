@@ -23,6 +23,7 @@ import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
 import { IS_DEV_DB } from '@/lib/dev-db';
 import { actorCanEnterAdmin, resolveAdminActor } from '@/lib/admin-actor';
+import { adminIsHealthViewer } from '@/lib/health-access';
 import { isFullAdmin } from './_components/nav-data';
 import styles from './admin.module.css';
 // Global --admin-* design tokens on :root (Plans/Admin-Design-System.md).
@@ -74,6 +75,8 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
   // only a full troop admin (see lib/require-role.ts). It stops being a
   // meaningful distinction when the last call site is converted.
   const fullAdmin = isFullAdmin(actor);
+  // Health Forms shows only to admins on the health viewers list (not a capability).
+  const healthViewer = await adminIsHealthViewer(actor);
 
   return (
     <div className={styles.adminRoot}>
@@ -85,7 +88,7 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
       <div className={styles.workspace}>
         {/* The provider wraps the bar and tabs as well as the page, so leaving a dirty form through them asks first. */}
         <DirtyGuardProvider>
-          <AdminNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} />
+          <AdminNav fullAdmin={fullAdmin} capabilities={[...actor.capabilities]} healthViewer={healthViewer} />
           <main className={styles.main}>{children}</main>
         </DirtyGuardProvider>
       </div>
