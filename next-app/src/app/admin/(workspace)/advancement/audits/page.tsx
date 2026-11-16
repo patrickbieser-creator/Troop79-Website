@@ -21,6 +21,7 @@ import * as activityThresholds from './checks/activity-thresholds';
 import * as rankTimeInGrade from './checks/rank-time-in-grade';
 import * as rankMeritBadges from './checks/rank-merit-badges';
 import * as rankPor from './checks/rank-por';
+import * as serviceHours from './checks/service-hours';
 import * as duplicateRecords from './checks/duplicate-records';
 import * as attendanceReconciliation from './checks/attendance-reconciliation';
 import styles from './audits.module.css';
@@ -65,6 +66,13 @@ const CHECKS = [
     description:
       'A scout has logged a leadership position since earning the prior rank, satisfying Star 5 or Life 5 (Position of Responsibility), but that requirement isn’t signed off yet. Unlike the other checks above, this one requires the prior rank to already be earned — a POR term only counts toward the next rank if it happened on or after that Board of Review.',
     run: rankPor.run
+  },
+  {
+    id: 'service-hours',
+    title: 'Service Hours',
+    description:
+      'A scout has logged enough service hours for Tenderfoot 7b (1 hour), Second Class 8e (3 in all) or First Class 9d (6 in all), or six hours since earning the prior rank for Star 4 (since First Class) or Life 4 (since Star), but that requirement isn’t signed off yet. Life 4 also needs 3 conservation hours, which the ledger doesn’t record, so check those before signing.',
+    run: serviceHours.run
   }
 ] as const;
 
