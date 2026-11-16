@@ -99,7 +99,13 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
   const [countByArea, setCountByArea] = useState<Counts>({});
   useEffect(() => {
     let live = true;
-    counts.then((c) => live && setCountByArea(c)).catch(() => {});
+    // Promise.resolve: on the client a server-passed promise is React's own thenable, whose then() returns nothing, so
+    // chaining .catch straight onto it throws (it took /admin down in production, 2026-11-16).
+    Promise.resolve(counts)
+      .then((c) => {
+        if (live) setCountByArea(c);
+      })
+      .catch(() => {});
     return () => {
       live = false;
     };

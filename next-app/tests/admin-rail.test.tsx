@@ -118,6 +118,14 @@ describe('rail', () => {
     expect([button.getAttribute('aria-expanded'), container.querySelector('[data-sheet-open]') != null]).toEqual(['true', true]);
   });
 
+  it('Counts_AcceptReactsThenable_WhoseThenReturnsNothing', async () => {
+    // On the client a promise passed from a server component arrives as React's thenable: then() returns undefined.
+    const thenable = { then: (resolve: (v: Record<string, number>) => void) => void resolve({ money: 4 }) } as unknown as Promise<Record<string, number>>;
+    const m = railModel(ALL, [], { wreathOpen: false });
+    render(<Rail groups={m.groups} pins={m.pins} setup={m.setup} counts={thenable} canPin />);
+    expect((await screen.findByText('waiting', { exact: false })).parentElement?.textContent).toBe('4 waiting');
+  });
+
   it('Counts_ShowOnTheirGroup', async () => {
     renderRail();
     expect(await screen.findByText('waiting', { exact: false })).toBeTruthy();
