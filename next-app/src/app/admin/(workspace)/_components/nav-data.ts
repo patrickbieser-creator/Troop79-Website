@@ -1,5 +1,7 @@
 /**
  * The admin navigation DATA — one source for the section bar + tabs (section-nav.tsx) and the Home card grid (admin-hub).
+ * Since Plans/Admin-Portal-Nav.md phase 1, SECTIONS is derived from the feature registry (feature-registry.ts); edit
+ * an item there, not here.
  * A plain module on purpose: section-nav.tsx is 'use client', and a const exported from a client file reaches
  * server components as a client reference (see next-app AGENTS / memory "Client-module constants").
  *
@@ -10,6 +12,7 @@
  * the first Advancement card; each section carries an earth-tone tint for its Home group.
  */
 import { CAPABILITIES, type Capability } from '@/lib/capabilities';
+import { NEVER_IMPLIED_BY_FULL_ADMIN, featureByKey, hrefPath } from './feature-registry';
 
 export interface NavItem {
   label: string;
@@ -80,371 +83,124 @@ export interface NavSection {
   items: NavItem[];
 }
 
-export const SECTIONS: NavSection[] = [
-  {
-    title: 'Overview',
-    barLabel: 'Home',
-    items: [
-      {
-        // Home = "Needs you today" plus the card grid. The old Dashboard (the advancement overview) is its own page,
-        // the first Advancement card, at /admin/advancement/dashboard.
-        label: 'Home',
-        href: '/admin',
-        matchPath: '/admin',
-        exact: true,
-        everyone: true
-      }
-    ]
-  },
+/**
+ * One item of today's section bar / Home grid: a registry key plus the placement flags only the old nav knows, and the
+ * label or description it showed when the registry's newer wording differs. Retired with the section bar (phase 3)
+ * and the Home grid (phase 6) of Plans/Admin-Portal-Nav.md.
+ */
+interface LegacyEntry {
+  key: string;
+  /** Today's label when the registry's differs ("Ledger", not "Advancement Ledger"). */
+  label?: string;
+  /** null: today's item has no description (the quiet tools row). */
+  description?: string | null;
+  exact?: boolean;
+  folder?: string;
+  folderLanding?: string;
+  navHidden?: boolean;
+}
+
+interface LegacySection extends Omit<NavSection, 'items'> {
+  entries: LegacyEntry[];
+}
+
+const REPORT = { folder: 'Reports', navHidden: true } as const;
+
+/** Today's sections, in order, as registry keys. The guard test pins the derived result to tests/fixtures. */
+const LEGACY_SECTIONS: LegacySection[] = [
+  { title: 'Overview', barLabel: 'Home', entries: [{ key: 'home', exact: true }] },
   {
     title: 'Advancement',
     tint: 'moss',
-    items: [
-      {
-        // The old Home overview (stats, recent ledger activity, likely-ready scouts, logins) on its own page.
-        // First, so the Advancement bar entry opens it.
-        label: 'Dashboard',
-        href: '/admin/advancement/dashboard',
-        matchPath: '/admin/advancement/dashboard',
-        description: 'Active scouts, ledger, Court of Honor candidates and recent sign-ins',
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Fast Entry',
-        href: '/admin/advancement/fast-entry',
-        matchPath: '/admin/advancement/fast-entry',
-        description: 'Sign off requirements for many scouts at once',
-        capability: 'advancement.write'
-      },
-      // "Event Management" (the /admin/rosters chase-list) retired 2026-08-25
-      // (Patrick: "remove the event management from the admin") — the
-      // Calendar carries signup status and the Going count; an event's
-      // Roster / Money / Snapshot / assignments open from its Signup tab.
-      {
-        label: 'Ledger',
-        href: '/admin/advancement/ledger',
-        matchPath: '/admin/advancement/ledger',
-        description: 'Every requirement, rank and badge on record',
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Submit & Present',
-        href: '/admin/advancement/records',
-        matchPath: '/admin/advancement/records',
-        description: 'Council submissions and awards to hand out',
-        capability: 'advancement.write'
-      },
-      {
-        // Read-only (Patrick, 2026-11-15): an approved proof leaves the Proof Queue, so approvals looked like losses.
-        label: 'Approvals',
-        href: '/admin/advancement/approvals',
-        matchPath: '/admin/advancement/approvals',
-        description: 'Proof submissions approved in the past two months',
-        capability: 'advancement.write'
-      }
-      // MB Progress retired 2026-11-09 (Patrick): the Library's merit badge pages show the same counts, grid and
-      // counselors (to signed-in members); its old URLs redirect there (next.config.ts).
-      // "Roll Call & Agendas" retired 2026-08-24 (Patrick): the Calendar list
-      // carries every entry's agenda / signup / roll-call state as letter pills
-      // that open the layer's screen. The Roll Call SHEET keeps its own route
-      // under the entry — taking attendance is still a data-entry session.
-      // Has/Needs retired 2026-10-23 (Patrick approved the planner's tab):
-      // it lives at /planner/has-needs.
+    entries: [
+      { key: 'advancement.dashboard', label: 'Dashboard' },
+      { key: 'advancement.fast-entry' },
+      { key: 'advancement.ledger', label: 'Ledger' },
+      { key: 'advancement.records' },
+      { key: 'advancement.approvals' }
     ]
   },
   {
     title: 'Calendar & Content',
     tint: 'sky',
-    items: [
-      /*
-       * One Calendar destination, replacing the Events / Event Signups /
-       * Meetings triple that all described the same act — "something happens
-       * on a date". Signup building and agenda editing are panels on the
-       * entry now, reached from the workbench at /admin/calendar/[entryId].
-       *
-       * Gated on calendar.write. Editing calendar entries was made
-       * leader-only in 2026-08-14; the shared-password scout tier that
-       * distinction was drawn against no longer exists at all (Phase C).
-       */
-      {
-        label: 'Calendar',
-        href: '/admin/calendar',
-        matchPath: '/admin/calendar',
-        description: 'Meetings, campouts, sign-ups and roll call',
-        capability: 'calendar.write'
-      },
-      {
-        label: 'News',
-        href: '/admin/news/articles',
-        matchPath: '/admin/news/articles',
-        description: 'Articles and the weekly Bugle',
-        capability: 'news.write'
-      },
-      {
-        // The words of Join, About and any child page (Plans/Content-Managed-Pages.md): edited here, same editor as News.
-        label: 'Pages',
-        href: '/admin/news/pages',
-        matchPath: '/admin/news/pages',
-        description: 'Join, About and other site pages',
-        capability: 'news.write'
-      },
-      {
-        label: 'Media Manager',
-        href: '/admin/news/media-manager',
-        matchPath: '/admin/news/media-manager',
-        description: 'Images and video on the CDN',
-        capability: 'news.write'
-      },
-      {
-        label: 'Photo Albums',
-        href: '/admin/news/photo-albums',
-        matchPath: '/admin/news/photo-albums',
-        description: 'Gallery links for events',
-        capability: 'news.write'
-      },
-      {
-        label: 'Resource Library',
-        href: '/admin/library',
-        matchPath: '/admin/library',
-        description: 'Study guides, proof submissions, the queue',
-        capability: 'library.moderate'
-      },
-      {
-        // The Cooking MB planner's catalog (Plans/Menu-Monster-Leader-Tools.md):
-        // a Library shelf's content, so the Librarian's capability.
-        label: 'Menu Monster',
-        href: '/admin/library/menu-monster',
-        matchPath: '/admin/library/menu-monster',
-        description: 'Recipes, ingredients and prices for patrol cooking',
-        capability: 'library.moderate'
-      }
+    entries: [
+      { key: 'content.calendar' },
+      { key: 'content.news', label: 'News' },
+      { key: 'content.pages' },
+      { key: 'content.media' },
+      { key: 'content.photo-albums' },
+      { key: 'content.library' },
+      { key: 'content.menu-monster' }
     ]
   },
   {
     title: 'Money',
     tint: 'wheat',
-    items: [
-      {
-        // Ships dark in Phase 1 (Plans/Troop-Finances.md) — read-only ledger
-        // only, no write UI yet. Gated on finance.manage for nav visibility;
-        // the page itself also accepts finance.view (nobody holds it at
-        // launch, so this is a distinction without a difference for now —
-        // see the page's requireAnyOf call, which is the real boundary).
-        // "Financial Ledger", not bare "Ledger" (Patrick, 2026-08-21) — the
-        // Advancement section has its own Ledger; the qualifier disambiguates.
-        label: 'Financial Ledger',
-        href: '/admin/finance',
-        matchPath: '/admin/finance',
-        description: 'Every dollar in and out of the troop account',
-        capability: 'finance.manage'
-      },
-      {
-        // Phase 4 — approve/deny/pay queue. Same finance.manage gate.
-        label: 'Reimbursements',
-        href: '/admin/finance/reimbursements',
-        matchPath: '/admin/finance/reimbursements',
-        description: 'Approve, deny and pay back receipts',
-        capability: 'finance.manage'
-      },
-      {
-        // Plans/Wreath-Sale.md Release A — settings, items, sellers, orders and the Rose order for the
-        // annual wreath sale. finance.manage on the page and on every action. Seasonal: first in
-        // Money while the sale is open, last and greyed otherwise (hubGroups).
-        label: 'Wreath Sale',
-        href: '/admin/finance/wreaths',
-        matchPath: '/admin/finance/wreaths',
-        description: 'Orders, sellers and the Rose order',
-        seasonal: true,
-        capability: 'finance.manage'
-      },
-      {
-        // Patrick, 2026-11-12: each scout account's balance and its history, beside the list; a departed scout's
-        // balance can be moved to the troop fund. The page also accepts finance.view (read-only).
-        label: 'Scout Accounts',
-        href: '/admin/finance/scout-accounts',
-        matchPath: '/admin/finance/scout-accounts',
-        description: 'Balance and history for each scout',
-        capability: 'finance.manage'
-      }
+    entries: [
+      { key: 'money.ledger' },
+      { key: 'money.reimbursements' },
+      { key: 'money.wreaths', label: 'Wreath Sale' },
+      { key: 'money.scout-accounts' }
     ]
   },
   {
     title: 'Reports',
     tint: 'clay',
-    items: [
-      // ONE Reports entry on the section bar (the landing) and one Home card per report (Patrick, 2026-10-13): every
-      // report sits here whatever it reports on. A new report is one item with folder: 'Reports' and navHidden: true.
-      {
-        label: 'Reports',
-        href: '/admin/reports',
-        matchPath: '/admin/reports',
-        folderLanding: 'Reports'
-      },
-      {
-        label: 'Audits',
-        href: '/admin/advancement/audits',
-        matchPath: '/admin/advancement/audits',
-        description: 'Data-quality checks that flag ledger records that look wrong',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Advancement Report',
-        href: '/admin/advancement/report',
-        matchPath: '/admin/advancement/report',
-        description: 'What got signed off in a date range, for the Bugle and the public site',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Court of Honor',
-        href: '/admin/advancement/court-of-honor',
-        matchPath: '/admin/advancement/court-of-honor',
-        description: 'Ranks, merit badges and awards earned in a date range',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        label: 'Scoutbook Export',
-        href: '/admin/advancement/scoutbook-export',
-        matchPath: '/admin/advancement/scoutbook-export',
-        description: "Awards in a date range, formatted for Scoutbook's bulk upload",
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        // Was an Actions ▾ option on the retired Roll Call list (2026-08-24);
-        // it is a report, so it lives with the reports.
-        label: 'Attendance Report',
-        href: '/admin/advancement/meetings/report',
-        matchPath: '/admin/advancement/meetings/report',
-        description: 'Meeting attendance per scout and per adult',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'advancement.write'
-      },
-      {
-        // Phase 6 — read-only, so also reachable by finance.view; nav
-        // visibility still keys off finance.manage (nobody holds finance.view at launch).
-        label: 'Bucket Report',
-        href: '/admin/finance/report',
-        matchPath: '/admin/finance/report',
-        description: 'Income and spending by bucket',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'finance.manage'
-      },
-      {
-        // Plans/Ledger-Audit.md (2026-09-29). The page's route stays under
-        // /admin/utilities (Patrick asked for it there), but it BELONGS to Reports:
-        // membership is explicit — activeSectionTitleFor() answers from the section an
-        // item sits in, never from the URL prefix, so Utilities does not light up on this
-        // page. Read-only; finance.view reaches it as well, nav keys off finance.manage.
-        label: 'Ledger Audit',
-        href: '/admin/utilities/ledger-audit',
-        matchPath: '/admin/utilities/ledger-audit',
-        description: 'Match the ledger to the bank statement',
-        folder: 'Reports',
-        navHidden: true,
-        capability: 'finance.manage'
-      }
+    entries: [
+      { key: 'reports.index', folderLanding: 'Reports' },
+      { key: 'advancement.audits', ...REPORT },
+      { key: 'advancement.report', ...REPORT },
+      { key: 'advancement.court-of-honor', ...REPORT },
+      { key: 'advancement.scoutbook-export', ...REPORT },
+      { key: 'meetings.attendance', ...REPORT },
+      { key: 'money.bucket-report', ...REPORT },
+      { key: 'money.ledger-audit', ...REPORT }
     ]
   },
   {
     title: 'People & Setup',
     barLabel: 'People',
     tint: 'stone',
-    items: [
-      {
-        label: 'Roster',
-        href: '/admin/advancement/roster',
-        matchPath: '/admin/advancement/roster',
-        description: 'Scouts, adults and households',
-        capability: 'roster.manage'
-      },
-      {
-        label: 'Health Forms',
-        href: '/admin/health-forms',
-        matchPath: '/admin/health-forms',
-        description: 'Forms, reviews and the binder',
-        healthViewersOnly: true
-      },
-      {
-        label: 'Access',
-        href: '/admin/access',
-        matchPath: '/admin/access',
-        description: 'Who can use which admin tools',
-        capability: 'roster.manage'
-      }
-    ]
+    entries: [{ key: 'people.roster' }, { key: 'people.health-forms' }, { key: 'people.access' }]
   },
   {
     title: 'Troop admin tools',
     barLabel: 'Tools',
     quiet: true,
-    items: [
-      {
-        label: 'Lookups & Admin',
-        href: '/admin/advancement/lookups',
-        matchPath: '/admin/advancement/lookups',
-        capability: 'roster.manage'
-      },
-      {
-        // The my.scouting.org Roster Report: differences + registration dates (2026-10-20).
-        label: 'BSA Roster',
-        href: '/admin/advancement/bsa-roster',
-        matchPath: '/admin/advancement/bsa-roster',
-        capability: 'roster.manage'
-      },
-      {
-        // People → the troop's EmailOctopus list (2026-10-20).
-        label: 'EmailOctopus Sync',
-        href: '/admin/newsletter',
-        matchPath: '/admin/newsletter',
-        capability: 'roster.manage'
-      },
-      {
-        // Content changes only (news/calendar/roster/library) — advancement
-        // and finance have their own ledgers. roster.manage because the
-        // trail names people (Patrick, 2026-08-30).
-        label: 'Audit Trail',
-        href: '/admin/audit',
-        matchPath: '/admin/audit',
-        capability: 'roster.manage'
-      },
-      {
-        label: 'Utilities',
-        href: '/admin/utilities',
-        matchPath: '/admin/utilities',
-        capability: 'news.write'
-      },
-      {
-        // A link in the Home tools row ONLY, not a tab. No capability, so it is offered to full admins alone
-        // (capability-less item semantics, below).
-        label: 'Styleguides',
-        href: '/admin/styleguide',
-        matchPath: '/admin/styleguide',
-        navHidden: true
-      }
+    entries: [
+      { key: 'setup.lookups', label: 'Lookups & Admin', description: null },
+      { key: 'setup.bsa-roster', label: 'BSA Roster', description: null },
+      { key: 'setup.emailoctopus', label: 'EmailOctopus Sync', description: null },
+      { key: 'setup.audit-trail', description: null },
+      { key: 'setup.utilities', description: null },
+      { key: 'setup.styleguides', navHidden: true }
     ]
   }
 ];
 
-/**
- * finance.manage / finance.view never come "for free" with fullAdmin, even
- * though every other capability does (qa-lead, 2026-08-18, pre-production
- * BLOCK finding, same root cause as admin-actor.ts's LEGACY_EXCLUDED — a
- * legacy LEADER_PASSWORD session was never granted these, so showing the
- * link is a dead end that throws when clicked, not a real capability). Kept
- * as its own list rather than reusing admin-actor.ts's, deliberately: this
- * one drives nav VISIBILITY, that one drives the actual grant — a future
- * capability could reasonably need different treatment in each.
- */
-const NEVER_IMPLIED_BY_FULL_ADMIN: ReadonlySet<Capability> = new Set(['finance.manage', 'finance.view']);
+function legacyItem(e: LegacyEntry): NavItem {
+  const f = featureByKey(e.key);
+  if (!f) throw new Error(`nav-data: no registry feature '${e.key}'`);
+  const description = e.description === null ? undefined : (e.description ?? f.description);
+  const item: NavItem = { label: e.label ?? f.label, href: f.href, matchPath: hrefPath(f.href) };
+  if (description) item.description = description;
+  if (f.capability) item.capability = f.capability;
+  if (f.everyone) item.everyone = true;
+  if (e.exact) item.exact = true;
+  if (e.folder) item.folder = e.folder;
+  if (e.folderLanding) item.folderLanding = e.folderLanding;
+  if (e.navHidden) item.navHidden = true;
+  if (f.seasonal) item.seasonal = true;
+  if (f.healthViewersOnly) item.healthViewersOnly = true;
+  return item;
+}
+
+/** Today's section bar, tabs and Home card grid, derived from the feature registry. */
+export const SECTIONS: NavSection[] = LEGACY_SECTIONS.map(({ entries, ...section }) => ({
+  ...section,
+  items: entries.map(legacyItem)
+}));
+
 
 /**
  * Which nav items this actor should see.

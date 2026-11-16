@@ -1,0 +1,292 @@
+[
+  {
+    "title": "Overview",
+    "barLabel": "Home",
+    "items": [
+      {
+        "label": "Home",
+        "href": "/admin",
+        "matchPath": "/admin",
+        "exact": true,
+        "everyone": true
+      }
+    ]
+  },
+  {
+    "title": "Advancement",
+    "tint": "moss",
+    "items": [
+      {
+        "label": "Dashboard",
+        "href": "/admin/advancement/dashboard",
+        "matchPath": "/admin/advancement/dashboard",
+        "description": "Active scouts, ledger, Court of Honor candidates and recent sign-ins",
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Fast Entry",
+        "href": "/admin/advancement/fast-entry",
+        "matchPath": "/admin/advancement/fast-entry",
+        "description": "Sign off requirements for many scouts at once",
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Ledger",
+        "href": "/admin/advancement/ledger",
+        "matchPath": "/admin/advancement/ledger",
+        "description": "Every requirement, rank and badge on record",
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Submit & Present",
+        "href": "/admin/advancement/records",
+        "matchPath": "/admin/advancement/records",
+        "description": "Council submissions and awards to hand out",
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Approvals",
+        "href": "/admin/advancement/approvals",
+        "matchPath": "/admin/advancement/approvals",
+        "description": "Proof submissions approved in the past two months",
+        "capability": "advancement.write"
+      }
+    ]
+  },
+  {
+    "title": "Calendar & Content",
+    "tint": "sky",
+    "items": [
+      {
+        "label": "Calendar",
+        "href": "/admin/calendar",
+        "matchPath": "/admin/calendar",
+        "description": "Meetings, campouts, sign-ups and roll call",
+        "capability": "calendar.write"
+      },
+      {
+        "label": "News",
+        "href": "/admin/news/articles",
+        "matchPath": "/admin/news/articles",
+        "description": "Articles and the weekly Bugle",
+        "capability": "news.write"
+      },
+      {
+        "label": "Pages",
+        "href": "/admin/news/pages",
+        "matchPath": "/admin/news/pages",
+        "description": "Join, About and other site pages",
+        "capability": "news.write"
+      },
+      {
+        "label": "Media Manager",
+        "href": "/admin/news/media-manager",
+        "matchPath": "/admin/news/media-manager",
+        "description": "Images and video on the CDN",
+        "capability": "news.write"
+      },
+      {
+        "label": "Photo Albums",
+        "href": "/admin/news/photo-albums",
+        "matchPath": "/admin/news/photo-albums",
+        "description": "Gallery links for events",
+        "capability": "news.write"
+      },
+      {
+        "label": "Resource Library",
+        "href": "/admin/library",
+        "matchPath": "/admin/library",
+        "description": "Study guides, proof submissions, the queue",
+        "capability": "library.moderate"
+      },
+      {
+        "label": "Menu Monster",
+        "href": "/admin/library/menu-monster",
+        "matchPath": "/admin/library/menu-monster",
+        "description": "Recipes, ingredients and prices for patrol cooking",
+        "capability": "library.moderate"
+      }
+    ]
+  },
+  {
+    "title": "Money",
+    "tint": "wheat",
+    "items": [
+      {
+        "label": "Financial Ledger",
+        "href": "/admin/finance",
+        "matchPath": "/admin/finance",
+        "description": "Every dollar in and out of the troop account",
+        "capability": "finance.manage"
+      },
+      {
+        "label": "Reimbursements",
+        "href": "/admin/finance/reimbursements",
+        "matchPath": "/admin/finance/reimbursements",
+        "description": "Approve, deny and pay back receipts",
+        "capability": "finance.manage"
+      },
+      {
+        "label": "Wreath Sale",
+        "href": "/admin/finance/wreaths",
+        "matchPath": "/admin/finance/wreaths",
+        "description": "Orders, sellers and the Rose order",
+        "seasonal": true,
+        "capability": "finance.manage"
+      },
+      {
+        "label": "Scout Accounts",
+        "href": "/admin/finance/scout-accounts",
+        "matchPath": "/admin/finance/scout-accounts",
+        "description": "Balance and history for each scout",
+        "capability": "finance.manage"
+      }
+    ]
+  },
+  {
+    "title": "Reports",
+    "tint": "clay",
+    "items": [
+      {
+        "label": "Reports",
+        "href": "/admin/reports",
+        "matchPath": "/admin/reports",
+        "folderLanding": "Reports"
+      },
+      {
+        "label": "Audits",
+        "href": "/admin/advancement/audits",
+        "matchPath": "/admin/advancement/audits",
+        "description": "Data-quality checks that flag ledger records that look wrong",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Advancement Report",
+        "href": "/admin/advancement/report",
+        "matchPath": "/admin/advancement/report",
+        "description": "What got signed off in a date range, for the Bugle and the public site",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Court of Honor",
+        "href": "/admin/advancement/court-of-honor",
+        "matchPath": "/admin/advancement/court-of-honor",
+        "description": "Ranks, merit badges and awards earned in a date range",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Scoutbook Export",
+        "href": "/admin/advancement/scoutbook-export",
+        "matchPath": "/admin/advancement/scoutbook-export",
+        "description": "Awards in a date range, formatted for Scoutbook's bulk upload",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Attendance Report",
+        "href": "/admin/advancement/meetings/report",
+        "matchPath": "/admin/advancement/meetings/report",
+        "description": "Meeting attendance per scout and per adult",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "advancement.write"
+      },
+      {
+        "label": "Bucket Report",
+        "href": "/admin/finance/report",
+        "matchPath": "/admin/finance/report",
+        "description": "Income and spending by bucket",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "finance.manage"
+      },
+      {
+        "label": "Ledger Audit",
+        "href": "/admin/utilities/ledger-audit",
+        "matchPath": "/admin/utilities/ledger-audit",
+        "description": "Match the ledger to the bank statement",
+        "folder": "Reports",
+        "navHidden": true,
+        "capability": "finance.manage"
+      }
+    ]
+  },
+  {
+    "title": "People & Setup",
+    "barLabel": "People",
+    "tint": "stone",
+    "items": [
+      {
+        "label": "Roster",
+        "href": "/admin/advancement/roster",
+        "matchPath": "/admin/advancement/roster",
+        "description": "Scouts, adults and households",
+        "capability": "roster.manage"
+      },
+      {
+        "label": "Health Forms",
+        "href": "/admin/health-forms",
+        "matchPath": "/admin/health-forms",
+        "description": "Forms, reviews and the binder",
+        "healthViewersOnly": true
+      },
+      {
+        "label": "Access",
+        "href": "/admin/access",
+        "matchPath": "/admin/access",
+        "description": "Who can use which admin tools",
+        "capability": "roster.manage"
+      }
+    ]
+  },
+  {
+    "title": "Troop admin tools",
+    "barLabel": "Tools",
+    "quiet": true,
+    "items": [
+      {
+        "label": "Lookups & Admin",
+        "href": "/admin/advancement/lookups",
+        "matchPath": "/admin/advancement/lookups",
+        "capability": "roster.manage"
+      },
+      {
+        "label": "BSA Roster",
+        "href": "/admin/advancement/bsa-roster",
+        "matchPath": "/admin/advancement/bsa-roster",
+        "capability": "roster.manage"
+      },
+      {
+        "label": "EmailOctopus Sync",
+        "href": "/admin/newsletter",
+        "matchPath": "/admin/newsletter",
+        "capability": "roster.manage"
+      },
+      {
+        "label": "Audit Trail",
+        "href": "/admin/audit",
+        "matchPath": "/admin/audit",
+        "capability": "roster.manage"
+      },
+      {
+        "label": "Utilities",
+        "href": "/admin/utilities",
+        "matchPath": "/admin/utilities",
+        "capability": "news.write"
+      },
+      {
+        "label": "Styleguides",
+        "href": "/admin/styleguide",
+        "matchPath": "/admin/styleguide",
+        "navHidden": true
+      }
+    ]
+  }
+]
