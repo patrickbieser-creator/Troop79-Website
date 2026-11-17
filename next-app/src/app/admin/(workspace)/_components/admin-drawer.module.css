@@ -91,6 +91,9 @@
   gap: var(--admin-space-3);
   padding: var(--admin-space-4) var(--admin-space-6);
   border-top: 1px solid var(--admin-gray-200);
+  /* Same text as the body: without it, footer prose fell back to the browser's 16px. */
+  font-size: var(--admin-text-md);
+  color: var(--admin-gray-900);
 }
 
 /* wide: a centred dialog (the health record sheet). The space around the panel is still the dialog box, so a click
