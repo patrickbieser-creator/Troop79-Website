@@ -213,3 +213,13 @@ that plan.
 - The yellow note box, two-pane split and full-width missing card came from design review; the readiness summary
   was explicitly rejected as redundant.
 - Mockup data is fictional; build with real records only behind the existing health gate.
+
+## Follow-ups (Patrick, 2026-11-17)
+
+After the first look at the shipped pop-up:
+
+- Immunization is always needed. Statuses: **On Part C** (leader's flag; cleared when Part C changes, no longer Parts A/B), **Attached**, or **Missing** (red card). Replaces decision 16's "never red / Not needed". Overall standing (healthStanding) is unchanged.
+- A missing Part C gets a red card too. The sheet's Email reminder asks for everything red: Part C and immunization included (unless On Part C).
+- The From the family box is always shown. Leaders can add or edit the note (pasted from family emails), logged as an 'edit' on kind 'note'. Long notes clamp to 4 lines with Show more.
+- PDFs open inline with View (own CSP, no sandbox) as well as Download.
+- More space between contacts.

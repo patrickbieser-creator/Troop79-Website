@@ -19,7 +19,7 @@ vi.mock('../src/lib/supabase/server', async () => {
   return { createAdminClient: () => client() };
 });
 vi.mock('../src/lib/health-files', async (orig) => ({ ...(await orig<typeof import('../src/lib/health-files')>()), healthFilesConfigured: () => true }));
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
+vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn(), revalidateTag: vi.fn() }));
 vi.mock('../src/lib/email', async (orig) => ({
   ...(await orig<typeof import('../src/lib/email')>()),
   sendEmail: async (m: { to: string[]; subject: string; confirm: boolean }) => {
@@ -32,6 +32,7 @@ import {
   openHealthRecordAction,
   removeHealthPageAdminAction,
   saveHealthGoodUntilAdminAction,
+  saveHealthNoteAdminAction,
   sendHealthReminderAdminAction,
   setHealthReviewedAdminAction,
   setImmunizationInBsaFormAdminAction,
@@ -92,10 +93,11 @@ describe('who may write', () => {
       removeHealthPageAdminAction('00000000-0000-0000-0000-000000000000', subjectId),
       setHealthReviewedAdminAction(subjectId, true),
       setImmunizationInBsaFormAdminAction(subjectId, true),
-      saveHealthGoodUntilAdminAction({ personId: subjectId, kind: 'insurance', goodUntil: '2027-06-01' })
+      saveHealthGoodUntilAdminAction({ personId: subjectId, kind: 'insurance', goodUntil: '2027-06-01' }),
+      saveHealthNoteAdminAction(subjectId, 'Not allowed.')
     ]);
     const written = await Promise.all(['health_reminders_sent', 'health_documents', 'health_reviews', 'health_immunization_in_bsa_form'].map((t) => count(t, subjectId)));
-    expect([results.map((r) => r.ok), written, sent.mails.length, await count('health_access_log', subjectId)]).toEqual([[false, false, false, false, false, false], [0, 0, 0, 0], 0, 0]);
+    expect([results.map((r) => r.ok), written, sent.mails.length, await count('health_access_log', subjectId)]).toEqual([[false, false, false, false, false, false, false], [0, 0, 0, 0], 0, 0]);
   });
 
   it('NonViewer_CannotOpenARecord', async () => {
@@ -122,6 +124,22 @@ describe('Email reminder', () => {
     expect(opened.ok && opened.record.lastReminder?.to).toEqual(['zzvitest-sheet-adult@example.test']);
   });
 
+  it('Reminder_AsksForPartCAndTheImmunizationRecord_UnlessMarkedOnPartC', async () => {
+    asLeader();
+    await uploadHealthPageAdminAction(form(subjectId, 'bsa_c'));
+    await sendHealthReminderAdminAction(subjectId);
+    await setImmunizationInBsaFormAdminAction(subjectId, true);
+    await sendHealthReminderAdminAction(subjectId);
+    const said = sent.mails.map((m) => {
+      const body = (m as unknown as { text?: string; html?: string }).text ?? (m as unknown as { html?: string }).html ?? '';
+      return [/Immunization record: missing/.test(body), /Part C: missing/.test(body)];
+    });
+    expect(said).toEqual([
+      [true, false],
+      [false, false]
+    ]);
+  });
+
   it('Reminder_WithNoEmailOnFile_SaysSo_AndSendsNothing', async () => {
     asLeader();
     const res = await sendHealthReminderAdminAction(otherId);
@@ -142,6 +160,27 @@ describe('writes in the sheet', () => {
     await uploadHealthPageAdminAction(form(subjectId, 'bsa_c'));
     const res = await saveHealthGoodUntilAdminAction({ personId: subjectId, kind: 'bsa_c', goodUntil: '2027-02-02' });
     expect(res.ok && res.record.pages.map((p) => p.expiresOn)).toEqual(['2027-02-02']);
+  });
+
+  it('Note_PastedByANamedLeader_IsSaved_AndLogged', async () => {
+    asLeader();
+    const res = await saveHealthNoteAdminAction(subjectId, '  Pasted from an email.\r\n\r\nSecond paragraph.  ');
+    const { data } = await admin.from('health_access_log').select('action, kind, viewer_person_id').eq('person_id', subjectId).single();
+    expect([res.ok && res.record.told, data]).toEqual(['Pasted from an email.\n\nSecond paragraph.', { action: 'edit', kind: 'note', viewer_person_id: leaderId }]);
+    await admin.from('people').update({ things_we_should_know: null }).eq('id', subjectId);
+  });
+
+  it('Note_Blank_ClearsIt', async () => {
+    asLeader();
+    await saveHealthNoteAdminAction(subjectId, 'Something.');
+    const res = await saveHealthNoteAdminAction(subjectId, '   ');
+    expect(res.ok && res.record.told).toBeNull();
+  });
+
+  it('Note_TooLong_IsRefused_AndNothingIsWritten', async () => {
+    asLeader();
+    const res = await saveHealthNoteAdminAction(subjectId, 'x'.repeat(10_001));
+    expect([res.ok, await count('health_access_log', subjectId)]).toEqual([false, 0]);
   });
 
   it('Remove_OfAnotherPersonsPage_IsRefused', async () => {

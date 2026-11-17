@@ -2,6 +2,7 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fetchAllRows } from '@/lib/supabase/paginate';
+import { writePersonDemographics } from '@/lib/write-person-demographics';
 import { openHealthFile, sealHealthFile, type HealthStorage } from '@/lib/health-files';
 import {
   TRIP_DAYS_AFTER,
@@ -113,7 +114,7 @@ export async function listHealthPages(sb: SupabaseClient, personIds: number[]): 
 
 export type SaveResult = { ok: true; id: string } | { ok: false; error: string };
 
-/** "The immunizations are on the BSA form" no longer holds once Parts A and B change (decision 16). */
+/** "The immunizations are filled in on Part C" no longer holds once Part C changes (Patrick, 2026-11-17). */
 async function clearInBsaForm(sb: SupabaseClient, personId: number): Promise<void> {
   const { error } = await sb.from('health_immunization_in_bsa_form').delete().eq('person_id', personId);
   if (error) throw new Error(error.message);
@@ -188,7 +189,7 @@ export async function saveHealthPage(
     if (error) throw new Error(error.message);
   }
   await clearReview(sb, input.personId);
-  if (kind === 'bsa_ab') await clearInBsaForm(sb, input.personId);
+  if (kind === 'bsa_c') await clearInBsaForm(sb, input.personId);
   return { ok: true, id };
 }
 
@@ -231,7 +232,7 @@ export async function removeHealthPage(id: string, personIds: readonly number[],
   const { error } = await deps.supabase.from('health_documents').delete().eq('id', row.id);
   if (error) throw new Error(error.message);
   await clearReview(deps.supabase, Number(row.person_id));
-  if (row.kind === 'bsa_ab') await clearInBsaForm(deps.supabase, Number(row.person_id));
+  if (row.kind === 'bsa_c') await clearInBsaForm(deps.supabase, Number(row.person_id));
   return { ok: true };
 }
 
@@ -532,14 +533,14 @@ export interface HealthReminderSent {
 export interface HealthRecordView {
   personId: number;
   name: string;
-  /** "Things we should know", typed by the family. */
+  /** "Things we should know", typed by the family or pasted in by a leader. */
   told: string | null;
   /** Parents and guardians, with a phone and an email when one is on file; for someone with none, themselves. */
   contacts: HealthContact[];
   pages: HealthPage[];
   review: HealthReview | null;
   reviewChange: HealthReviewChange | null;
-  /** A named leader's "the immunizations are on the BSA form" (decision 16). */
+  /** A named leader's "the immunizations are filled in on Part C". */
   inBsaForm: { byName: string; at: string } | null;
   lastReminder: HealthReminderSent | null;
   lastUpload: string | null;
@@ -621,7 +622,7 @@ export async function setHealthReviewed(deps: HealthDeps, personId: number, on: 
   if (error) throw new Error(error.message);
 }
 
-/** A named leader's "the immunizations are on the BSA form" for one person, on or off (decision 16). Logged first, as
+/** A named leader's "the immunizations are filled in on Part C" for one person, on or off. Logged first, as
  *  an 'edit' line on the immunization record, both ways: turning it off deletes the row that named who set it. */
 export async function setImmunizationInBsaForm(deps: HealthDeps, personId: number, on: boolean, by: HealthViewer): Promise<void> {
   await log(deps, by, { person_id: personId, kind: 'immunization', page: null, id: null }, 'edit');
@@ -632,7 +633,23 @@ export async function setImmunizationInBsaForm(deps: HealthDeps, personId: numbe
   if (error) throw new Error(error.message);
 }
 
-/** Everyone with "in the BSA form" set: for the list's Imm. mark. */
+/** How long the family note may be: room for several pasted paragraphs, not a pasted document. */
+export const HEALTH_NOTE_MAX = 10_000;
+
+/**
+ * A named leader sets "Things we should know" from the sheet: notes families send by email or text get pasted in here
+ * (Patrick, 2026-11-17). Logged first, as an 'edit' line on kind 'note'. It is not a document, so the review stands.
+ */
+export async function saveHealthNote(personId: number, text: string, viewer: HealthViewer, deps: HealthDeps): Promise<{ ok: true } | { ok: false; error: string }> {
+  const note = text.replace(/\r\n?/g, '\n').trim();
+  if (note.length > HEALTH_NOTE_MAX) return { ok: false, error: `That note is too long. Keep it under ${HEALTH_NOTE_MAX.toLocaleString('en-US')} characters.` };
+  await log(deps, viewer, { person_id: personId, kind: 'note', page: null, id: null }, 'edit');
+  const { error } = await writePersonDemographics(deps.supabase, personId, { things_we_should_know: note || null });
+  if (error) throw new Error(error);
+  return { ok: true };
+}
+
+/** Everyone with "on Part C" set: for the list's Imm. mark and the sheet's reminder. */
 export async function listImmunizationInBsaForm(sb: SupabaseClient): Promise<Set<number>> {
   const rows = await fetchAllRows<{ person_id: number }>((from, to) => sb.from('health_immunization_in_bsa_form').select('person_id').order('person_id').range(from, to));
   return new Set(rows.map((r) => Number(r.person_id)));
@@ -797,6 +814,8 @@ export interface HealthReminderScope {
   needsPartC: boolean;
   /** The day the forms must still be good on: the trip's last day. Unset for a reminder sent any time. */
   asOf?: string;
+  /** Ask for the immunization record too, unless a leader marked it as on Part C (the sheet's reminder). */
+  immunization?: boolean;
 }
 
 /** A trip as a reminder scope. */
@@ -818,7 +837,11 @@ export async function buildHealthReminders(
 ): Promise<{ groups: HealthReminderGroup[]; noEmail: string[] }> {
   const ids = scope.personIds;
   if (ids.length === 0) return { groups: [], noEmail: [] };
-  const [{ data: people, error }, pages] = await Promise.all([sb.from('people').select('id, display_name, guest_host_household_id').in('id', ids), listHealthPages(sb, ids)]);
+  const [{ data: people, error }, pages, onPartC] = await Promise.all([
+    sb.from('people').select('id, display_name, guest_host_household_id').in('id', ids),
+    listHealthPages(sb, ids),
+    scope.immunization ? listImmunizationInBsaForm(sb) : Promise.resolve(new Set<number>())
+  ]);
   if (error) throw new Error(error.message);
   const byKey = new Map<string, HealthReminderGroup>();
   const noEmail: string[] = [];
@@ -826,7 +849,7 @@ export async function buildHealthReminders(
   for (const p of rows) {
     // A sign-up guest has no account to upload to: their host family is asked in person, not by this email.
     if (p.guest_host_household_id != null) continue;
-    const needs = healthNeeds(pages.filter((x) => x.personId === Number(p.id)), { needsPartC: scope.needsPartC, today, asOf: scope.asOf }, fmt);
+    const needs = healthNeeds(pages.filter((x) => x.personId === Number(p.id)), { needsPartC: scope.needsPartC, today, asOf: scope.asOf, immunization: scope.immunization && !onPartC.has(Number(p.id)) }, fmt);
     if (needs.length === 0) continue;
     const to = [...new Set((await emailsFor(Number(p.id))).map((e) => e.trim().toLowerCase()).filter(Boolean))].sort();
     if (to.length === 0) {

@@ -66,7 +66,7 @@ export function healthReminderEmail(
   if (!trip) {
     const { html, text } = renderEmail({
       heading: 'Health forms',
-      intro: 'Every outing needs a current health form and insurance card. We still need these for your family:',
+      intro: 'Every outing needs current health forms and an insurance card. We still need these for your family:',
       ...shared
     });
     return { subject: 'Troop 79: health forms needed', html, text };
@@ -113,7 +113,8 @@ export function remindFamilies(trip: HealthTrip, confirm: boolean, deps: HealthR
   return remind(trip, tripReminderScope(trip), confirm, deps);
 }
 
-/** A reminder any time, about these people (the sheet's Email reminder is one person): what they need today. */
+/** A reminder any time, about these people (the sheet's Email reminder is one person): everything the sheet shows in
+ *  red today, Part C and the immunization record included (Patrick, 2026-11-17). */
 export function remindPeople(personIds: number[], confirm: boolean, deps: HealthReminderDeps): Promise<HealthReminderOutcome> {
-  return remind(null, { personIds, needsPartC: false }, confirm, deps);
+  return remind(null, { personIds, needsPartC: true, immunization: true }, confirm, deps);
 }

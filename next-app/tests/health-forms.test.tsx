@@ -47,7 +47,12 @@ describe('HealthForms', () => {
 
   it('Parent_SeesPartC_AsNotNeeded_UntilTheyAddIt', () => {
     show([]);
-    expect(within(card()).getAllByText('Not needed for most outings').length).toBe(2);
+    expect(within(card()).getAllByText('Not needed for most outings').length).toBe(1);
+  });
+
+  it('Parent_IsToldToAttachImmunizations_UnlessOnPartC', () => {
+    show([]);
+    expect(within(card()).getByText('Attach it unless it’s filled in on Part C.')).toBeTruthy();
   });
 
   it('Parent_SeesWhenTheFormRunsOut', () => {

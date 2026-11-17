@@ -23,7 +23,7 @@ export const HEALTH_KIND: Record<HealthKind, HealthKindDef> = {
   bsa_ab: { label: 'BSA health form, Parts A and B', dated: true, maxPages: 6, pageNames: null, required: true, hint: 'Every page, signed by a parent. Needed for every outing.' },
   bsa_c: { label: 'BSA health form, Part C', dated: true, maxPages: 4, pageNames: null, required: false, hint: 'The physician’s exam. Only for summer camp and trips over 72 hours.' },
   insurance: { label: 'Insurance card', dated: true, maxPages: 2, pageNames: ['Front', 'Back'], required: true, hint: 'Both sides.' },
-  immunization: { label: 'Immunization record', dated: false, maxPages: 4, pageNames: null, required: false, hint: 'Only when it isn’t already on the BSA form.' }
+  immunization: { label: 'Immunization record', dated: false, maxPages: 4, pageNames: null, required: false, hint: 'Attach it unless it’s filled in on Part C.' }
 };
 
 export function isHealthKind(v: unknown): v is HealthKind {
@@ -210,8 +210,13 @@ export function healthStanding(pages: readonly HealthPage[], opts: { reviewed: b
  * reminder email. Only what the family can fix (a missing or run-out file); the leader's review is not theirs.
  * `fmt` turns a date into words (lib/format-date in the app).
  */
-export function healthNeeds(pages: readonly HealthPage[], opts: { needsPartC: boolean; today: string; asOf?: string }, fmt: (iso: string) => string = (d) => d): string[] {
-  const kinds = HEALTH_KINDS.filter((k) => HEALTH_KIND[k].required || (k === 'bsa_c' && opts.needsPartC));
+export function healthNeeds(
+  pages: readonly HealthPage[],
+  opts: { needsPartC: boolean; today: string; asOf?: string; immunization?: boolean },
+  fmt: (iso: string) => string = (d) => d
+): string[] {
+  // `immunization`: ask for it too (the sheet's reminder; the caller leaves it off when a leader marked it on Part C).
+  const kinds = HEALTH_KINDS.filter((k) => HEALTH_KIND[k].required || (k === 'bsa_c' && opts.needsPartC) || (k === 'immunization' && opts.immunization));
   const out: string[] = [];
   for (const k of kinds) {
     const mine = pages.filter((p) => p.kind === k);

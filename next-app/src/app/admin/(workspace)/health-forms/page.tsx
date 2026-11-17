@@ -23,6 +23,7 @@ import {
   sendHealthReminderAdminAction,
   setHealthReviewedAdminAction,
   setImmunizationInBsaFormAdminAction,
+  saveHealthNoteAdminAction,
   uploadHealthPageAdminAction
 } from './actions';
 
@@ -86,6 +87,7 @@ export default async function HealthFormsPage({ searchParams }: { searchParams: 
         remove: removeHealthPageAdminAction,
         setReviewed: setHealthReviewedAdminAction,
         setInBsaForm: setImmunizationInBsaFormAdminAction,
+        saveNote: saveHealthNoteAdminAction,
         remind: sendHealthReminderAdminAction
       }}
     />

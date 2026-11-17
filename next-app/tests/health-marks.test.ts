@@ -23,13 +23,14 @@ describe('healthMark', () => {
     expect([healthMark('bsa_c', [], TODAY).text, healthMark('bsa_ab', [], TODAY).text]).toEqual(['—', 'Missing']);
   });
 
-  it('Immunization_InBsaForm_ReadsCheckBsa_NeverRed', () => {
+  it('Immunization_OnPartC_ReadsCheckPartC', () => {
     const m = healthMark('immunization', [], TODAY, { inBsaForm: true });
-    expect([m.text, m.tone, m.srText]).toEqual(['✓ BSA', 'ok', 'Immunization record: in the BSA form']);
+    expect([m.text, m.tone, m.srText]).toEqual(['✓ Part C', 'ok', 'Immunization record: on Part C']);
   });
 
-  it('Immunization_NotNeeded_ReadsDash_NeverRed', () => {
-    expect(healthMark('immunization', [], TODAY, { inBsaForm: false }).tone).toBe('none');
+  it('Immunization_NothingOnFile_ReadsMissing', () => {
+    const m = healthMark('immunization', [], TODAY, { inBsaForm: false });
+    expect([m.text, m.tone, m.rank]).toEqual(['Missing', 'bad', 0]);
   });
 
   it('HealthMark_CurrentReadsCheck', () => {

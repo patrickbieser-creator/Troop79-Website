@@ -26,11 +26,11 @@ export const HEALTH_MARK_NAME: Record<HealthKind, string> = {
   immunization: 'Immunization record'
 };
 
-/** `inBsaForm`: a named leader's "the immunizations are on the BSA form" (Plans/Admin-Health-Record-Sheet-Redesign.md,
- *  decision 16). An immunization record with nothing on file then reads ✓ BSA; it is never red either way. */
+/** `inBsaForm`: a named leader's "the immunizations are filled in on Part C". An immunization record is always needed
+ *  (Patrick, 2026-11-17): on Part C (✓ Part C), attached (✓), or Missing. */
 export function healthMark(kind: HealthKind, pages: readonly HealthPage[], today: string, opts: { inBsaForm?: boolean } = {}): HealthMarkValue {
   const mine = pages.filter((p) => p.kind === kind);
-  if (kind === 'immunization' && mine.length === 0 && opts.inBsaForm) return { text: '✓ BSA', tone: 'ok', srText: `${HEALTH_MARK_NAME[kind]}: in the BSA form`, rank: 3 };
+  if (kind === 'immunization' && mine.length === 0 && opts.inBsaForm) return { text: '✓ Part C', tone: 'ok', srText: `${HEALTH_MARK_NAME[kind]}: on Part C`, rank: 3 };
   const status = kindStatus(kind, mine, today);
   const name = HEALTH_MARK_NAME[kind];
   const expires = mine.map((p) => p.expiresOn).filter((d): d is string => !!d).sort()[0];
@@ -43,7 +43,7 @@ export function healthMark(kind: HealthKind, pages: readonly HealthPage[], today
     case 'expired':
       return { text: 'Expired', tone: 'bad', srText: `${name}: expired ${fmtDate(expires)}`, rank: 1 };
     default:
-      return HEALTH_KIND[kind].required
+      return HEALTH_KIND[kind].required || kind === 'immunization'
         ? { text: 'Missing', tone: 'bad', srText: `${name}: missing`, rank: 0 }
         : { text: '—', tone: 'none', srText: `${name}: not on file`, rank: 4 };
   }

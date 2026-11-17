@@ -2,7 +2,7 @@
 
 /**
  * The admin Health Forms record sheet (Plans/Admin-Health-Record-Sheet-Redesign.md, version B: two panes). Left: what
- * an adult needs at a glance, the family's note and who to contact. Right: one card per form, with that form's
+ * an adult needs at a glance, the family's note (always there; a leader can paste one in) and who to contact. Right: one card per form, with that form's
  * actions on its card (Change… opens replace / remove / add / Good until in place). The footer (HealthSheetFooter) carries the review, with an undo, and Close.
  *
  * Every write goes through `actions` and answers with the record as it now is; `onRecord` puts it on screen. Status
@@ -36,6 +36,7 @@ export interface SheetActions {
   remove: (pageId: string, personId: number) => Promise<SheetResult>;
   setReviewed: (personId: number, on: boolean) => Promise<SheetResult>;
   setInBsaForm: (personId: number, on: boolean) => Promise<SheetResult>;
+  saveNote: (personId: number, text: string) => Promise<SheetResult>;
   remind: (personId: number) => Promise<SheetResult>;
 }
 
@@ -63,13 +64,7 @@ export function HealthSheet({ record, today, actions, onRecord }: { record: Heal
   return (
     <div className={styles.split}>
       <div className={styles.left}>
-        {record.told && (
-          <div className={styles.familyNote}>
-            <p className={styles.noteTitle}>From the family</p>
-            <p className={styles.noteText}>{record.told}</p>
-            <p className={styles.hint}>Typed by the family, not read from the form.</p>
-          </div>
-        )}
+        <FamilyNote record={record} actions={actions} onRecord={onRecord} />
         <section aria-labelledby={`contacts-${record.personId}`}>
           <h3 id={`contacts-${record.personId}`} className={styles.paneHead}>
             Who to contact
@@ -97,6 +92,80 @@ export function HealthSheet({ record, today, actions, onRecord }: { record: Heal
         </ul>
       </section>
     </div>
+  );
+}
+
+/** A note this long shows its first lines, with Show more. */
+const NOTE_LINES = 4;
+const NOTE_CHARS = 280;
+
+/** "From the family": always shown, even empty. A leader pastes in what a family sent by email (Patrick, 2026-11-17). */
+function FamilyNote({ record, actions, onRecord }: { record: HealthRecordView; actions: SheetActions; onRecord: (r: HealthRecordView) => void }) {
+  const { busy, error, run } = useSheetWrite(onRecord);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [more, setMore] = useState(false);
+  const text = record.told;
+  const long = !!text && (text.length > NOTE_CHARS || text.split('\n').length > NOTE_LINES);
+  const saved = text ?? '';
+  const titleId = `note-${record.personId}`;
+
+  return (
+    <section className={styles.familyNote} aria-labelledby={titleId}>
+      <h3 id={titleId} className={styles.noteTitle}>
+        From the family
+      </h3>
+      {draft != null ? (
+        <>
+          <label className={styles.noteLabel}>
+            <span>Things we should know</span>
+            <textarea className={styles.noteBox} rows={8} value={draft} onChange={(e) => setDraft(e.target.value)} disabled={busy} autoFocus />
+          </label>
+          <div className={styles.noteActs}>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={busy || draft.trim() === saved}
+              title={draft.trim() === saved ? 'No changes to save yet' : undefined}
+              onClick={() => run(() => actions.saveNote(record.personId, draft), () => setDraft(null))}
+            >
+              {draft.trim() === saved ? 'Saved' : 'Save note'}
+            </Button>
+            <Button variant="quiet" size="sm" disabled={busy} onClick={() => setDraft(null)}>
+              Cancel
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          {text ? (
+            <p className={`${styles.noteText} ${long && !more ? styles.noteClamped : ''}`}>{text}</p>
+          ) : (
+            <p className={styles.hint}>Nothing from the family yet.</p>
+          )}
+          <div className={styles.noteActs}>
+            {long && (
+              <Button variant="quiet" size="sm" onClick={() => setMore((v) => !v)} aria-expanded={more}>
+                {more ? 'Show less' : 'Show more…'}
+              </Button>
+            )}
+            <Button variant="quiet" size="sm" onClick={() => setDraft(saved)}>
+              {text ? 'Edit note' : 'Add a note'}
+            </Button>
+          </div>
+          {text && <p className={styles.hint}>Typed by the family or a leader, not read from the form.</p>}
+        </>
+      )}
+      {busy && (
+        <p role="status" className={styles.muted}>
+          Saving…
+        </p>
+      )}
+      {error && (
+        <p role="alert" className={styles.problem}>
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -135,19 +204,21 @@ function FormCard({ kind, record, today, actions, onRecord }: { kind: HealthKind
   const { busy, error, run } = useSheetWrite(onRecord);
   const [editing, setEditing] = useState(false);
 
-  // A required form that is missing or run out is what the leader came for: full width, red, with its next steps.
-  const needs = def.required && (status === 'missing' || status === 'expired');
+  // The immunization record is always needed (Patrick, 2026-11-17): filled in on Part C (a leader's mark), attached,
+  // or missing.
   const isImm = kind === 'immunization';
-  const notNeeded = isImm && pages.length === 0 && !record.inBsaForm;
-  const badge = isImm && pages.length === 0
-    ? record.inBsaForm
-      ? { variant: 'success' as const, label: 'In BSA form' }
-      : { variant: 'muted' as const, label: 'Not needed' }
-    : !def.required && status === 'missing'
-      ? { variant: 'muted' as const, label: 'Missing' }
+  const onPartC = isImm && pages.length === 0 && !!record.inBsaForm;
+  const partCOnFile = record.pages.some((p) => p.kind === 'bsa_c');
+  // A form missing or run out is what the leader came for: full width, red, with its next steps. Part C too: the
+  // reviewers know which trips need it.
+  const needs = !onPartC && (status === 'missing' || status === 'expired');
+  const badge = onPartC
+    ? { variant: 'success' as const, label: 'On Part C' }
+    : isImm && status === 'on_file'
+      ? { variant: 'success' as const, label: 'Attached' }
       : STATUS_BADGE[status];
 
-  const cls = [styles.card, needs ? styles.cardNeeds : '', notNeeded ? styles.cardQuiet : ''].filter(Boolean).join(' ');
+  const cls = [styles.card, needs ? styles.cardNeeds : ''].filter(Boolean).join(' ');
   const canEmail = record.contacts.some((c) => c.email);
 
   return (
@@ -168,16 +239,14 @@ function FormCard({ kind, record, today, actions, onRecord }: { kind: HealthKind
         </p>
       )}
 
-      {isImm && pages.length === 0 && (
+      {onPartC && record.inBsaForm && (
         <>
           <p className={styles.cardMeta}>
-            {record.inBsaForm
-              ? `Included with the BSA health form. No separate upload needed. Set by ${record.inBsaForm.byName} on ${fmtDate(record.inBsaForm.at)}.`
-              : 'Not required for this scout.'}
+            Filled in on Part C. Marked by {record.inBsaForm.byName} on {fmtDate(record.inBsaForm.at)}.
           </p>
           <div className={styles.cardActs}>
-            <Button variant="quiet" size="sm" disabled={busy} onClick={() => run(() => actions.setInBsaForm(record.personId, !record.inBsaForm))}>
-              {record.inBsaForm ? 'Not in the BSA form' : 'It’s in the BSA form'}
+            <Button variant="quiet" size="sm" disabled={busy} onClick={() => run(() => actions.setInBsaForm(record.personId, false))}>
+              Not on Part C
             </Button>
             {!editing && (
               <Button variant="quiet" size="sm" disabled={busy} onClick={() => setEditing(true)} aria-label={`Upload ${def.label}`}>
@@ -200,6 +269,11 @@ function FormCard({ kind, record, today, actions, onRecord }: { kind: HealthKind
             <Button variant="secondary" disabled={busy} onClick={() => setEditing((v) => !v)} aria-expanded={editing}>
               Upload for family
             </Button>
+            {isImm && partCOnFile && (
+              <Button variant="quiet" disabled={busy} onClick={() => run(() => actions.setInBsaForm(record.personId, true))}>
+                It’s on Part C
+              </Button>
+            )}
           </div>
         </>
       )}
@@ -216,7 +290,7 @@ function FormCard({ kind, record, today, actions, onRecord }: { kind: HealthKind
           )}
         </div>
       )}
-      {pages.length === 0 && !needs && !isImm && !editing && (
+      {pages.length === 0 && !needs && !onPartC && !editing && (
         <div className={styles.cardActs}>
           <Button variant="quiet" size="sm" disabled={busy} onClick={() => setEditing(true)} aria-label={`Upload ${def.label}`}>
             Upload…
@@ -240,18 +314,16 @@ function FormCard({ kind, record, today, actions, onRecord }: { kind: HealthKind
   );
 }
 
-/** View (and Download for a photo; a PDF only ever downloads) for one page. */
+/** View (in a new tab) and Download for one page; an insurance card's sides are photos, so View is enough. */
 function PageLinks({ kind, page, many }: { kind: HealthKind; page: HealthPage; many: boolean }) {
   const href = `/api/health-files/${page.id}`;
   const name = HEALTH_KIND[kind].pageNames ? pageName(kind, page.page).toLowerCase() : many ? pageName(kind, page.page).toLowerCase() : '';
   const pdf = page.contentType === 'application/pdf';
   return (
     <>
-      {!pdf && (
-        <Button variant="secondary" size="sm" href={href} target="_blank" rel="noopener noreferrer">
-          {name ? `View ${name}` : 'View'}
-        </Button>
-      )}
+      <Button variant="secondary" size="sm" href={href} target="_blank" rel="noopener noreferrer">
+        {name ? `View ${name}` : 'View'}
+      </Button>
       {(pdf || !HEALTH_KIND[kind].pageNames) && (
         <Button variant="secondary" size="sm" href={`${href}?download=1`}>
           {name ? `Download ${name}` : 'Download'}

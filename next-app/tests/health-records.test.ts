@@ -153,6 +153,15 @@ describe('what a family still has to hand in', () => {
     expect(healthNeeds(pages, { ...opts, needsPartC: true })).toEqual(['BSA health form, Part C: missing']);
   });
 
+  it('Immunization_IsAskedFor_OnlyWhenAsked', () => {
+    const pages = [page('bsa_ab', 1), page('insurance', 1), page('insurance', 2)];
+    expect([healthNeeds(pages, opts), healthNeeds(pages, { ...opts, immunization: true }), healthNeeds([...pages, page('immunization', 1)], { ...opts, immunization: true })]).toEqual([
+      [],
+      ['Immunization record: missing'],
+      []
+    ]);
+  });
+
   it('AFormThatRanOut_SaysWhen', () => {
     const pages = [page('bsa_ab', 1, { expiresOn: '2026-10-01' }), page('insurance', 1), page('insurance', 2)];
     expect(healthNeeds(pages, opts, (d) => `<${d}>`)).toEqual(['BSA health form, Parts A and B: ran out <2026-10-01>']);

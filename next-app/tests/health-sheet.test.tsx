@@ -57,6 +57,7 @@ const actions = (r = rec()): SheetActions & Record<keyof SheetActions, ReturnTyp
   remove: done(r),
   setReviewed: done(r),
   setInBsaForm: done(r),
+  saveNote: done(r),
   remind: done(r)
 });
 const show = (r = rec(), a = actions(r)) => {
@@ -68,13 +69,39 @@ const cardFor = (label: string) => screen.getByText(label).closest('li')!;
 describe('the left pane', () => {
   it('NamedLeader_SheetShowsFamilyNoteFirst_WhenNotePresent', () => {
     const { container } = render(<HealthSheet record={rec()} today={TODAY} actions={actions()} onRecord={vi.fn()} />);
-    const first = container.querySelector('p');
+    const first = container.querySelector('h3');
     expect([first?.textContent, screen.getByText('Peanut allergy. Carries an EpiPen.') != null]).toEqual(['From the family', true]);
   });
 
-  it('NamedLeader_SheetHidesFamilyNote_WhenNoNote', () => {
+  it('NoNote_StillShowsTheFamilyNoteBox_WithAddANote', () => {
     show(rec({ told: null }));
-    expect(screen.queryByText('From the family')).toBeNull();
+    expect([screen.getByText('From the family') != null, screen.getByText('Nothing from the family yet.') != null, screen.getByRole('button', { name: 'Add a note' }) != null]).toEqual([true, true, true]);
+  });
+
+  it('ALongNote_ShowsTheFirstLines_WithShowMore', () => {
+    show(rec({ told: 'Line one.\n\nLine two.\n\nLine three.' }));
+    const more = screen.getByRole('button', { name: 'Show more…' });
+    fireEvent.click(more);
+    expect([more.textContent, more.getAttribute('aria-expanded')]).toEqual(['Show less', 'true']);
+  });
+
+  it('AShortNote_HasNoShowMore', () => {
+    show();
+    expect(screen.queryByRole('button', { name: 'Show more…' })).toBeNull();
+  });
+
+  it('PastingANote_SavesItThroughSaveNote', async () => {
+    const a = show(rec({ told: null }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a note' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Things we should know' }), { target: { value: 'Pasted from an email.\n\nSecond paragraph.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(a.saveNote).toHaveBeenCalledWith(7, 'Pasted from an email.\n\nSecond paragraph.'));
+  });
+
+  it('EditingANote_SaveReadsSaved_UntilSomethingChanges', () => {
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit note' }));
+    expect((screen.getByRole('button', { name: 'Saved' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('NamedLeader_ContactsShowTelAndMailto_NoTextLink', () => {
@@ -139,10 +166,19 @@ describe('the form cards', () => {
     expect(within(cardFor('BSA health form, Part C')).getByText('1 page · Good until Jul 19, 2027')).toBeTruthy();
   });
 
-  it('PartC_Missing_ReadsGreyMissing_WithNoReminder', () => {
+  it('PartC_Missing_IsARedCard_WithEmailReminder', () => {
     show(rec({ pages: [] }));
     const card = cardFor('BSA health form, Part C');
-    expect([within(card).getByText('Missing') != null, within(card).queryByRole('button', { name: 'Email reminder' })]).toEqual([true, null]);
+    expect([within(card).getByText('Missing') != null, card.className.includes('cardNeeds'), within(card).getByRole('button', { name: 'Email reminder' }) != null]).toEqual([true, true, true]);
+  });
+
+  it('APdf_OffersViewAndDownload', () => {
+    show(rec({ pages: [page('bsa_c', 1, { contentType: 'application/pdf', expiresOn: '2027-07-19' })] }));
+    const card = cardFor('BSA health form, Part C');
+    expect([within(card).getByRole('link', { name: 'View' }).getAttribute('href'), within(card).getByRole('link', { name: 'Download' }).getAttribute('href')]).toEqual([
+      '/api/health-files/bsa_c-1',
+      '/api/health-files/bsa_c-1?download=1'
+    ]);
   });
 
   it('Insurance_OffersViewFrontAndViewBack', () => {
@@ -151,21 +187,32 @@ describe('the form cards', () => {
     expect([within(card).getByRole('link', { name: 'View front' }) != null, within(card).getByRole('link', { name: 'View back' }) != null]).toEqual([true, true]);
   });
 
-  it('Immunization_NotNeeded_ReadsNotNeeded_NeverRed', () => {
+  it('Immunization_NothingOnFile_IsAMissingRedCard', () => {
     show();
     const card = cardFor('Immunization record');
-    expect([within(card).getByText('Not needed') != null, within(card).getByText('Not required for this scout.') != null, within(card).queryByText('Missing')]).toEqual([true, true, null]);
+    expect([within(card).getByText('Missing') != null, card.className.includes('cardNeeds')]).toEqual([true, true]);
   });
 
-  it('Immunization_IncludedInBsaForm_ReadsInBsaForm', () => {
+  it('Immunization_Attached_ReadsAttached', () => {
+    show(rec({ pages: [...rec().pages, page('immunization', 1)] }));
+    expect(within(cardFor('Immunization record')).getByText('Attached')).toBeTruthy();
+  });
+
+  it('Immunization_MarkedOnPartC_ReadsOnPartC_NotRed', () => {
     show(rec({ inBsaForm: { byName: 'Pat', at: '2026-11-16T15:00:00Z' } }));
-    expect(within(cardFor('Immunization record')).getByText('In BSA form')).toBeTruthy();
+    const card = cardFor('Immunization record');
+    expect([within(card).getByText('On Part C') != null, card.className.includes('cardNeeds')]).toEqual([true, false]);
   });
 
-  it('Immunization_LeaderCanSetInBsaForm', () => {
+  it('Immunization_LeaderCanMarkItOnPartC', () => {
     const a = show();
-    fireEvent.click(within(cardFor('Immunization record')).getByRole('button', { name: 'It’s in the BSA form' }));
+    fireEvent.click(within(cardFor('Immunization record')).getByRole('button', { name: 'It’s on Part C' }));
     expect(a.setInBsaForm).toHaveBeenCalledWith(7, true);
+  });
+
+  it('Immunization_NoPartCOnFile_OffersNoOnPartC', () => {
+    show(rec({ pages: [] }));
+    expect(within(cardFor('Immunization record')).queryByRole('button', { name: 'It’s on Part C' })).toBeNull();
   });
 
   it('AFailedWrite_ShowsTheProblemOnItsCard', async () => {

@@ -198,20 +198,20 @@ describe('saveHealthGoodUntil', () => {
   });
 });
 
-describe('in the BSA form', () => {
+describe('immunizations on Part C', () => {
   const flag = async (personId: number) => ((await admin.from('health_immunization_in_bsa_form').select('person_id').eq('person_id', personId)).data ?? []).length;
 
-  it('InBsaForm_ClearsWhenPartsAandBChange', async () => {
+  it('OnPartC_ClearsWhenPartCChanges', async () => {
     await wipe(scout.personId);
     await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
     const before = await flag(scout.personId);
-    await save(scout.personId, 'bsa_ab', 1, JPEG('ab'));
+    await save(scout.personId, 'bsa_c', 1, JPEG('c'));
     expect([before, await flag(scout.personId)]).toEqual([1, 0]);
   });
 
-  it('InBsaForm_ClearsWhenAPartsAandBPageIsRemoved', async () => {
+  it('OnPartC_ClearsWhenAPartCPageIsRemoved', async () => {
     await wipe(scout.personId);
-    await save(scout.personId, 'bsa_ab', 1, JPEG('ab'));
+    await save(scout.personId, 'bsa_c', 1, JPEG('c'));
     await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
     const [row] = await rows(scout.personId);
     await removeHealthPage(row.id, [scout.personId], parent, deps);
@@ -225,10 +225,11 @@ describe('in the BSA form', () => {
     expect((await logRows(scout.personId)).map((l) => `${l.action}:${l.kind}`)).toEqual(['edit:immunization', 'edit:immunization']);
   });
 
-  it('InBsaForm_StaysWhenAnotherFormChanges', async () => {
+  it('OnPartC_StaysWhenAnotherFormChanges', async () => {
     await wipe(scout.personId);
     await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
     await save(scout.personId, 'insurance', 1, JPEG('front'));
+    await save(scout.personId, 'bsa_ab', 1, JPEG('ab'));
     expect(await flag(scout.personId)).toBe(1);
   });
 });

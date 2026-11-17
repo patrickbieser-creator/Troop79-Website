@@ -132,7 +132,7 @@ export default async function HealthPersonPage({ params, searchParams }: { param
                       {mine.map((x) => (
                         <li key={x.id}>
                           <a href={`/api/health-files/${x.id}`} target="_blank" rel="noopener noreferrer">
-                            {x.contentType === 'application/pdf' ? 'Download' : 'View'} {pageName(k, x.page).toLowerCase()}
+                            View {pageName(k, x.page).toLowerCase()}
                           </a>
                         </li>
                       ))}

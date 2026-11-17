@@ -79,7 +79,8 @@ function DocumentBlock({ person, kind, pages, today, actions }: { person: Health
   const expires = pages.map((p) => p.expiresOn).filter((d): d is string => !!d).sort()[0] ?? null;
   const free = nextPage(kind, pages);
   const [goodUntil, setGoodUntil] = useState(() => goodUntilSeed(expires, today));
-  const optional = !def.required && pages.length === 0;
+  // The immunization record's hint says when it's needed; Part C is the one form most outings skip.
+  const optional = kind === 'bsa_c' && pages.length === 0;
 
   const run = (work: () => Promise<HealthResult>) =>
     start(async () => {
@@ -117,7 +118,7 @@ function DocumentBlock({ person, kind, pages, today, actions }: { person: Health
     <div className={styles.doc}>
       <div className={styles.docHead}>
         <h3 className={styles.docLabel}>{def.label}</h3>
-        {optional ? <span className={styles.optional}>Not needed for most outings</span> : <Badge tone={TONE[status]}>{HEALTH_STATUS_LABEL[status]}</Badge>}
+        {kind === 'immunization' && pages.length === 0 ? null : optional ? <span className={styles.optional}>Not needed for most outings</span> : <Badge tone={TONE[status]}>{HEALTH_STATUS_LABEL[status]}</Badge>}
       </div>
       <p className={styles.hint}>
         {expires ? `Good until ${fmtDate(expires)}. ` : ''}

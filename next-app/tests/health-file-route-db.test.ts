@@ -91,10 +91,24 @@ describe('GET /api/health-files/[id]', () => {
     ]);
   });
 
-  it('APdf_IsAlwaysADownload', async () => {
+  it('APdf_OpensInTheBrowser_WithNoScriptsAndNoFrames', async () => {
     asFamily();
     const res = await get(await idOf(mine.personId, 'bsa_c'));
-    expect(res.headers.get('content-disposition')).toBe('attachment; filename="bsa_c-page-1.pdf"');
+    const csp = res.headers.get('content-security-policy') ?? '';
+    expect([res.headers.get('content-disposition'), csp.includes("default-src 'none'"), csp.includes("frame-ancestors 'none'"), csp.includes('script-src'), csp.includes('sandbox'), res.headers.get('cross-origin-resource-policy')]).toEqual([
+      'inline; filename="bsa_c-page-1.pdf"',
+      true,
+      true,
+      false,
+      false,
+      'same-origin'
+    ]);
+  });
+
+  it('APdf_Downloads_WhenAskedTo', async () => {
+    asFamily();
+    const res = await get(await idOf(mine.personId, 'bsa_c'), '?download=1');
+    expect([res.headers.get('content-disposition'), res.headers.get('content-security-policy')?.startsWith('sandbox')]).toEqual(['attachment; filename="bsa_c-page-1.pdf"', true]);
   });
 
   it('NobodySignedIn_Gets404', async () => {

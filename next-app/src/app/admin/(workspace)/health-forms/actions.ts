@@ -15,6 +15,7 @@ import {
   removeHealthPage,
   revokeHealthViewer,
   saveHealthGoodUntil,
+  saveHealthNote,
   saveHealthPage,
   setHealthReviewed,
   setImmunizationInBsaForm,
@@ -157,6 +158,11 @@ export async function setImmunizationInBsaFormAdminAction(personId: number, on: 
     await setImmunizationInBsaForm(healthDeps(), id, on === true, viewer);
     return { ok: true };
   });
+}
+
+/** The family note, typed or pasted in by a leader (notes families send by email). Blank clears it. */
+export async function saveHealthNoteAdminAction(personId: number, text: string): Promise<SheetResult> {
+  return sheetWrite(personId, (id, viewer) => saveHealthNote(id, typeof text === 'string' ? text : '', viewer, healthDeps()));
 }
 
 /** Email reminder: this one person's family, about what this person needs today. Recorded for the card. */
