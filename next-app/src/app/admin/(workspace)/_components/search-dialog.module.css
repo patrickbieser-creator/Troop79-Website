@@ -1,0 +1,162 @@
+/* Search (canvas board 3): the top bar's field and the dialog. Admin tokens only; the dialog chrome is the shared
+   Dialog's, this sets its width and the inside. */
+
+.launcher {
+  flex: 1 1 320px;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-6);
+  min-height: 36px;
+  padding: 0 var(--admin-space-6);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--admin-radius-sm);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: var(--admin-text-base);
+  text-align: left;
+  cursor: text;
+}
+.launcher:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.launcher:focus-visible {
+  outline: 2px solid var(--admin-white);
+  outline-offset: 2px;
+}
+.launcherShort {
+  display: none;
+}
+.kbd {
+  flex: none;
+  padding: 1px var(--admin-space-3);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--admin-radius-sm);
+  font-family: inherit;
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-semibold);
+}
+
+.dialog {
+  width: min(640px, calc(100vw - 2 * var(--admin-space-6)));
+  margin-top: 10vh;
+}
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-4);
+  padding: var(--admin-space-6);
+}
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 0 var(--admin-space-6);
+  border: 1px solid var(--admin-gray-300);
+  border-radius: var(--admin-radius);
+  font-family: inherit;
+  font-size: var(--admin-text-lg);
+}
+.input:focus {
+  outline: 2px solid var(--admin-navy);
+  outline-offset: 1px;
+}
+.hint,
+.footer {
+  margin: 0;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+.footer {
+  padding-top: var(--admin-space-3);
+  border-top: 1px solid var(--admin-gray-100);
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-2);
+}
+.results,
+.recentList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+.groupTitle {
+  margin: var(--admin-space-4) 0 var(--admin-space-2);
+  padding: 0 var(--admin-space-5);
+  font-size: var(--admin-text-xs);
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-600);
+}
+.option,
+.recent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-6);
+  width: 100%;
+  min-height: 40px;
+  box-sizing: border-box;
+  padding: 0 var(--admin-space-5);
+  border: 0;
+  border-radius: var(--admin-radius-sm);
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--admin-text-lg);
+  color: var(--admin-gray-900);
+  text-align: left;
+  cursor: pointer;
+}
+.option[aria-selected='true'],
+.recent:hover,
+.recent:focus-visible {
+  background: var(--admin-status-info-bg);
+  color: var(--admin-navy);
+}
+.optionLabel {
+  font-weight: var(--admin-weight-semibold);
+}
+.optionMeta {
+  flex: none;
+  font-size: var(--admin-text-sm);
+  color: var(--admin-gray-600);
+}
+
+@media (max-width: 800px) {
+  .launcher {
+    flex: 0 0 auto;
+    justify-content: center;
+  }
+  .launcherText,
+  .kbd {
+    display: none;
+  }
+  .launcherShort {
+    display: inline;
+  }
+  .dialog {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  .results {
+    max-height: none;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

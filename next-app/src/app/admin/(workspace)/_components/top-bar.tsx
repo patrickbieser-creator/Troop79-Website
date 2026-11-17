@@ -13,12 +13,15 @@ import styles from '../admin.module.css';
 export function TopBar({
   actorLabel,
   actorKind,
-  menuButton
+  menuButton,
+  search
 }: {
   actorLabel: string;
   actorKind: 'legacy' | 'identity';
   /** The phone-only Menu button that opens the rail (rail.tsx); absent where there is no rail. */
   menuButton?: React.ReactNode;
+  /** The search field that opens Find anything (search-dialog.tsx); absent where there is no workspace. */
+  search?: React.ReactNode;
 }) {
   return (
     <div className={`${styles.topBar} ${IS_DEV_DB ? styles.topBarDevDb : ''}`}>
@@ -27,6 +30,7 @@ export function TopBar({
         Troop 79 Admin
         {IS_DEV_DB && <span className={styles.topBarDevTag}>DEV · LOCAL DATABASE</span>}
       </div>
+      {search}
       <div className={styles.topBarRight}>
         <span className={styles.topBarUser}>Signed in as {actorLabel}</span>
         <Link href="/" className={styles.topBarLink}>

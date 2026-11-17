@@ -18,6 +18,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Rail, RailMenuButton } from './_components/rail';
+import { SearchLauncher } from './_components/search-dialog';
+import { searchEntries } from './_components/search-model';
 import { DirtyGuardProvider } from './_components/dirty-guard';
 import { ArticleStyleTokens } from '@/lib/article-body/ArticleStyleTokens';
 import { TopBar } from './_components/top-bar';
@@ -95,7 +97,12 @@ export default async function WorkspaceLayout({ children }: { children: React.Re
           preview panes show what will actually publish rather than the
           stylesheet defaults. */}
       <ArticleStyleTokens />
-      <TopBar actorLabel={actor.label} actorKind={actor.kind} menuButton={<RailMenuButton />} />
+      <TopBar
+        actorLabel={actor.label}
+        actorKind={actor.kind}
+        menuButton={<RailMenuButton />}
+        search={<SearchLauncher entries={searchEntries(visible)} />}
+      />
       <div className={styles.workspace}>
         {/* The provider wraps the rail as well as the page, so leaving a dirty form through it asks first. */}
         <DirtyGuardProvider>

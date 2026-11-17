@@ -41,6 +41,7 @@
 
 /* Top bar */
 .topBar {
+  gap: var(--admin-space-8);
   background: var(--admin-navy);
   color: var(--admin-white);
   padding: 10px 24px;

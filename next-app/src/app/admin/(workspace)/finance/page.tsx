@@ -262,6 +262,8 @@ export default async function FinancePage({
       </form>
 
       <FinanceWorkspace
+        // A new ?do= (a menu or search link while already on this page) remounts the workspace with that dialog open.
+        key={financeModalFromParam(raw.do, canManage) ?? 'ledger'}
         canManage={canManage}
         rows={rows}
         people={people}
