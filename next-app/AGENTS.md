@@ -260,3 +260,19 @@ Every quantity is a plain `NumberBox` (People, diets, brand packages, shopping "
 `Stepper` is for event sign-up only. One documented exception: the troop ingredient browser keeps "+ Ingredient" above
 its long, searchable list. Plan of record: `Plans/Completed/Menu-Monster-Add-Pattern.md`; specimens on both styleguides.
 Exception: Build a Plan (`/planner/build`) has no add row: its adds are sub-views on one persistent view bar of left-aligned secondary Buttons (current = aria-current="page", bold + underlined, never filled: each view has its own primary), "The plan · Suggestions · + Requirement · + Focus set · + New mix", each linkable as `?view=…` with "← Back to the plan" (Patrick, 2026-10-22; `lib/build-plan-view`).
+
+## Browser checks: `npm run shot` (2026-11-17)
+
+Every UI change gets looked at in a real browser before it is called done. The standing way, needing nobody's Chrome:
+
+1. Local Supabase running (Docker), then `npx next dev -p 3012` in its own shell (never alongside `npm run build`).
+2. `npm run shot -- "/admin/health-forms?person=39"` signs in as the local leader (person 82, via `scripts/dev-login.mjs`,
+   which refuses a non-local database), opens the page at 1280 and 375 px in headless Chrome, and writes
+   `next-app/.shots/<width>-page.png` (gitignored). It prints every console error, page error and 5xx it saw.
+3. Interactions: `--steps steps.json` (click / fill / wait / press / shot / full; the format is in the script's header).
+   Other flags: `--anon` (signed out), `--as <personId>`, `--widths 1280`, `--browser firefox`, `--full`, `--out <dir>`.
+4. Then Read the PNGs, and put back anything the steps wrote (opening a health record writes an access-log line).
+
+Production can only be checked through Claude in Chrome (Patrick's signed-in browser); this script never touches it.
+Playwright is `playwright-core` pinned to 1.62.1, which matches the Firefox build already installed in ms-playwright;
+Chrome is the installed Chrome (`channel: 'chrome'`). Don't wait for `networkidle` against `next dev`: it never settles.
