@@ -1,5 +1,5 @@
 /**
- * Home's At a glance (Plans/Admin-Portal-Nav.md decision 6): Active scouts, Troop account, Missing BSA IDs and
+ * Home's At a glance (Plans/Completed/Admin-Portal-Nav.md decision 6): Active scouts, Troop account, Missing BSA IDs and
  * Uncollected funds. Its own async component: Home renders it inside Suspense, so the page's top never waits on these
  * reads. Each tile loads on its own (loadGlance) and a tile that can't load says so in place. The money tiles appear
  * only for finance holders, and their loaders never run for anyone else.

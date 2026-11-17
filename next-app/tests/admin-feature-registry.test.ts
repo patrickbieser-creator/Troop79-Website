@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readdirSync, existsSync, readFileSync } from 'node:fs';
+import { readdirSync, existsSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import {
   FEATURES,
@@ -10,11 +10,10 @@ import {
   featuresIn,
   type VisibilityOpts
 } from '../src/app/admin/(workspace)/_components/feature-registry';
-import { SECTIONS, visibleNavSections } from '../src/app/admin/(workspace)/_components/nav-data';
 import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
 /**
- * The feature registry (Plans/Admin-Portal-Nav.md phase 1): one list every admin surface reads. These pin the rules
+ * The feature registry (Plans/Completed/Admin-Portal-Nav.md phase 1): one list every admin surface reads. These pin the rules
  * that keep it the ONLY list: every admin page is registered or deliberately unlisted, and today's nav is derived from
  * it without a visible change.
  */
@@ -142,25 +141,5 @@ describe('feature registry', () => {
   it('VisibleFeatures_ReportsLandingNeedsAVisibleReport', () => {
     const landing = (o: VisibilityOpts) => visibleFeatures(FEATURES, o).some((f) => f.key === 'reports.index');
     expect([landing(PROFILES['calendar only']), landing(PROFILES['finance only'])]).toEqual([false, true]);
-  });
-
-  it('Registry_CapabilityFilter_MatchesVisibleNavSections', () => {
-    // For every item today's nav shows, the registry's filter answers the same, for each kind of leader.
-    const legacyHrefs = new Set(SECTIONS.flatMap((s) => s.items).filter((i) => !i.folderLanding).map((i) => i.href));
-    const diffs: string[] = [];
-    for (const [name, o] of Object.entries(PROFILES)) {
-      // Compared as sets of hrefs: several registry tasks deep-link to the same screen.
-      const fromNav = [...new Set(visibleNavSections(SECTIONS, o).flatMap((s) => s.items).filter((i) => !i.folderLanding).map((i) => i.href))].sort();
-      const fromRegistry = [
-        ...new Set(visibleFeatures(FEATURES, o).filter((f) => !f.landing && legacyHrefs.has(f.href)).map((f) => f.href))
-      ].sort();
-      if (JSON.stringify(fromNav) !== JSON.stringify(fromRegistry)) diffs.push(name);
-    }
-    expect(diffs).toEqual([]);
-  });
-
-  it('DerivedSections_RenderTodaysNav', () => {
-    const before = JSON.parse(readFileSync(join(__dirname, 'fixtures', 'admin-nav-sections.json'), 'utf8'));
-    expect(JSON.parse(JSON.stringify(SECTIONS))).toEqual(before);
   });
 });

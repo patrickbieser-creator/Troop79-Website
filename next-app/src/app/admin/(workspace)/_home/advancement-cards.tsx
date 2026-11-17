@@ -1,5 +1,5 @@
 /**
- * Home's three bottom cards, moved from the retired Advancement dashboard (Plans/Admin-Portal-Nav.md decision 7):
+ * Home's three bottom cards, moved from the retired Advancement dashboard (Plans/Completed/Admin-Portal-Nav.md decision 7):
  * Recent ledger activity, Likely ready for review, and Recent logins. Each is its own async server component, rendered
  * by Home inside its own <Suspense>, so the top of Home never waits on these reads (the ledger reads are heavy and
  * live). The scouts list and the catalog both cards need are read once per request (cache()).
@@ -12,7 +12,7 @@ import { loadAdvancementCatalog } from '@/lib/advancement-catalog';
 import type { LedgerEntry, LedgerKind } from '@/lib/supabase/types';
 import { loadRecentLogins, loadHouseholdsSignedInStats, type LoginMethod } from '@/lib/login-events';
 import { fmtDate, fmtDateTime } from '@/lib/format-date';
-import styles from '../advancement/dashboard/dashboard.module.css';
+import styles from './dashboard.module.css';
 
 const RECENT_LIMIT = 10;
 const LIKELY_READY_THRESHOLD = 0.6; // 60% of next-rank reqs done → surface

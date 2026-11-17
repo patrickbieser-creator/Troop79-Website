@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 
 /**
- * Shortcut tracking (Plans/Admin-Portal-Nav.md decision 12), against real local Postgres. Fixture people are the
+ * Shortcut tracking (Plans/Completed/Admin-Portal-Nav.md decision 12), against real local Postgres. Fixture people are the
  * is_test people (Todd 170 as "me", Alex 85 as someone else); every row this file writes is removed by person id.
  */
 const ME = 170;

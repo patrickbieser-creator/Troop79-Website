@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 /**
- * Home's At a glance (Plans/Admin-Portal-Nav.md decision 6). The loaders are stubbed by what they read; the tile
+ * Home's At a glance (Plans/Completed/Admin-Portal-Nav.md decision 6). The loaders are stubbed by what they read; the tile
  * rules (who sees the money tiles, what a failed tile shows) are real.
  */
 const calls: string[] = [];

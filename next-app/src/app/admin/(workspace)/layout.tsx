@@ -30,7 +30,7 @@ import { loadWreathSaleOpen } from '@/lib/wreaths/admin-data';
 import { visibleFeaturesFor } from './_components/nav-visibility';
 import { railModel, areaCounts } from './_components/area-menu';
 import { loadPinKeys } from './_components/pins-store';
-import { attentionCategoriesFor } from './advancement/dashboard/attention-items';
+import { attentionCategoriesFor } from './_home/attention-items';
 import styles from './admin.module.css';
 // Global --admin-* design tokens on :root (Plans/Admin-Design-System.md).
 // Must load with the workspace so every admin module and portal resolves them.

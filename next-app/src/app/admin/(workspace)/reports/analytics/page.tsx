@@ -14,7 +14,7 @@
  */
 
 import { requireCapability } from '@/lib/require-capability';
-import styles from '../../advancement/dashboard/dashboard.module.css';
+import styles from '../../_home/dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
 
 export const metadata = {

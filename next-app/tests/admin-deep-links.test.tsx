@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 /**
- * Plans/Admin-Portal-Nav.md phase 2: every Actions ▾ item and buried tab opens straight from a link, so the menus,
+ * Plans/Completed/Admin-Portal-Nav.md phase 2: every Actions ▾ item and buried tab opens straight from a link, so the menus,
  * search and A–Z can go to the task itself. The existing page reads the parameter and opens what it opens today.
  */
 

@@ -114,7 +114,7 @@
   }
 }
 
-/* Workspace shell: the rail (rail.tsx) beside main, as an app shell (Plans/Admin-Portal-Nav.md phase 3). The root is
+/* Workspace shell: the rail (rail.tsx) beside main, as an app shell (Plans/Completed/Admin-Portal-Nav.md phase 3). The root is
    exactly the viewport tall and MAIN is the page's scroller, so the rail always fits under the top bar and never
    scrolls away. Sticky things on a page (EditBar, table heads) stick to the top of main. On phones the rail is a
    sheet, so main takes the width. Print turns the shell back into one long page. */

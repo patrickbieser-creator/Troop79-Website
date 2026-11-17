@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -47,8 +47,9 @@ describe('Admin Has/Needs retirement', () => {
     expect(['has-needs-tool.tsx', 'has-needs.module.css'].filter((f) => existsSync(path.join(HN, f)))).toEqual([]);
   });
 
-  it('AdminNav_HasNoEntryForHasNeeds', () => {
-    const nav = readFileSync(path.join(SRC, 'app', 'admin', '(workspace)', '_components', 'nav-data.ts'), 'utf8');
-    expect(nav).not.toMatch(/\/admin\/advancement\/has-needs/);
+  it('AdminNav_HasNoEntryForHasNeeds', async () => {
+    // The old admin route is only a redirect now (UNLISTED); no registered item links to it.
+    const { FEATURES } = await import('../src/app/admin/(workspace)/_components/feature-registry');
+    expect(FEATURES.filter((f) => f.href.startsWith('/admin/advancement/has-needs'))).toEqual([]);
   });
 });

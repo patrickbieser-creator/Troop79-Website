@@ -6,7 +6,7 @@ import { missingBsaIds, type PersonIn, type ScoutIn, type LeaderIn } from '../sr
 import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 import nextConfig from '../next.config';
 
-/** Home's pure pieces (Plans/Admin-Portal-Nav.md phase 4). */
+/** Home's pure pieces (Plans/Completed/Admin-Portal-Nav.md phase 4). */
 
 const ALL = visibleFeatures(FEATURES, { fullAdmin: true, capabilities: new Set<Capability>(CAPABILITIES), healthViewer: true, plannerView: true });
 

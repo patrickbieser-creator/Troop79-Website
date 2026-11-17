@@ -1,5 +1,5 @@
 /**
- * Search's records half (Plans/Admin-Portal-Nav.md decision 8, phase 5): people, calendar entries and articles whose
+ * Search's records half (Plans/Completed/Admin-Portal-Nav.md decision 8, phase 5): people, calendar entries and articles whose
  * names match, at most five of each. Each kind is searched only when the person could open the result: people need
  * roster.manage (the record page's guard), calendar entries calendar.write, articles news.write. Nothing about health
  * or money is searched, so nothing behind those lists can leak through a name.

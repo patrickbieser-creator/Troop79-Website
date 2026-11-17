@@ -240,3 +240,25 @@
   color: var(--admin-gray-500);
   margin-top: var(--admin-space-1);
 }
+
+/* Rail specimen: a box tall and wide enough for the rail with its Money menu open beside it. */
+.railSpecimen {
+  position: relative;
+  min-height: 560px;
+  overflow: auto;
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+}
+/* Search specimen: the field sits on the navy top bar. */
+.searchSpecimen {
+  display: flex;
+  padding: var(--admin-space-6);
+  background: var(--admin-navy);
+  border-radius: var(--admin-radius);
+}
+
+/* A specimen that needs a whole row (Specimen wide). */
+.specimenWide {
+  grid-column: 1 / -1;
+}

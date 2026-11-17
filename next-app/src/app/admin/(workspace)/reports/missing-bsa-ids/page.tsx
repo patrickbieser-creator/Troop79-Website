@@ -1,5 +1,5 @@
 /**
- * /admin/reports/missing-bsa-ids — active scouts and adult leaders with no BSA member ID (Plans/Admin-Portal-Nav.md
+ * /admin/reports/missing-bsa-ids — active scouts and adult leaders with no BSA member ID (Plans/Completed/Admin-Portal-Nav.md
  * decision 11). Home's Missing BSA IDs tile opens it. A missing ID blocks the Scoutbook export, so each name opens the
  * person's record to add it. roster.manage, like the record it links to.
  */

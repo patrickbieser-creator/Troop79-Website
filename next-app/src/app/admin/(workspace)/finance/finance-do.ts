@@ -1,5 +1,5 @@
 /**
- * /admin/finance?do=<action> opens one of the Actions ▾ dialogs on arrival (Plans/Admin-Portal-Nav.md phase 2: the
+ * /admin/finance?do=<action> opens one of the Actions ▾ dialogs on arrival (Plans/Completed/Admin-Portal-Nav.md phase 2: the
  * menus and search link straight to a task). A plain module so the server page and the client workspace share it.
  */
 export const FINANCE_DO = ['record', 'transfer', 'reconcile', 'kinds'] as const;

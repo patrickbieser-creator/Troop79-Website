@@ -5,7 +5,7 @@
  * and login's ?next=/admin. The workspace layout has already refused anyone with
  * no capability, so no page-level guard is needed beyond what each row's target enforces.
  */
-import { AdminHome } from './advancement/dashboard/admin-home';
+import { AdminHome } from './_home/admin-home';
 
 export const metadata = {
   title: 'Home — Troop 79'

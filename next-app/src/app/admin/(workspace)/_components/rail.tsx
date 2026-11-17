@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The workspace rail and its area menus (Plans/Admin-Portal-Nav.md phase 3), replacing the section bar and tabs.
+ * The workspace rail and its area menus (Plans/Completed/Admin-Portal-Nav.md phase 3), replacing the section bar and tabs.
  *
  *   Home · Meetings · Advancement · Website Content · Money · People · Reports
  *   Pinned (the person's own, Edit pins)
@@ -81,12 +81,14 @@ export interface RailProps {
   /** False for a session with no person id: pins are personal. */
   canPin: boolean;
   devDb?: boolean;
+  /** Styleguide only: drawn in place, one menu already open, no global listeners and no page-unique ids. */
+  specimen?: { openArea?: Area };
 }
 
-export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = false }: RailProps) {
+export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = false, specimen }: RailProps) {
   const pathname = usePathname();
   const { navigate, dialog } = useGuardedNav();
-  const [openArea, setOpenArea] = useState<Area | null>(null);
+  const [openArea, setOpenArea] = useState<Area | null>(specimen?.openArea ?? null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   /** Read out after a pin or unpin lands (a polite live region): the change is otherwise silent. */
@@ -117,19 +119,22 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
 
   // An opened menu takes focus to its first link, so the keyboard lands in it rather than on the next rail button.
   useEffect(() => {
+    if (specimen) return;
     if (openArea) panelRef.current?.querySelector<HTMLElement>('[data-first-focus], a')?.focus();
-  }, [openArea]);
+  }, [openArea, specimen]);
 
   useEffect(() => {
+    if (specimen) return;
     const toggle = () => setSheetOpen((o) => !o);
     window.addEventListener(TOGGLE_EVENT, toggle);
     return () => window.removeEventListener(TOGGLE_EVENT, toggle);
-  }, []);
+  }, [specimen]);
   useEffect(() => {
+    if (specimen) return;
     window.dispatchEvent(new CustomEvent(STATE_EVENT, { detail: sheetOpen }));
     // The phone sheet takes focus to its first entry when it opens.
     if (sheetOpen) document.querySelector<HTMLElement>('#admin-rail a, #admin-rail button[data-area]')?.focus();
-  }, [sheetOpen]);
+  }, [sheetOpen, specimen]);
 
   function closeSheet() {
     setSheetOpen(false);
@@ -214,10 +219,10 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
 
   return (
     <div
-      className={`${styles.shell} ${devDb ? styles.devDb : ''}`}
+      className={`${styles.shell} ${devDb ? styles.devDb : ''} ${specimen ? styles.specimen : ''}`}
       data-sheet-open={sheetOpen || undefined}
     >
-      <nav id="admin-rail" className={styles.rail} aria-label="Workspace">
+      <nav id={specimen ? undefined : 'admin-rail'} className={styles.rail} aria-label={specimen ? 'Workspace (specimen)' : 'Workspace'}>
         <div className={styles.sheetHead}>
           <span className={styles.sheetTitle}>Menu</span>
           <button type="button" className={styles.closeButton} onClick={closeSheet}>
@@ -237,7 +242,7 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
 
         {pins.length > 0 || canPin ? (
           <div className={styles.pinHead}>
-            <span id="admin-rail-pinned">Pinned</span>
+            <span id={`${panelId}-pinned`}>Pinned</span>
             {pins.length > 0 ? (
               <Link href="/admin/pins" className={styles.pinEdit} onClick={(e) => go(e, '/admin/pins')}>
                 Edit pins
@@ -247,7 +252,7 @@ export function Rail({ groups, pins: savedPins, setup, counts, canPin, devDb = f
         ) : null}
         {pins.length === 0 && canPin ? <p className={styles.pinEmpty}>Open a menu and choose + Pin to keep an item here.</p> : null}
         {pins.length > 0 ? (
-          <ul className={styles.pinList} aria-labelledby="admin-rail-pinned">
+          <ul className={styles.pinList} aria-labelledby={`${panelId}-pinned`}>
             {pins.map((p) => (
               <li key={p.key}>
                 <Link

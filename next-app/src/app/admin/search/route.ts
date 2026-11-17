@@ -1,5 +1,5 @@
 /**
- * GET /admin/search?q= — the records half of search (Plans/Admin-Portal-Nav.md decision 8): people, calendar entries
+ * GET /admin/search?q= — the records half of search (Plans/Completed/Admin-Portal-Nav.md decision 8): people, calendar entries
  * and articles, at most five of each, only the kinds the signed-in person could open (lib/admin-record-search.ts).
  * A route handler rather than a server action: server actions run one at a time, so a slow search would hold up the
  * navigation that follows it, and a typed-ahead request can be aborted. proxy.ts has already turned away a request

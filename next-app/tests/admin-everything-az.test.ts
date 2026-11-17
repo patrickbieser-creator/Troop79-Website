@@ -3,7 +3,7 @@ import { FEATURES, visibleFeatures } from '../src/app/admin/(workspace)/_compone
 import { azEntries, azGroups } from '../src/app/admin/(workspace)/everything/az';
 import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
-/** Everything A–Z (Plans/Admin-Portal-Nav.md decision 9). */
+/** Everything A–Z (Plans/Completed/Admin-Portal-Nav.md decision 9). */
 
 const ALL = visibleFeatures(FEATURES, { fullAdmin: true, capabilities: new Set<Capability>(CAPABILITIES), healthViewer: true, plannerView: true });
 

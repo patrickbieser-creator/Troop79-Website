@@ -1,5 +1,5 @@
 /**
- * POST /admin/nav-open — shortcut tracking's beacon (Plans/Admin-Portal-Nav.md decision 12). The body is one feature
+ * POST /admin/nav-open — shortcut tracking's beacon (Plans/Completed/Admin-Portal-Nav.md decision 12). The body is one feature
  * key as plain text. proxy.ts has already turned away a request with no admin credential; logNavOpenForActor checks
  * the actor and the key. A cross-site post is refused on its Origin. Always 204: the page never waits on it.
  */

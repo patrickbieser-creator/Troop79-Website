@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Everything A–Z (Plans/Admin-Portal-Nav.md decision 9): every item this person can open, alphabetically, in columns.
+ * Everything A–Z (Plans/Completed/Admin-Portal-Nav.md decision 9): every item this person can open, alphabetically, in columns.
  * Plain names, no type or group tags. Type filter (All · Screens · Reports · Actions · Setup), a filter box, and a
  * letter jump bar.
  */

@@ -7,7 +7,28 @@
  * group is one untinted row of plain links, last.
  */
 import Link from 'next/link';
-import type { HubGroup, HubCard } from './nav-data';
+/** The earth tone a group wears (admin.css --admin-tint-*). */
+export type HubTint = 'moss' | 'sky' | 'wheat' | 'clay' | 'stone';
+
+export interface HubCard {
+  key: string;
+  title: string;
+  description?: string;
+  /** Where the title goes. The quiet card: the first link. */
+  href: string;
+  /** The quiet card only: its links. */
+  links?: { label: string; href: string }[];
+  /** 'open' = in season, 'off' = greyed and last. */
+  season?: 'open' | 'off';
+}
+
+export interface HubGroup {
+  title: string;
+  quiet: boolean;
+  /** The group's earth tone; absent on a quiet group. */
+  tint?: HubTint;
+  cards: HubCard[];
+}
 import styles from './admin-hub.module.css';
 
 function slug(s: string) {

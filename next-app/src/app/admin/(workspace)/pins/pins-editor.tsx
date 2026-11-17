@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Edit pins (Plans/Admin-Portal-Nav.md phase 3): the person's pinned items in order, dragged or moved with the
+ * Edit pins (Plans/Completed/Admin-Portal-Nav.md phase 3): the person's pinned items in order, dragged or moved with the
  * arrows, removed, or added from what they can open. One draft and one Save in the sticky EditBar.
  */
 import { useState, useTransition } from 'react';

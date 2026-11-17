@@ -23,7 +23,7 @@ vi.mock('@/lib/supabase/server', () => ({
   })
 }));
 
-import { sendSuggestionAction } from '../src/app/admin/(workspace)/advancement/dashboard/suggestion-actions';
+import { sendSuggestionAction } from '../src/app/admin/(workspace)/_home/suggestion-actions';
 
 beforeEach(() => {
   vi.clearAllMocks();

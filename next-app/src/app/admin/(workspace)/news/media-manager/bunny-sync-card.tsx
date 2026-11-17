@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { syncBunnyLibrary } from '../news/media/actions';
-import styles from './utilities.module.css';
-import { Button } from '../../_components/button';
+import { syncBunnyLibrary } from '../media/actions';
+import styles from './bunny-sync.module.css';
+import { Button } from '../../../_components/button';
 
 export function BunnySyncCard() {
   const [isPending, startTransition] = useTransition();
@@ -23,8 +23,8 @@ export function BunnySyncCard() {
   }
 
   return (
-    <div className={styles.card}>
-      <h3>Bunny Media Library Sync</h3>
+    <section id="bunny-sync" className={styles.card} aria-labelledby="bunny-sync-title">
+      <h3 id="bunny-sync-title">Bunny Media Library Sync</h3>
       <p className={styles.cardSub}>
         Scans the whole Bunny storage zone and adds a media-library entry for any photo that isn&rsquo;t
         indexed yet — covers photos uploaded straight to Bunny outside the News CMS. Safe to re-run
@@ -38,6 +38,6 @@ export function BunnySyncCard() {
           {result.message}
         </div>
       )}
-    </div>
+    </section>
   );
 }

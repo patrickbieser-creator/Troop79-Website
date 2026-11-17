@@ -1,4 +1,4 @@
-/* The workspace rail and its area menus (Plans/Admin-Portal-Nav.md phase 3; canvas boards 1 and 2). Replaces the
+/* The workspace rail and its area menus (Plans/Completed/Admin-Portal-Nav.md phase 3; canvas boards 1 and 2). Replaces the
    section bar and tabs. Admin tokens only. Desktop: a sticky white rail at the left of the workspace; a group's menu
    opens as a panel beside it over a scrim. Phones (<= 800px): the rail is a full-height sheet the top bar's Menu
    button opens, and a menu is a full-screen sheet with a Back button. */
@@ -328,6 +328,32 @@
 }
 .sheetScrim {
   display: none;
+}
+
+/* Styleguide specimen: drawn in place, the rail and its open menu side by side in normal flow, never a phone sheet. */
+.specimen.specimen {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--admin-space-6);
+  position: relative;
+  inset: auto;
+  width: auto;
+  height: auto;
+}
+.specimen .rail {
+  flex: none;
+  width: var(--rail-width);
+  height: 540px;
+}
+.specimen .scrim {
+  display: none;
+}
+.specimen .panel {
+  position: static;
+  flex: 1;
+  width: auto;
+  max-width: 820px;
+  max-height: none;
 }
 
 @media print {

@@ -96,11 +96,14 @@ const nextConfig: NextConfig = {
       // Admin MB Progress retired 2026-11-09: the Library's merit badge pages carry everything it showed.
       { source: '/admin/advancement/mb-progress', destination: '/library?mb=progress', permanent: false },
       { source: '/admin/advancement/mb-progress/:mbId', destination: '/library/mb/:mbId', permanent: false },
-      // Plans/Admin-Portal-Nav.md decision 7: the Advancement dashboard is retired; its cards are on Home and its two
+      // Plans/Completed/Admin-Portal-Nav.md decision 7: the Advancement dashboard is retired; its cards are on Home and its two
       // sub-pages are reports. Old bookmarks and emailed links still land.
       { source: '/admin/advancement/dashboard', destination: '/admin', permanent: false },
       { source: '/admin/advancement/dashboard/logins', destination: '/admin/reports/sign-ins', permanent: false },
-      { source: '/admin/advancement/dashboard/analytics', destination: '/admin/reports/analytics', permanent: false }
+      { source: '/admin/advancement/dashboard/analytics', destination: '/admin/reports/analytics', permanent: false },
+      // Phase 6: Utilities is retired. Ledger Audit keeps its own route (it belongs to Money and Reports); the Bunny sync
+      // lives on the Media Manager now.
+      { source: '/admin/utilities', destination: '/admin/reports', permanent: false }
     ];
   },
   experimental: {

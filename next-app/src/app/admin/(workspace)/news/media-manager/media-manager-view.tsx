@@ -7,6 +7,7 @@ import { listMediaManager, updateMediaMetadata, deleteMedia, type MediaUsage } f
 import styles from './media-manager.module.css';
 import { Dialog, DialogHeader, DialogBody, DialogActions } from '../../_components/dialog';
 import { PageTitle } from '../../_components/page-title';
+import { BunnySyncCard } from './bunny-sync-card';
 import { Notice } from '../../_components/notice';
 import { SaveButton, SaveFeedback, useSavedSnapshot, useSavePhase } from '../../_components/save-state';
 import { Button } from '../../../_components/button';
@@ -187,6 +188,9 @@ export function MediaManagerView() {
           </Button>
         </div>
       )}
+
+      {/* Moved here from the retired Utilities page (Plans/Completed/Admin-Portal-Nav.md phase 6): it fills this library. */}
+      <BunnySyncCard />
 
       <SaveFeedback phase={feedback.phase} />
       <EditDialog

@@ -7,8 +7,8 @@
  * asking is shown, not typed — only the suggestion is a field.
  */
 import { useId, useRef, useState, useTransition } from 'react';
-import { Dialog, DialogActions, DialogBody, DialogHeader } from '../../_components/dialog';
-import { Button } from '../../../_components/button';
+import { Dialog, DialogActions, DialogBody, DialogHeader } from '../_components/dialog';
+import { Button } from '../../_components/button';
 import { SUGGESTION_MAX, validateSuggestion } from '@/lib/suggestion-email';
 import type { SuggestionResult } from './suggestion-actions';
 import styles from './suggestion-button.module.css';

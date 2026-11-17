@@ -10,7 +10,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { requireCapability } from '@/lib/require-capability';
 import { loadAllLogins, loadRecentFailedLogins, type LoginMethod } from '@/lib/login-events';
-import styles from '../../advancement/dashboard/dashboard.module.css';
+import styles from '../../_home/dashboard.module.css';
 import { PageTitle } from '../../_components/page-title';
 import { Button } from '../../../_components/button';
 

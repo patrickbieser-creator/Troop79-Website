@@ -50,8 +50,12 @@ import { HelpBadge } from '../../../_components/help-badge';
 import { RecentItemsList } from '../../_components/recent-items-list';
 import { AttentionInbox } from '../../_components/attention-inbox';
 import { AdminHub } from '../../_components/admin-hub';
-import { SectionBar, SectionTabs } from '../../_components/section-nav';
-import { ReportsLanding } from '../../_components/reports-landing';
+import { Rail } from '../../_components/rail';
+import { SearchLauncher } from '../../_components/search-dialog';
+import { searchEntries } from '../../_components/search-model';
+import { railModel } from '../../_components/area-menu';
+import { FEATURES, visibleFeatures } from '../../_components/feature-registry';
+import { CAPABILITIES } from '@/lib/capabilities';
 import { PageTitle } from '../../_components/page-title';
 import { Notice } from '../../_components/notice';
 import { PageSkeleton } from '../../_components/page-skeleton';
@@ -62,7 +66,7 @@ import cal from '../../calendar/calendar.module.css';
 import lk from '../../advancement/lookups/lookups.module.css';
 import ev from '../../events/events-admin.module.css';
 import mm from '../../news/media-manager/media-manager.module.css';
-import util from '../../utilities/utilities.module.css';
+import util from '../../news/media-manager/bunny-sync.module.css';
 import board from '../../rosters/[id]/assignments/assignments.module.css';
 
 export const metadata = {
@@ -159,11 +163,11 @@ const SCOREBOARD: {
   notes: string;
 }[] = [
   {
-    pattern: 'Admin navigation (left rail → section bar + tabs)',
-    copies: '✓ SHIPPED 2026-10-13 (v1.217.0) — the rail is retired; 0 copies',
-    canonical: 'admin/(workspace)/_components/section-nav: SectionBar + SectionTabs (the shared TabStrip), built by sectionNav() from nav-data SECTIONS',
-    phase: 'Admin Home & Nav W3',
-    notes: 'a destination is added ONCE in nav-data (hub card, bar and tab all follow); never a per-screen section nav. Page-level tab strips stay in the content, below'
+    pattern: 'Admin navigation (section bar + tabs → rail + area menus + search)',
+    copies: '✓ SHIPPED 2026-11-16 (v1.274.0) — the section bar, its tabs and the Home card grid are retired; 0 copies',
+    canonical: 'admin/(workspace)/_components: feature-registry (FEATURES) → area-menu (railModel/areaMenu) → rail.tsx; search-dialog.tsx; everything/ (A–Z)',
+    phase: 'Admin Portal (Plans/Completed/Admin-Portal-Nav.md)',
+    notes: 'a destination is added ONCE in feature-registry.ts (rail menu, Home shortcuts, Reports, search and A–Z all follow); a new admin page that is neither registered nor UNLISTED fails the suite. Page-level tab strips stay in the content'
   },
   {
     pattern: 'Add buttons (green "+ Add X")',
@@ -335,16 +339,19 @@ function Swatch({ name, value, isNew }: { name: string; value: string; isNew: bo
 function Specimen({
   label,
   canonical,
+  wide,
   note,
   children
 }: {
   label: string;
   canonical?: boolean;
+  /** Spans the whole grid row: a specimen that needs room (the rail with a menu open). */
+  wide?: boolean;
   note: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className={`${sg.specimen} ${canonical ? sg.specimenCanonical : ''}`}>
+    <div className={`${sg.specimen} ${canonical ? sg.specimenCanonical : ''} ${wide ? sg.specimenWide : ''}`}>
       <div className={sg.specimenLabel}>{canonical ? `✓ Canonical — ${label}` : label}</div>
       <div className={sg.specimenBody}>{children}</div>
       <div className={sg.specimenNote}>{note}</div>
@@ -1161,118 +1168,47 @@ export default function StyleguidePage() {
       </section>
 
       <section className={sg.section}>
-        <h2 className={sg.sectionHead}>Hub cards</h2>
+        <h2 className={sg.sectionHead}>Card groups</h2>
         <p className={sg.sectionNote}>
-          Home&rsquo;s card grid under the inbox (<code>_components/admin-hub</code>, 2026-10-13): a title that links and a
-          description clamped to two lines (a card is never more than three lines) &mdash; no count badges, the inbox already
-          carries counts. Groups and cards are built by <code>hubGroups()</code> from the same <code>SECTIONS</code> data
-          the section bar and tabs render, so a destination is added once. Every report is its own card in the Reports group
-          (the Reports landing is the section bar&rsquo;s entry and makes no card). Each group wears one earth tone from
-          the <code>--admin-tint-*</code> tokens in <code>admin.css</code>: a pale card background, a stronger 3px left
-          edge, and a darker heading and title &mdash; Advancement moss, Calendar &amp; Content sky, Money wheat, Reports
-          clay, People &amp; Setup stone. A seasonal card (Wreath Sale) is first in its group while in season and last and
-          greyed &mdash; still clickable, whatever the tint &mdash; when not. &ldquo;Troop admin tools&rdquo; is a quiet,
-          untinted row of plain links, always last. <code>/admin/reports</code> lists every report through{' '}
-          <code>folderEntries()</code> as the same cards without a group heading (<code>AdminHubGrid</code>,{' '}
-          <code>ReportsLanding</code>). <code>/admin/advancement/lookups</code> is the same tinted groups, one card per
-          lookup (<code>lookups/lookup-cards.ts</code>); a card opens on its own at <code>?card=&lt;id&gt;</code>, expanded.
+          <code>_components/admin-hub</code>: tinted groups of link cards, a title that links and a description clamped to
+          two lines. Used by <code>/admin/advancement/lookups</code>, one card per lookup (<code>lookups/lookup-cards.ts</code>);
+          a card opens on its own at <code>?card=&lt;id&gt;</code>. Each group wears one earth tone from the{' '}
+          <code>--admin-tint-*</code> tokens in <code>admin.css</code>: a pale card background, a stronger 3px left edge, and
+          a darker heading and title. (Home&rsquo;s card grid that used these is retired: Home is a dashboard now.)
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Hub cards — a tinted group (Advancement, moss) with a seasonal card in season"
+            label="Card group — tinted (moss)"
             canonical
-            note="The title link stretches over the whole card. The description clamps at two lines: this card's long description is cut with an ellipsis."
+            note="The title link stretches over the whole card. The description clamps at two lines: the long one is cut with an ellipsis."
           >
             <AdminHub
               groups={[
                 {
-                  title: 'Advancement',
+                  title: 'Advancement lists',
                   quiet: false,
                   tint: 'moss',
                   cards: [
-                    { key: 'db', title: 'Dashboard', description: 'Active scouts, ledger, Court of Honor candidates and recent sign-ins', href: '#' },
-                    { key: 'fe', title: 'Fast Entry', description: 'Sign off requirements for many scouts at once', href: '#' },
+                    { key: 'rc', title: 'Requirement classes', description: 'Where a requirement can be done: meeting, campout, aquatics…', href: '#' },
                     {
                       key: 'long',
                       title: 'A long description',
                       description: 'This description runs well past two lines on purpose, to show the clamp: the third line never appears and the card stays the same height as its neighbours.',
                       href: '#'
-                    },
-                    { key: 'wr', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '#', season: 'open' }
-                  ]
-                }
-              ]}
-            />
-          </Specimen>
-          <Specimen
-            label="Hub tints — one earth tone per section"
-            note="Moss, sky, wheat, clay, stone. Title ink on the pale background is 6.9–8.7:1; description text is 9:1 or better."
-          >
-            <AdminHub
-              groups={[
-                { title: 'Advancement', quiet: false, tint: 'moss', cards: [{ key: 'm', title: 'Ledger', description: 'Every requirement, rank and badge on record', href: '#' }] },
-                { title: 'Calendar & Content', quiet: false, tint: 'sky', cards: [{ key: 's', title: 'Calendar', description: 'Meetings, campouts, sign-ups and roll call', href: '#' }] },
-                { title: 'Money', quiet: false, tint: 'wheat', cards: [{ key: 'w', title: 'Financial Ledger', description: 'Every dollar in and out of the troop account', href: '#' }] },
-                {
-                  title: 'Reports',
-                  quiet: false,
-                  tint: 'clay',
-                  cards: [
-                    { key: 'c1', title: 'Audits', description: 'Data-quality checks that flag ledger records that look wrong', href: '#' },
-                    { key: 'c2', title: 'Bucket Report', description: 'Income and spending by bucket', href: '#' }
-                  ]
-                },
-                { title: 'People & Setup', quiet: false, tint: 'stone', cards: [{ key: 'p', title: 'Roster', description: 'Scouts, adults and households', href: '#' }] }
-              ]}
-            />
-          </Specimen>
-          <Specimen
-            label="Landing page — one card per report"
-            note="The Reports page (/admin/reports): the hub card reused under the page's own h1 with no tint, and the empty state when a leader can open none."
-          >
-            <ReportsLanding
-              entries={[
-                { label: 'Audits', href: '#', description: 'Data-quality checks that flag ledger records that look wrong' },
-                { label: 'Court of Honor', href: '#', description: 'Ranks, merit badges and awards earned in a date range' }
-              ]}
-            />
-            <ReportsLanding entries={[]} />
-          </Specimen>
-          <Specimen label="Hub card — off season" note="Greyed (no shadow, grey title and edge, whatever the group's tint), last in its group, still a link.">
-            <AdminHub
-              groups={[
-                {
-                  title: 'Money',
-                  quiet: false,
-                  tint: 'wheat',
-                  cards: [
-                    { key: 'wr', title: 'Wreath Sale', description: 'Orders, sellers and the Rose order', href: '#', season: 'off' }
-                  ]
-                }
-              ]}
-            />
-          </Specimen>
-          <Specimen label="Hub tools — the quiet card" note="One heading over a row of plain links; no descriptions, no borders per link.">
-            <AdminHub
-              groups={[
-                {
-                  title: 'Troop admin tools',
-                  quiet: true,
-                  cards: [
-                    {
-                      key: 't',
-                      title: 'Troop admin tools',
-                      href: '#',
-                      links: [
-                        { label: 'Lookups & Admin', href: '#' },
-                        { label: 'BSA Roster', href: '#' },
-                        { label: 'Audit Trail', href: '#' },
-                        { label: 'Utilities', href: '#' },
-                        { label: 'Styleguides', href: '#' }
-                      ]
                     }
                   ]
                 }
+              ]}
+            />
+          </Specimen>
+          <Specimen label="Card tints — one earth tone per group" note="Moss, sky, wheat, clay, stone. Title ink on the pale background is 6.9–8.7:1; description text is 9:1 or better.">
+            <AdminHub
+              groups={[
+                { title: 'Moss', quiet: false, tint: 'moss', cards: [{ key: 'm', title: 'Skills', description: 'Teaching skills, and which older scouts may teach', href: '#' }] },
+                { title: 'Sky', quiet: false, tint: 'sky', cards: [{ key: 's', title: 'Categories', description: 'Calendar categories and their colors', href: '#' }] },
+                { title: 'Wheat', quiet: false, tint: 'wheat', cards: [{ key: 'w', title: 'Stores', description: 'Where the troop buys food', href: '#' }] },
+                { title: 'Clay', quiet: false, tint: 'clay', cards: [{ key: 'c', title: 'Email templates', description: 'The words of each automatic email', href: '#' }] },
+                { title: 'Stone', quiet: false, tint: 'stone', cards: [{ key: 'p', title: 'Households', description: 'Families and who belongs to each', href: '#' }] }
               ]}
             />
           </Specimen>
@@ -1280,61 +1216,49 @@ export default function StyleguidePage() {
       </section>
 
       <section className={sg.section}>
-        <h2 className={sg.sectionHead}>Section bar &amp; section tabs</h2>
+        <h2 className={sg.sectionHead}>Rail, area menus and search</h2>
         <p className={sg.sectionNote}>
-          The admin navigation since 2026-10-13 (<code>_components/section-nav</code>), replacing the left rail. Two
-          rows under the header, both built by <code>sectionNav()</code> from the same <code>SECTIONS</code> data as the
-          Home cards: the <strong>section bar</strong> (white band, gold underline on the active section, so it never
-          reads as a TabStrip) and the active section&rsquo;s <strong>tabs</strong> (the shared <code>TabStrip</code> in
-          link mode on a quieter grey band). A section with no visible item is absent; a section with exactly one shows
-          no tab strip; Home never has one. Reports is its own section holding every report (advancement and finance); the reports are
-          not tabs &mdash; the single &ldquo;Reports&rdquo; bar entry is active on the landing and on every report page, and
-          shows no tab strip. Styleguides stays out of both (Home tools row only). Every link goes
-          through the dirty-form guard (<code>useGuardedNav</code>, as BackNav does). A page&rsquo;s own TabStrip sits in
-          the content below, on the page background, with the larger type &mdash; it must read as the page&rsquo;s, not
-          the section&rsquo;s. Phones (&le; 800px): each row scrolls sideways with the active entry scrolled into view; the
-          page never scrolls sideways.
+          The admin navigation since 2026-11-16 (Plans/Completed/Admin-Portal-Nav.md). Everything a leader can open is one entry in{' '}
+          <code>_components/feature-registry.ts</code>; the rail, its menus, Home&rsquo;s shortcuts and Reports shelf,
+          search and Everything A&ndash;Z all read it, filtered to what the person can open. The <strong>rail</strong>{' '}
+          (<code>rail.tsx</code>): Home, the groups, the person&rsquo;s pins, a hairline, then Setup and Everything A&ndash;Z.
+          A group is a button: a click opens its <strong>menu</strong> beside the rail over a scrim, one level deep, in four
+          columns (Do · Screens · Reports · Setup; Reports by subject; Setup as Do · Lists · Reports · Workspace), with an
+          &ldquo;Open &lt;screen&gt; &rarr;&rdquo; link to the group&rsquo;s first screen. Escape or a click outside closes
+          it and focus goes back to the group. Each item has a quiet <strong>+ Pin</strong> on hover or focus (always shown
+          on touch). The count on a group is the sum of its rows in Needs you today. The active group is decided by registry
+          membership, never by URL prefix. Phones (&le; 800px): the top bar&rsquo;s Menu button opens the rail as a sheet,
+          and a menu opens full-screen with Back. <strong>Search</strong> (<code>search-dialog.tsx</code>): the top
+          bar&rsquo;s field, Ctrl K or &ldquo;/&rdquo;; screens, reports, tasks and setup by name or alias, then people,
+          calendar entries and articles by name; &uarr; &darr; Enter, Esc.
         </p>
         <div className={sg.specimenGrid}>
           <Specimen
-            label="Section bar + tabs — Advancement active, Dashboard tab first"
+            label="Rail with the Money menu open"
             canonical
-            note="Bar labels are short (Home, People, Tools); the tab strip is the section's items, Dashboard first. A report page lights the Reports bar entry instead."
+            wide
+            note="Specimen: drawn in place, without + Pin controls (the live rail pins for real). The menu sits beside the rail; on a phone it is full-screen with a Back button."
           >
-            <SectionBar
-              entries={[
-                { key: 'o', label: 'Home', href: '#', active: false },
-                { key: 'a', label: 'Advancement', href: '#', active: true },
-                { key: 'c', label: 'Calendar & Content', href: '#', active: false },
-                { key: 'm', label: 'Money', href: '#', active: false },
-                { key: 'r', label: 'Reports', href: '#', active: false },
-                { key: 'p', label: 'People', href: '#', active: false },
-                { key: 't', label: 'Tools', href: '#', active: false }
-              ]}
-            />
-            <SectionTabs
-              label="Advancement"
-              activeKey="db"
-              tabs={[
-                { key: 'db', label: 'Dashboard', href: '#' },
-                { key: 'fe', label: 'Fast Entry', href: '#' },
-                { key: 'l', label: 'Ledger', href: '#' },
-                { key: 'sp', label: 'Submit & Present', href: '#' },
-                { key: 'mb', label: 'MB Progress', href: '#' },
-                { key: 'mp', label: 'Meeting Plan', href: '#' }
-              ]}
-            />
+            <div className={sg.railSpecimen}>
+              <Rail
+                {...railModel(
+                  visibleFeatures(FEATURES, { fullAdmin: true, capabilities: new Set(CAPABILITIES), healthViewer: false, plannerView: true }),
+                  ['advancement.fast-entry', 'money.ledger'],
+                  { wreathOpen: true }
+                )}
+                counts={Promise.resolve({ money: 2, advancement: 4 })}
+                canPin={false}
+                specimen={{ openArea: 'money' }}
+              />
+            </div>
           </Specimen>
-          <Specimen
-            label="Section with one visible item — the bar alone"
-            note="A leader who can open only the Calendar sees no tab strip: the page is the section."
-          >
-            <SectionBar
-              entries={[
-                { key: 'o', label: 'Home', href: '#', active: false },
-                { key: 'c', label: 'Calendar & Content', href: '#', active: true }
-              ]}
-            />
+          <Specimen label="Search field — top bar" note="Opens Find anything. On a phone it shrinks to a Search button and the dialog is full-screen.">
+            <div className={sg.searchSpecimen}>
+              <SearchLauncher
+                specimen
+                entries={searchEntries(visibleFeatures(FEATURES, { fullAdmin: true, capabilities: new Set(CAPABILITIES), healthViewer: false, plannerView: true }))}
+              />
+            </div>
           </Specimen>
         </div>
       </section>

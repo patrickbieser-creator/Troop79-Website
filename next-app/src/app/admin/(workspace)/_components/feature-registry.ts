@@ -1,8 +1,7 @@
 /**
- * The admin feature registry (Plans/Admin-Portal-Nav.md): every screen, report, task and setup page a leader can open,
+ * The admin feature registry (Plans/Completed/Admin-Portal-Nav.md): every screen, report, task and setup page a leader can open,
  * in one list. The rail, the area menus, Home, search, Everything A–Z and Reports all read it; nothing keeps a second
- * hand-written list. Today's section bar, tabs and Home card grid are DERIVED from it (nav-data.ts LEGACY_SECTIONS)
- * until the rail replaces them.
+ * hand-written list.
  *
  * A plain module on purpose (no 'use client'): a const exported from a client file reaches server code as a client
  * reference.
@@ -102,6 +101,7 @@ export const FEATURES: Feature[] = [
   { key: 'content.news', label: 'News & Bugle', description: 'Articles and the weekly Bugle', area: 'content', kind: 'screen', href: '/admin/news/articles', capability: NEWS, aliases: ['articles', 'newsletter'] },
   { key: 'content.pages', label: 'Pages', description: 'Join, About and other site pages', area: 'content', kind: 'screen', href: '/admin/news/pages', capability: NEWS },
   { key: 'content.media', label: 'Media Manager', description: 'Images and video on the CDN', area: 'content', kind: 'screen', href: '/admin/news/media-manager', capability: NEWS, aliases: ['images', 'photos', 'bunny'] },
+  { key: 'content.bunny-sync', label: 'Sync the Bunny photo library', description: 'Index photos uploaded straight to Bunny', area: 'content', kind: 'action', href: '/admin/news/media-manager#bunny-sync', capability: NEWS, aliases: ['bunny', 'cdn', 'photos'] },
   { key: 'content.photo-albums', label: 'Photo Albums', description: 'Gallery links for events', area: 'content', kind: 'screen', href: '/admin/news/photo-albums', capability: NEWS, aliases: ['gallery'] },
   { key: 'content.library', label: 'Resource Library', description: 'Study guides, proof submissions, the queue', area: 'content', kind: 'screen', href: '/admin/library', capability: LIB },
   { key: 'content.menu-monster', label: 'Menu Monster', description: 'Recipes, ingredients and prices for patrol cooking', area: 'content', kind: 'screen', href: '/admin/library/menu-monster', capability: LIB, aliases: ['recipes', 'cooking'] },
@@ -155,9 +155,7 @@ export const FEATURES: Feature[] = [
   { key: 'setup.bsa-roster', label: 'Compare with the BSA roster', area: 'setup', kind: 'action', href: '/admin/advancement/bsa-roster', capability: ROSTER, aliases: ['my.scouting', 'registration'] },
   { key: 'setup.lookups', label: 'All lists', description: 'Every lookup list the site uses', area: 'setup', kind: 'setup', href: '/admin/advancement/lookups', capability: ROSTER, aliases: ['lookups'] },
   { key: 'setup.audit-trail', label: 'Audit Trail', description: 'Who changed news, calendar, roster and library content', area: 'setup', kind: 'report', href: '/admin/audit', alsoIn: ['reports'], capability: ROSTER, aliases: ['history', 'changes'] },
-  { key: 'setup.styleguides', label: 'Styleguides', area: 'setup', kind: 'setup', href: '/admin/styleguide' },
-  // Retired in phase 6: /admin/utilities redirects to /admin/reports.
-  { key: 'setup.utilities', label: 'Utilities', area: 'setup', kind: 'screen', href: '/admin/utilities', capability: NEWS }
+  { key: 'setup.styleguides', label: 'Styleguides', area: 'setup', kind: 'setup', href: '/admin/styleguide' }
 ];
 
 /**

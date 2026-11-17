@@ -375,7 +375,7 @@ describe('the board', () => {
   // Build a Plan B6 ("Planner out of Admin"): the planner lives on the public side; Admin Home has no planner row,
   // even for a planner with a request that has no teacher.
   it('AdminHome_HasNoPlannerRow', async () => {
-    const { loadAttentionCategories } = await import('../src/app/admin/(workspace)/advancement/dashboard/attention-items');
+    const { loadAttentionCategories } = await import('../src/app/admin/(workspace)/_home/attention-items');
     await pickFor(young, knotKey);
     const rows = await loadAttentionCategories(new Set(['meeting_planner.view', 'meeting_planner.edit', 'meeting_planner.seed']) as never, sb);
     expect(rows.filter((r) => r.href.startsWith('/planner'))).toEqual([]);

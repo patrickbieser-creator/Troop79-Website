@@ -11,7 +11,7 @@ vi.mock('../src/app/admin/(workspace)/_components/nav-beacon', () => ({ beaconNa
 
 const { SearchLauncher } = await import('../src/app/admin/(workspace)/_components/search-dialog');
 
-/** The search dialog (Plans/Admin-Portal-Nav.md decision 8): keyboard, focus and what opening does. */
+/** The search dialog (Plans/Completed/Admin-Portal-Nav.md decision 8): keyboard, focus and what opening does. */
 
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal ??= function (this: HTMLDialogElement) {

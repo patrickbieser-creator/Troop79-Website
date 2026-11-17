@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SuggestionButton } from '../src/app/admin/(workspace)/advancement/dashboard/suggestion-button';
-import type { SuggestionResult } from '../src/app/admin/(workspace)/advancement/dashboard/suggestion-actions';
+import { SuggestionButton } from '../src/app/admin/(workspace)/_home/suggestion-button';
+import type { SuggestionResult } from '../src/app/admin/(workspace)/_home/suggestion-actions';
 
 /**
  * The "Make a Suggestion" dialog (Leader Dashboard, 2026-08-28). The leader

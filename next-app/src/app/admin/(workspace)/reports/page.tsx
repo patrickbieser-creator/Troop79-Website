@@ -1,6 +1,6 @@
 /**
  * /admin/reports — every report the leader can open, grouped by subject the same way as the rail's Reports menu, from
- * the feature registry (Plans/Admin-Portal-Nav.md decision 4): a report registered with kind 'report' appears here, in
+ * the feature registry (Plans/Completed/Admin-Portal-Nav.md decision 4): a report registered with kind 'report' appears here, in
  * the menu and on Home's shelf with nothing else to maintain. Each report still guards itself.
  */
 import Link from 'next/link';

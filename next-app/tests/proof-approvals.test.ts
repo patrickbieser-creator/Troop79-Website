@@ -144,8 +144,8 @@ describe('loadApprovalDetail', () => {
 
 describe('Advancement nav', () => {
   it('AdvancementNav_ListsApprovalsRightAfterSubmitAndPresent', async () => {
-    const { SECTIONS } = await import('../src/app/admin/(workspace)/_components/nav-data');
-    const labels = SECTIONS.find((s) => s.title === 'Advancement')!.items.map((i) => i.label);
+    const { FEATURES } = await import('../src/app/admin/(workspace)/_components/feature-registry');
+    const labels = FEATURES.filter((f) => f.area === 'advancement' && f.kind === 'screen').map((f) => f.label);
     expect(labels.slice(labels.indexOf('Submit & Present'), labels.indexOf('Submit & Present') + 2)).toEqual(['Submit & Present', 'Approvals']);
   });
 });

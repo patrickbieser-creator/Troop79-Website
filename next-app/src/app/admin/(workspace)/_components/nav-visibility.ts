@@ -5,8 +5,13 @@
 import type { AdminActor } from '@/lib/admin-actor';
 import { adminIsHealthViewer } from '@/lib/health-access';
 import { plannerAccess } from '@/lib/meeting-planner-access';
-import { isFullAdmin } from './nav-data';
+import { CAPABILITIES, type Capability } from '@/lib/capabilities';
 import { FEATURES, visibleFeatures, type Feature, type VisibilityOpts } from './feature-registry';
+
+/** A legacy password session, or an identity actor holding every capability. */
+export function isFullAdmin(actor: { legacyRole: unknown; capabilities: ReadonlySet<Capability> }): boolean {
+  return actor.legacyRole !== null || CAPABILITIES.every((c) => actor.capabilities.has(c));
+}
 
 export async function navVisibility(actor: AdminActor): Promise<VisibilityOpts> {
   return {

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Search (Plans/Admin-Portal-Nav.md decision 8, phase 5; canvas board 3). Opens from the top bar's field, Ctrl K /
+ * Search (Plans/Completed/Admin-Portal-Nav.md decision 8, phase 5; canvas board 3). Opens from the top bar's field, Ctrl K /
  * Cmd K, or "/" when focus isn't in a field. A Dialog: Escape closes it and focus returns to where it was.
  *
  *   Features — the registry entries this person can open, filtered on the client (search-model.ts), grouped
@@ -69,7 +69,7 @@ function groupRows(rows: Row[]): { group: string; items: { row: Row; i: number }
   return out;
 }
 
-export function SearchLauncher({ entries }: { entries: SearchEntry[] }) {
+export function SearchLauncher({ entries, specimen = false }: { entries: SearchEntry[]; /** Styleguide only: no global Ctrl K / "/" listener. */ specimen?: boolean }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
@@ -91,6 +91,7 @@ export function SearchLauncher({ entries }: { entries: SearchEntry[] }) {
   }
 
   useEffect(() => {
+    if (specimen) return;
     function onKey(e: globalThis.KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -102,7 +103,7 @@ export function SearchLauncher({ entries }: { entries: SearchEntry[] }) {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [specimen]);
 
   // Records: debounced, and only the latest request counts.
   const term = q.trim();

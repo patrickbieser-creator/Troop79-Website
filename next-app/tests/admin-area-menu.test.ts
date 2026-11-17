@@ -12,7 +12,7 @@ import {
 } from '../src/app/admin/(workspace)/_components/area-menu';
 import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
-/** The rail and its area menus as data (Plans/Admin-Portal-Nav.md phase 3). */
+/** The rail and its area menus as data (Plans/Completed/Admin-Portal-Nav.md phase 3). */
 
 const ALL: VisibilityOpts = { fullAdmin: true, capabilities: new Set<Capability>(CAPABILITIES), healthViewer: true, plannerView: true };
 const visibleTo = (o: VisibilityOpts) => visibleFeatures(FEATURES, o);
@@ -72,7 +72,7 @@ describe('area menus', () => {
 
   it('SetupMenu_WorkspaceIsAccessAndStyleguides', () => {
     const ws = areaMenu(visibleTo(ALL), 'setup', { wreathOpen: false }).columns.find((c) => c.title === 'Workspace')!;
-    expect(ws.items.map((i) => i.key)).toEqual(['people.access', 'setup.styleguides', 'setup.utilities']);
+    expect(ws.items.map((i) => i.key)).toEqual(['people.access', 'setup.styleguides']);
   });
 
   it('EveryReport_IsInItsOwnGroupAndInReports', () => {
@@ -166,7 +166,7 @@ describe('group counts', () => {
   });
 
   it('Counts_EveryAttentionRowHasAGroup', () => {
-    const src = readFileSync(join(__dirname, '..', 'src', 'app', 'admin', '(workspace)', 'advancement', 'dashboard', 'attention-items.ts'), 'utf8');
+    const src = readFileSync(join(__dirname, '..', 'src', 'app', 'admin', '(workspace)', '_home', 'attention-items.ts'), 'utf8');
     const keys = new Set([...src.matchAll(/queue\(\s*'([a-z-]+)'/g), ...src.matchAll(/key: '([a-z-]+)'/g)].map((m) => m[1]));
     keys.delete('next-signup'); // informational: counts nowhere
     expect([...keys].filter((k) => !(k in ATTENTION_AREA))).toEqual([]);

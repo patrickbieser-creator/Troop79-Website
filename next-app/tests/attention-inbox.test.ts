@@ -18,7 +18,7 @@ const admin = adminClient();
 const caps = (...c: Capability[]) => new Set<Capability>(c);
 
 async function load(c: Set<Capability>) {
-  const { loadAttentionCategories } = await import('../src/app/admin/(workspace)/advancement/dashboard/attention-items');
+  const { loadAttentionCategories } = await import('../src/app/admin/(workspace)/_home/attention-items');
   return loadAttentionCategories(c, admin);
 }
 const find = <T extends { key: string }>(cats: T[], key: string) => cats.find((c) => c.key === key);

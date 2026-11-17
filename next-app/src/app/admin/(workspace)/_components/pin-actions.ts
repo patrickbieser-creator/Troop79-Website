@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * Pin, unpin and reorder (Plans/Admin-Portal-Nav.md phase 3). Each action resolves the actor on the request and acts
+ * Pin, unpin and reorder (Plans/Completed/Admin-Portal-Nav.md phase 3). Each action resolves the actor on the request and acts
  * on THEIR pins only: no person id is ever taken from the page.
  */
 import { revalidatePath } from 'next/cache';

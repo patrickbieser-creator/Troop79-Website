@@ -106,7 +106,7 @@
 }
 
 /* DataTable · Compact — shared rules in _components/data-table.module.css (wave 2, 2026-08-25). */
-.table { composes: compact from '../../_components/data-table.module.css'; }
+.table { composes: compact from '../_components/data-table.module.css'; }
 .dateCell {
   white-space: nowrap;
   color: var(--admin-gray-500);

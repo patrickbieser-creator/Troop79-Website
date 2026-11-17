@@ -1,5 +1,5 @@
 /**
- * Who has no BSA member ID (Plans/Admin-Portal-Nav.md decision 11): ACTIVE scouts and ACTIVE adult leaders only.
+ * Who has no BSA member ID (Plans/Completed/Admin-Portal-Nav.md decision 11): ACTIVE scouts and ACTIVE adult leaders only.
  * Parents and other adults on the roster are not counted. Home's At a glance tile and the Missing BSA IDs report both
  * read this, so the number and the list never disagree.
  *

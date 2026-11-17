@@ -1,5 +1,5 @@
 /**
- * Search (Ctrl K) over the feature registry, as data (Plans/Admin-Portal-Nav.md decision 8, phase 5). The layout hands
+ * Search (Ctrl K) over the feature registry, as data (Plans/Completed/Admin-Portal-Nav.md decision 8, phase 5). The layout hands
  * the client the features this person can open (searchEntries); this filters them by label, aliases, group and
  * description, and groups the hits Do · Screens · Reports · Setup, at most six per group. Plain module: shared by the
  * client dialog and the tests.

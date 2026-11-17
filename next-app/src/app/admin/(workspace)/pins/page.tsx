@@ -1,5 +1,5 @@
 /**
- * /admin/pins — Edit pins (Plans/Admin-Portal-Nav.md phase 3): reorder, remove or add the items pinned in the rail.
+ * /admin/pins — Edit pins (Plans/Completed/Admin-Portal-Nav.md phase 3): reorder, remove or add the items pinned in the rail.
  * Opened from the rail's "Edit pins". Pins are personal, so a session with no person id gets a note instead.
  */
 import { redirect } from 'next/navigation';

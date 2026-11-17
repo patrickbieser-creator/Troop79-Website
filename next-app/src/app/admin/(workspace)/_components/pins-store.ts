@@ -1,5 +1,5 @@
 /**
- * A leader's pinned admin items (Plans/Admin-Portal-Nav.md phase 3), in `admin_pins`. Every function takes the
+ * A leader's pinned admin items (Plans/Completed/Admin-Portal-Nav.md phase 3), in `admin_pins`. Every function takes the
  * person id from the caller, which must be the signed-in actor's own (the server actions resolve it); nothing here
  * takes a person id from a browser.
  */

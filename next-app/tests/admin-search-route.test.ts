@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-/** GET /admin/search (Plans/Admin-Portal-Nav.md decision 8): who may ask, and what a failure gives away. */
+/** GET /admin/search (Plans/Completed/Admin-Portal-Nav.md decision 8): who may ask, and what a failure gives away. */
 let actor: unknown = null;
 vi.mock('@/lib/admin-actor', () => ({ resolveAdminActor: async () => actor, actorCanEnterAdmin: (a: unknown) => a != null }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));

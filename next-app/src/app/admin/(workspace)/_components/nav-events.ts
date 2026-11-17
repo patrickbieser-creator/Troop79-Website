@@ -1,5 +1,5 @@
 /**
- * Shortcut tracking (Plans/Admin-Portal-Nav.md decision 12): one `admin_nav_events` row each time a person opens a
+ * Shortcut tracking (Plans/Completed/Admin-Portal-Nav.md decision 12): one `admin_nav_events` row each time a person opens a
  * registered item from the rail, a menu, search or A–Z. Home's shortcuts read the past 30 days. The caller passes the
  * signed-in actor's own person id; nothing here takes one from a browser.
  */

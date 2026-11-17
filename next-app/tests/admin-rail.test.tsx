@@ -17,7 +17,7 @@ vi.mock('../src/app/admin/(workspace)/_components/pin-actions', () => ({
 
 const { Rail } = await import('../src/app/admin/(workspace)/_components/rail');
 
-/** The rail and its menus as rendered (Plans/Admin-Portal-Nav.md phase 3). */
+/** The rail and its menus as rendered (Plans/Completed/Admin-Portal-Nav.md phase 3). */
 
 const ALL = visibleFeatures(FEATURES, { fullAdmin: true, capabilities: new Set<Capability>(CAPABILITIES), healthViewer: true, plannerView: true });
 

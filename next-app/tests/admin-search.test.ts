@@ -5,7 +5,7 @@ import { likePattern, searchRecords, NO_RECORDS } from '../src/lib/admin-record-
 import { adminClient } from './helpers/admin-client';
 import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
-/** Search (Plans/Admin-Portal-Nav.md decision 8, phase 5). */
+/** Search (Plans/Completed/Admin-Portal-Nav.md decision 8, phase 5). */
 
 const ALL = searchEntries(
   visibleFeatures(FEATURES, { fullAdmin: true, capabilities: new Set<Capability>(CAPABILITIES), healthViewer: true, plannerView: true })

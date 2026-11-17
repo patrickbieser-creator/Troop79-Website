@@ -1,5 +1,5 @@
 /**
- * The rail and its area menus, as data (Plans/Admin-Portal-Nav.md phase 3). Built from the VISIBLE features
+ * The rail and its area menus, as data (Plans/Completed/Admin-Portal-Nav.md phase 3). Built from the VISIBLE features
  * (visibleFeatures), never a hand-kept list. A plain module so the server layout, the client rail and the tests share
  * it.
  *
@@ -23,7 +23,7 @@ export const AREA_LABELS: Record<Area, string> = {
 export const RAIL_GROUPS: readonly Area[] = ['meetings', 'advancement', 'content', 'money', 'people', 'reports'];
 
 /** Setup's Workspace column: the tools about the workspace itself rather than a list it keeps. */
-const WORKSPACE_KEYS: ReadonlySet<string> = new Set(['people.access', 'setup.styleguides', 'setup.utilities']);
+const WORKSPACE_KEYS: ReadonlySet<string> = new Set(['people.access', 'setup.styleguides']);
 
 export interface MenuItem {
   key: string;

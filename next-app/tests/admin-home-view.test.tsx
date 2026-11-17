@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { CAPABILITIES, type Capability } from '../src/lib/capabilities';
 
 /**
- * Home (/admin), Plans/Admin-Portal-Nav.md decisions 5–7: what each kind of leader sees. Loaders that need a database
+ * Home (/admin), Plans/Completed/Admin-Portal-Nav.md decisions 5–7: what each kind of leader sees. Loaders that need a database
  * are stubbed; the registry, the visibility rules and the shortcut/shelf logic are real.
  */
 let caps: Capability[] = [...CAPABILITIES];
@@ -12,12 +12,12 @@ vi.mock('@/lib/admin-actor', () => ({
 }));
 vi.mock('@/lib/health-access', () => ({ adminIsHealthViewer: async () => false }));
 vi.mock('@/lib/supabase/server', () => ({ createAdminClient: () => ({}) }));
-vi.mock('../src/app/admin/(workspace)/advancement/dashboard/attention-items', () => ({ attentionCategoriesFor: async () => [] }));
-vi.mock('../src/app/admin/(workspace)/advancement/dashboard/suggestion-actions', () => ({
+vi.mock('../src/app/admin/(workspace)/_home/attention-items', () => ({ attentionCategoriesFor: async () => [] }));
+vi.mock('../src/app/admin/(workspace)/_home/suggestion-actions', () => ({
   loadSuggestionActor: async () => ({ name: 'Pat', email: 'pat@example.com' }),
   sendSuggestionAction: async () => ({ ok: true })
 }));
-vi.mock('../src/app/admin/(workspace)/advancement/dashboard/suggestion-button', () => ({ SuggestionButton: () => null }));
+vi.mock('../src/app/admin/(workspace)/_home/suggestion-button', () => ({ SuggestionButton: () => null }));
 vi.mock('../src/app/admin/(workspace)/_components/attention-inbox', () => ({
   AttentionInbox: () => <div data-testid="inbox">Needs you today</div>
 }));
@@ -48,7 +48,7 @@ vi.mock('../src/app/admin/(workspace)/_home/at-a-glance', () => ({
 }));
 
 async function renderHome() {
-  const { AdminHome } = await import('../src/app/admin/(workspace)/advancement/dashboard/admin-home');
+  const { AdminHome } = await import('../src/app/admin/(workspace)/_home/admin-home');
   render(await AdminHome());
 }
 

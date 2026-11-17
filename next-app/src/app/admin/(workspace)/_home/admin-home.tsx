@@ -1,5 +1,5 @@
 /**
- * Home (/admin), Plans/Admin-Portal-Nav.md decisions 5–7, phase 4. Top to bottom:
+ * Home (/admin), Plans/Completed/Admin-Portal-Nav.md decisions 5–7, phase 4. Top to bottom:
  *   Needs you today | This week
  *   Your shortcuts (pins first, then what this person opens most)
  *   Reports | At a glance (Active scouts · Troop account · Missing BSA IDs · Uncollected funds)
@@ -18,20 +18,20 @@ import { plannerAccess } from '@/lib/meeting-planner-access';
 import { fmtDay } from '@/lib/format-date';
 import { formatTimeOfDay } from '@/lib/calendar-shared';
 import { attentionCategoriesFor } from './attention-items';
-import { PageTitle } from '../../_components/page-title';
-import { PageSkeleton } from '../../_components/page-skeleton';
-import { AttentionInbox } from '../../_components/attention-inbox';
-import { Notice } from '../../_components/notice';
-import { Button } from '../../../_components/button';
-import { visibleFeaturesFor } from '../../_components/nav-visibility';
-import { loadPinKeys } from '../../_components/pins-store';
-import { mostOpened } from '../../_components/nav-events';
-import { loadThisWeek, shortcuts, reportsShelf, type ThisWeek, type Shortcut } from '../../_home/home-data';
-import { AtAGlance } from '../../_home/at-a-glance';
-import { RecentLedgerCard, LikelyReadyCard, RecentLoginsCard } from '../../_home/advancement-cards';
+import { PageTitle } from '../_components/page-title';
+import { PageSkeleton } from '../_components/page-skeleton';
+import { AttentionInbox } from '../_components/attention-inbox';
+import { Notice } from '../_components/notice';
+import { Button } from '../../_components/button';
+import { visibleFeaturesFor } from '../_components/nav-visibility';
+import { loadPinKeys } from '../_components/pins-store';
+import { mostOpened } from '../_components/nav-events';
+import { loadThisWeek, shortcuts, reportsShelf, type ThisWeek, type Shortcut } from './home-data';
+import { AtAGlance } from './at-a-glance';
+import { RecentLedgerCard, LikelyReadyCard, RecentLoginsCard } from './advancement-cards';
 import { SuggestionButton } from './suggestion-button';
 import { loadSuggestionActor, sendSuggestionAction } from './suggestion-actions';
-import styles from '../../_home/home.module.css';
+import styles from './home.module.css';
 import cards from './dashboard.module.css';
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

@@ -1,32 +1,8 @@
-.pageTitle {
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--admin-gray-200);
-  padding-bottom: 14px;
-}
-.pageTitle h1 {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--admin-navy);
-  margin-bottom: 4px;
-}
-.pageTitle p {
-  font-size: 13px;
-  color: var(--admin-gray-500);
-  max-width: 720px;
-  line-height: 1.5;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 14px;
-}
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-}
+/* The Bunny Media Library Sync card (Media Manager) and the canonical admin card specimen. Moved from the retired
+   Utilities page (Plans/Completed/Admin-Portal-Nav.md phase 6). */
 
 .card {
+  margin-top: var(--admin-space-11);
   background: var(--admin-white);
   border: 1px solid var(--admin-gray-200);
   border-radius: var(--admin-radius);

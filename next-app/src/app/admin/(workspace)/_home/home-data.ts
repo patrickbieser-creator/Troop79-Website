@@ -1,5 +1,5 @@
 /**
- * Home's data (Plans/Admin-Portal-Nav.md decisions 5–6, phase 4): This week, Your shortcuts, the Reports shelf and At a
+ * Home's data (Plans/Completed/Admin-Portal-Nav.md decisions 5–6, phase 4): This week, Your shortcuts, the Reports shelf and At a
  * glance. The three advancement cards load separately (advancement-cards.tsx) inside their own Suspense, so none of
  * this waits on them. Server only; every loader takes the service-role client and the caller decides who sees what.
  */

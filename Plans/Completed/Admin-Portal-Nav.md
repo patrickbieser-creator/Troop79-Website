@@ -1,6 +1,6 @@
 # Admin Portal: Home Dashboard, Area Menus, Search and A–Z
 
-**Status:** Approved 2026-11-16. Patrick approved the design concepts and answered the open questions (decisions
+**Status:** Shipped 2026-11-16, all six phases (v1.274.0; commits aa3cc4e9 → phase 6). Approved 2026-11-16. Patrick approved the design concepts and answered the open questions (decisions
 10–14). Nothing built yet.
 **Priority:** High. Admin screens have sprawled: about 70 routes, about 25 in the nav, the rest buried.
 **Design reference:** Claude Design canvas "Troop 79 leader workspace: dashboard and navigation"
@@ -199,18 +199,18 @@ links to `/planner`, and there is no Meetings home under `/admin`.
 
 ## Acceptance criteria
 
-- [ ] Every admin page is registered or listed in `UNLISTED` with a reason. The guard test fails otherwise.
-- [ ] Each group's menu shows exactly the person's visible items, in the four columns. A reports-only leader sees
+- [x] Every admin page is registered or listed in `UNLISTED` with a reason. The guard test fails otherwise.
+- [x] Each group's menu shows exactly the person's visible items, in the four columns. A reports-only leader sees
       Reports and nothing empty.
-- [ ] Every former Actions ▾ item and buried tab opens directly from its deep link.
-- [ ] Home matches decisions 5–6. The three advancement cards stream in without delaying the top of the page.
-- [ ] The money tiles show only to finance holders. Uncollected funds equals wreath unpaid plus event fees unpaid.
-- [ ] Search finds every registered item by label or alias, respects capabilities for features and records, and is
+- [x] Every former Actions ▾ item and buried tab opens directly from its deep link.
+- [x] Home matches decisions 5–6. The three advancement cards stream in without delaying the top of the page.
+- [x] The money tiles show only to finance holders. Uncollected funds equals wreath unpaid plus event fees unpaid.
+- [x] Search finds every registered item by label or alias, respects capabilities for features and records, and is
       fully keyboard-operable.
-- [ ] A–Z lists every visible item. The type filter, text filter and letter jump work. Entries have no tags.
-- [ ] The old dashboard, logins, analytics and utilities URLs redirect.
-- [ ] Works at 375px: Menu sheet, group sheet, search full-screen.
-- [ ] Planner links appear only to people `plannerAccess` lets view.
+- [x] A–Z lists every visible item. The type filter, text filter and letter jump work. Entries have no tags.
+- [x] The old dashboard, logins, analytics and utilities URLs redirect.
+- [x] Works at 375px: Menu sheet, group sheet, search full-screen.
+- [x] Planner links appear only to people `plannerAccess` lets view.
 
 ## Implementation steps (each phase ships on its own)
 
@@ -251,8 +251,8 @@ links to `/planner`, and there is no Meetings home under `/admin`.
 **As built (2026-11-16).**
 - Phase 3 also shipped `/admin/everything` (A–Z), since the rail links to it, and `/admin/pins` (Edit pins). Phase 6
   keeps the cleanup and the styleguide.
-- **Styleguide waiver:** the specimens for the rail, the area menu and search land in phase 6 (this plan), not with
-  each phase as AGENTS.md normally asks. Phase 6 is not done until they exist.
+- **Styleguide waiver:** the specimens for the rail, the area menu and search landed in phase 6 (done), not with each
+  phase as AGENTS.md normally asks.
 - **App shell:** the workspace root is the viewport's height and `main` is the page's scroller, so the rail always
   fits under the top bar. Page-level `sticky` elements stick to the top of `main`. Print turns this back into one long
   page.
@@ -271,8 +271,16 @@ links to `/planner`, and there is no Meetings home under `/admin`.
     Analytics keeps `advancement.write`.
   - **This week** shows the next meeting, its time and place, and the next three calendar entries. The plan's status
     line ("Plan published · 6 stations · 21 scouts expected") is not built: the planner has no cheap read for it.
-  - **Moves deferred to phase 6:** the Home component and its helpers still live in `advancement/dashboard/` (no page
-    there any more), and they move to `_home/` in phase 6.
+  - **Home's files** moved from `advancement/dashboard/` to `_home/` in phase 6.
+- **Phase 6:**
+  - **Utilities** held two tools, not one: Ledger Audit, and the **Bunny Media Library Sync**. The sync card moved to
+    the Media Manager (the library it fills), with a "Sync the Bunny photo library" task under Website Content › Do.
+    `/admin/utilities` redirects to `/admin/reports`.
+  - **Removed:** the section bar (`section-nav`), `reports-landing`, `nav-data.ts` (legacy SECTIONS, hubGroups,
+    sectionNav), and their tests (`admin-hub`, `section-nav`, `admin-nav-capabilities`, the nav fixture). Their
+    visibility rules are tested on the registry now (`admin-feature-registry`, `admin-area-menu`). `admin-hub` stays as
+    the Lookups card grid, with its own types. The suite went from 8,923 to about 8,830 tests as a result.
+  - **Search** remembers a query only when it led to a screen, so a typed name never sits in the browser.
 
 **Gates and reviews.** Every phase passes the full gate (lint, typecheck, full test run, build): each touches logic,
 capability gating or a migration. qa-lead reviews phases 3–5 (capability filtering on menus, tiles and record

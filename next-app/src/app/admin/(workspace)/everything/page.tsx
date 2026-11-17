@@ -1,5 +1,5 @@
 /**
- * /admin/everything — Everything A–Z (Plans/Admin-Portal-Nav.md decision 9): every item this person can open, from
+ * /admin/everything — Everything A–Z (Plans/Completed/Admin-Portal-Nav.md decision 9): every item this person can open, from
  * the feature registry, alphabetically. Opened from the rail's last entry.
  */
 import { redirect } from 'next/navigation';
