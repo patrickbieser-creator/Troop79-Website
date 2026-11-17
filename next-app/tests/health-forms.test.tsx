@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { addMonths } from '../src/lib/health-records';
 import { HealthForms, type HealthActions } from '../src/app/(public)/member/health-forms/health-forms';
 import type { HealthKind, HealthPage } from '../src/lib/health-records';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock('../src/app/(public)/member/health-forms/shrink-photo', () => ({ shrinkPhoto: async (f: File) => f }));
+vi.mock('../src/lib/shrink-photo', () => ({ shrinkPhoto: async (f: File) => f }));
 
 /** The parent's health-forms screen (Plans/Health-Forms.md, release 1). */
 const TODAY = '2026-11-13';
@@ -22,9 +23,9 @@ const page = (kind: HealthKind, p: number, over: Partial<HealthPage> = {}): Heal
   expiresOn: null,
   ...over
 });
-const actions = (): HealthActions & { upload: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn>; saveDates: ReturnType<typeof vi.fn> } => ({
+const actions = (): HealthActions & { upload: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn>; saveGoodUntil: ReturnType<typeof vi.fn> } => ({
   upload: vi.fn(async () => ({ ok: true as const })),
-  saveDates: vi.fn(async () => ({ ok: true as const })),
+  saveGoodUntil: vi.fn(async () => ({ ok: true as const })),
   remove: vi.fn(async () => ({ ok: true as const }))
 });
 const show = (pages: HealthPage[], a = actions()) => {
@@ -73,6 +74,20 @@ describe('HealthForms', () => {
     await user.upload(input, new File([new Uint8Array([0xff, 0xd8, 0xff])], 'p.jpg', { type: 'image/jpeg' }));
     const fd = a.upload.mock.calls[0][0] as FormData;
     expect([fd.get('personId'), fd.get('kind'), fd.get('page'), fd.get('file') instanceof File]).toEqual(['1', 'bsa_ab', '2', true]);
+  });
+
+  it('Parent_FirstPage_SendsGoodUntil_AYearFromToday', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const a = show([]);
+    await user.click(screen.getByRole('button', { name: 'Add a page to BSA health form, Parts A and B for Ben Example' }));
+    const input = card().querySelectorAll('input[type="file"]')[0] as HTMLInputElement;
+    await user.upload(input, new File([new Uint8Array([0xff, 0xd8, 0xff])], 'p.jpg', { type: 'image/jpeg' }));
+    expect((a.upload.mock.calls[0][0] as FormData).get('goodUntil')).toBe(addMonths(TODAY, 12));
+  });
+
+  it('Parent_SeesTheGoodUntilField_ForTheInsuranceCard', () => {
+    show([page('insurance', 1, { expiresOn: '2027-04-01' })]);
+    expect(within(card()).getAllByText('Good until').length).toBeGreaterThanOrEqual(1);
   });
 
   it('Parent_RemovingAPage_IsAskedFirst', async () => {

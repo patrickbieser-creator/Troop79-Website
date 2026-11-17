@@ -52,66 +52,6 @@
   .wide { display: none; }
 }
 
-/* ── Sheet body ─────────────────────────────────────────────────────── */
-.sheet > * + * { margin-top: var(--admin-space-6); }
-
-.dl {
-  display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
-  gap: var(--admin-space-3) var(--admin-space-5);
-  margin: 0;
-}
-.dl dt {
-  font-size: var(--admin-text-base);
-  font-weight: var(--admin-weight-bold);
-  color: var(--admin-gray-500);
-  padding-top: var(--admin-space-1);
-}
-.dl dd { margin: 0; overflow-wrap: anywhere; }
-.hint {
-  display: block;
-  margin-top: var(--admin-space-1);
-  font-size: var(--admin-text-base);
-  color: var(--admin-gray-500);
-}
-.contacts { margin: 0; padding: 0; list-style: none; }
-.contacts li + li { margin-top: var(--admin-space-2); }
-.contacts a { margin-left: var(--admin-space-2); }
-
-.docs {
-  margin: 0;
-  padding: var(--admin-space-5) 0 0;
-  list-style: none;
-  border-top: 1px solid var(--admin-gray-200);
-}
-.doc + .doc { margin-top: var(--admin-space-5); }
-.docHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--admin-space-3);
-}
-.docName { font-weight: var(--admin-weight-semibold); }
-.pages {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--admin-space-2) var(--admin-space-5);
-  margin: var(--admin-space-2) 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.review {
-  margin: 0;
-  padding-top: var(--admin-space-5);
-  border-top: 1px solid var(--admin-gray-200);
-  color: var(--admin-gray-700);
-}
-
-@media (max-width: 640px) {
-  .dl { grid-template-columns: 1fr; }
-}
-
 /* Who can open health records: the one quiet add row under the list. */
 .addRow {
   display: flex;

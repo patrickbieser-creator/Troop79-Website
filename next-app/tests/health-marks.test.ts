@@ -23,6 +23,15 @@ describe('healthMark', () => {
     expect([healthMark('bsa_c', [], TODAY).text, healthMark('bsa_ab', [], TODAY).text]).toEqual(['—', 'Missing']);
   });
 
+  it('Immunization_InBsaForm_ReadsCheckBsa_NeverRed', () => {
+    const m = healthMark('immunization', [], TODAY, { inBsaForm: true });
+    expect([m.text, m.tone, m.srText]).toEqual(['✓ BSA', 'ok', 'Immunization record: in the BSA form']);
+  });
+
+  it('Immunization_NotNeeded_ReadsDash_NeverRed', () => {
+    expect(healthMark('immunization', [], TODAY, { inBsaForm: false }).tone).toBe('none');
+  });
+
   it('HealthMark_CurrentReadsCheck', () => {
     expect(healthMark('bsa_ab', [page('bsa_ab', '2027-06-01')], TODAY).text).toBe('✓');
   });

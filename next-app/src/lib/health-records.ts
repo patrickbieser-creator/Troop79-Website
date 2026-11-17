@@ -8,7 +8,8 @@ export type HealthKind = (typeof HEALTH_KINDS)[number];
 
 export interface HealthKindDef {
   label: string;
-  /** Asked before the first page: which two dates start the 12 months. */
+  /** Carries a Good until date (Patrick, 2026-11-16): one per document, so Parts A and B share one, and Part C and
+   *  the insurance card each have their own. */
   dated: boolean;
   maxPages: number;
   /** Fixed page names (an insurance card's two sides); null = "Page n". */
@@ -21,7 +22,7 @@ export interface HealthKindDef {
 export const HEALTH_KIND: Record<HealthKind, HealthKindDef> = {
   bsa_ab: { label: 'BSA health form, Parts A and B', dated: true, maxPages: 6, pageNames: null, required: true, hint: 'Every page, signed by a parent. Needed for every outing.' },
   bsa_c: { label: 'BSA health form, Part C', dated: true, maxPages: 4, pageNames: null, required: false, hint: 'The physician’s exam. Only for summer camp and trips over 72 hours.' },
-  insurance: { label: 'Insurance card', dated: false, maxPages: 2, pageNames: ['Front', 'Back'], required: true, hint: 'Both sides.' },
+  insurance: { label: 'Insurance card', dated: true, maxPages: 2, pageNames: ['Front', 'Back'], required: true, hint: 'Both sides.' },
   immunization: { label: 'Immunization record', dated: false, maxPages: 4, pageNames: null, required: false, hint: 'Only when it isn’t already on the BSA form.' }
 };
 
@@ -72,21 +73,35 @@ export function addMonths(iso: string, months: number): string {
   return `${ny}-${String(nm).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
 }
 
-/** The 12 months start from the LATER of the parent's and the doctor's signatures (Patrick, 2026-11-12). */
-export function effectiveOn(parentSigned: string | null | undefined, doctorSigned: string | null | undefined): string | null {
-  const dates = [parentSigned, doctorSigned].filter((d): d is string => typeof d === 'string' && ISO.test(d));
-  return dates.length ? dates.sort().at(-1)! : null;
+/** A real calendar day in ISO form (not 2026-13-01 or 2026-02-30). */
+function isRealDay(iso: string): boolean {
+  if (!ISO.test(iso)) return false;
+  const [y, m, d] = iso.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d;
 }
 
-export function expiresOn(effective: string | null): string | null {
-  return effective ? addMonths(effective, 12) : null;
+/**
+ * A dated document's Good until starts as one year from the day it is entered, and anyone who may change the record
+ * can edit it (Patrick, 2026-11-16). This replaced asking for the parent's and doctor's signature dates.
+ */
+export function defaultGoodUntil(today: string): string {
+  return addMonths(today, 12);
 }
 
-/** Why a signature date can't be used; null when it can (or is blank). */
-export function signedDateProblem(iso: string | null | undefined, today: string): string | null {
-  if (!iso) return null;
-  if (!ISO.test(iso) || iso < '1900-01-01') return 'Pick the date on the form.';
-  if (iso > today) return 'Pick a date that isn’t in the future.';
+/** What a Good until field starts at: the document's date while it is still good, else a year from today (a new
+ *  page for a run-out form is a new form, not the old date). */
+export function goodUntilSeed(expires: string | null, today: string): string {
+  return expires && expires >= today ? expires : defaultGoodUntil(today);
+}
+
+/** How far ahead a Good until may be set: a slip of the year, not a real form. */
+export const GOOD_UNTIL_MAX_MONTHS = 36;
+
+/** Why a Good until date can't be used; null when it can. A past date is allowed: an old form is recorded as run out. */
+export function goodUntilProblem(iso: string | null | undefined, today: string): string | null {
+  if (!iso || !isRealDay(iso) || iso < '1900-01-01') return 'Pick the date the form is good until.';
+  if (iso > addMonths(today, GOOD_UNTIL_MAX_MONTHS)) return 'Pick a date no more than three years from today.';
   return null;
 }
 
@@ -163,7 +178,7 @@ export const HEALTH_STANDING_LABEL: Record<HealthStanding, string> = {
   expired: 'Expired',
   expires_soon: 'Expires soon',
   ready: 'Ready for review',
-  complete: 'Complete'
+  complete: 'Reviewed'
 };
 
 /** The badge tone for each standing (a plain module: a server page and a client list both read it). */
@@ -213,7 +228,7 @@ export function healthNeeds(pages: readonly HealthPage[], opts: { needsPartC: bo
   return out;
 }
 
-/** Needs someone to do something before the trip: anything short of Complete. */
+/** Needs someone to do something before the trip: anything short of complete (on file and reviewed). */
 export function needsAttention(s: HealthStanding): boolean {
   return s !== 'complete';
 }

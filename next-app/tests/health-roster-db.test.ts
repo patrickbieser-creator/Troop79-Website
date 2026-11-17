@@ -64,7 +64,7 @@ beforeAll(async () => {
   await upload(webelos.personId, 'bsa_ab');
   await upload(inactive.personId, 'insurance');
   await upload(parentWithFile, 'bsa_ab');
-  await setHealthReviewed(admin, reviewedOnly, true, { personId: officerId, name: 'HR Officer' });
+  await setHealthReviewed(deps, reviewedOnly, true, { personId: officerId, name: 'HR Officer', via: 'named' });
 });
 
 afterAll(async () => {

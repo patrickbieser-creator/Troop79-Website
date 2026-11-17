@@ -36,7 +36,7 @@ vi.mock('../src/lib/supabase/server', async () => {
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
 import { GET } from '../src/app/api/health-files/[id]/route';
-import { removeHealthPageAction, saveHealthDatesAction, uploadHealthPageAction } from '../src/app/(public)/member/health-forms/actions';
+import { removeHealthPageAction, saveHealthGoodUntilAction, uploadHealthPageAction } from '../src/app/(public)/member/health-forms/actions';
 import { grantHealthViewerAction, revokeHealthViewerAction, setHealthReviewedAction } from '../src/app/(public)/health/actions';
 import { isHealthViewer } from '../src/lib/health-store';
 
@@ -203,16 +203,17 @@ describe('family actions', () => {
     expect([res.ok, (await idOf(mine.personId, 'insurance')).length]).toEqual([true, 36]);
   });
 
-  it('Dates_ForSomeoneOutsideTheFamily_AreRefused', async () => {
+  it('GoodUntil_ForSomeoneOutsideTheFamily_IsRefused', async () => {
     asFamily();
-    const res = await saveHealthDatesAction({ personId: theirs.personId, kind: 'bsa_ab', parentSigned: '2026-03-01', doctorSigned: null });
-    const { data } = await admin.from('health_documents').select('expires_on').eq('person_id', theirs.personId);
-    expect([res.ok, data?.[0]?.expires_on]).toEqual([false, null]);
+    const before = (await admin.from('health_documents').select('expires_on').eq('person_id', theirs.personId)).data;
+    const res = await saveHealthGoodUntilAction({ personId: theirs.personId, kind: 'insurance', goodUntil: '2027-03-01' });
+    const after = (await admin.from('health_documents').select('expires_on').eq('person_id', theirs.personId)).data;
+    expect([res.ok, after]).toEqual([false, before]);
   });
 
-  it('Dates_WithACraftedPersonId_AreRefused', async () => {
+  it('GoodUntil_WithACraftedPersonId_IsRefused', async () => {
     asFamily();
-    const res = await saveHealthDatesAction({ personId: [mine.personId] as unknown as number, kind: 'bsa_ab', parentSigned: '2026-03-01', doctorSigned: null });
+    const res = await saveHealthGoodUntilAction({ personId: [mine.personId] as unknown as number, kind: 'insurance', goodUntil: '2027-03-01' });
     expect(res.ok).toBe(false);
   });
 

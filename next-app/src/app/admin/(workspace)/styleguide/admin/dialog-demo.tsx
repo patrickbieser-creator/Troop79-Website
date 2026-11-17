@@ -40,30 +40,38 @@ export function DialogDemo() {
 }
 
 /**
- * Live demo for AdminDrawer (2026-11-15, Health Forms): a right-side sheet over a full-width list. Behaviour is
+ * Live demo for AdminDrawer (2026-11-15, Health Forms): a right-side sheet over a full-width list, or with `wide` a
+ * centred 860px dialog with two panes and a footer (the health record sheet, 2026-11-16). Behaviour is
  * lib/use-drawer-dialog, shared with the public Drawer; the component is markup and admin tokens only.
  */
-export function AdminDrawerDemo() {
+export function AdminDrawerDemo({ wide = false }: { wide?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" className={sg.demoBtn} onClick={() => setOpen(true)}>
-        Open drawer demo →
+        {wide ? 'Open wide drawer demo →' : 'Open drawer demo →'}
       </button>
       {open && (
         <AdminDrawer
+          wide={wide}
           title="Ben Adams"
-          sub="Scout · Last upload Nov 2, 2026 · Viewing is logged."
-          actions={
-            <>
-              <button type="button" className={sg.ghostBtn}>‹ Prev</button>
-              <button type="button" className={sg.ghostBtn}>Next ›</button>
-            </>
-          }
+          sub="Scout · Last upload Nov 2, 2026"
           onClose={() => setOpen(false)}
+          footer={
+            wide ? (
+              <>
+                <span>Not reviewed · Viewing is logged.</span>
+                <button type="button" className={sg.ghostBtn} onClick={() => setOpen(false)}>
+                  Close
+                </button>
+              </>
+            ) : undefined
+          }
         >
-          The list behind stays mounted, so ticks and scroll survive. 480px wide, the full screen below 768px. Esc, ✕ or a
-          click on the dimmed page closes it, and focus returns to the button that opened it.
+          {wide
+            ? 'A centred 860px dialog for a record that needs two panes; the full screen below 768px. Header and footer stay put, only the body scrolls.'
+            : 'The list behind stays mounted, so ticks and scroll survive. 480px wide, the full screen below 768px.'}{' '}
+          Esc, ✕ or a click on the dimmed page closes it, and focus returns to the button that opened it.
         </AdminDrawer>
       )}
     </>

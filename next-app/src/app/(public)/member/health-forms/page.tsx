@@ -22,7 +22,7 @@ import { Button } from '@/app/_components/button';
 import { Notice } from '@/app/_components/notice';
 import memberStyles from '../member.module.css';
 import { HealthForms, type HealthPerson } from './health-forms';
-import { removeHealthPageAction, saveHealthDatesAction, uploadHealthPageAction } from './actions';
+import { removeHealthPageAction, saveHealthGoodUntilAction, uploadHealthPageAction } from './actions';
 import styles from './health-forms.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -41,6 +41,13 @@ function Gate({ children }: { children: React.ReactNode }) {
       </PageShell>
     </>
   );
+}
+
+/** What a history line says the person did: opened a file, or marked the records reviewed or undid that. */
+function historyVerb(action: string): string {
+  if (action === 'review') return 'marked as reviewed';
+  if (action === 'unreview') return 'undid the review of';
+  return 'opened';
 }
 
 export default async function HealthFormsPage() {
@@ -103,8 +110,8 @@ export default async function HealthFormsPage() {
           </p>
         )}
         <Notice tone="info" className={styles.list}>
-          Every outing needs the BSA health form (Parts A and B) and an insurance card for each person going. The form is
-          good for 12 months from the later signature date.
+          Every outing needs the BSA health form (Parts A and B) and an insurance card for each person going. Each one
+          is good until the date you set, a year from the day you add it unless you change it.
         </Notice>
         {unlinked.length > 0 && (
           <Notice tone="warning" className={styles.list}>
@@ -116,20 +123,20 @@ export default async function HealthFormsPage() {
           people={people}
           pages={pages}
           today={centralToday()}
-          actions={{ upload: uploadHealthPageAction, saveDates: saveHealthDatesAction, remove: removeHealthPageAction }}
+          actions={{ upload: uploadHealthPageAction, saveGoodUntil: saveHealthGoodUntilAction, remove: removeHealthPageAction }}
         />
         <section className={styles.opens} aria-labelledby="health-opens">
           <h2 id="health-opens" className={styles.opensHead}>
-            Who opened these
+            Who opened or reviewed these
           </h2>
           {opens.length === 0 ? (
-            <p className={memberStyles.note}>Nobody has opened a file yet. Every time someone does, it is listed here.</p>
+            <p className={memberStyles.note}>Nobody has opened or reviewed these yet. Every time someone does, it is listed here.</p>
           ) : (
             <ul className={styles.opensList}>
               {opens.map((o, i) => (
                 <li key={i}>
-                  {fmtDateTime(o.at)} · {o.viewerName} opened {(nameOf.get(o.personId) ?? 'a family member').split(' ')[0]}&rsquo;s{' '}
-                  {isHealthKind(o.kind) ? HEALTH_KIND[o.kind].label : 'record'}
+                  {fmtDateTime(o.at)} · {o.viewerName} {historyVerb(o.action)} {(nameOf.get(o.personId) ?? 'a family member').split(' ')[0]}&rsquo;s{' '}
+                  {isHealthKind(o.kind) ? HEALTH_KIND[o.kind].label : 'records'}
                 </li>
               ))}
             </ul>

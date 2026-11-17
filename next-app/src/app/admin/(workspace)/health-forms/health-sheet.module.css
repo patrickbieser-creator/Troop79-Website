@@ -1,0 +1,173 @@
+/* Admin › Health Forms record sheet (Plans/Admin-Health-Record-Sheet-Redesign.md, version B: two panes). Tokens only.
+   The panes sit in one wrapping row: the forms pane takes what is left of 860px and drops below the left pane on a
+   narrow screen (family note, contacts, then forms). */
+
+.split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--admin-space-6);
+  align-items: flex-start;
+}
+.left {
+  flex: 0 0 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-5);
+}
+.forms {
+  flex: 999 1 420px;
+  min-width: 0;
+  padding: var(--admin-space-4);
+  border-radius: var(--admin-radius);
+  background: var(--admin-form-bg);
+}
+@media (max-width: 899px) {
+  .left { flex-basis: 100%; }
+}
+
+.paneHead {
+  margin: 0 0 var(--admin-space-3);
+  font-size: var(--admin-text-base);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-700);
+}
+
+.familyNote {
+  padding: var(--admin-space-4);
+  border-radius: var(--admin-radius);
+  background: var(--admin-status-warning-bg);
+}
+.familyNote > * { margin: 0; }
+.familyNote > * + * { margin-top: var(--admin-space-2); }
+.noteTitle {
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-accent-gold);
+}
+.noteText {
+  font-weight: var(--admin-weight-semibold);
+  color: var(--admin-gray-900);
+  overflow-wrap: anywhere;
+}
+.hint { font-size: var(--admin-text-sm); color: var(--admin-gray-600); }
+
+.contacts { margin: 0; padding: 0; list-style: none; }
+.contacts li { display: flex; flex-direction: column; gap: var(--admin-space-1); overflow-wrap: anywhere; }
+.contacts li + li { margin-top: var(--admin-space-4); }
+.contactName { font-weight: var(--admin-weight-semibold); }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--admin-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+@media (max-width: 599px) {
+  .cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+.card {
+  min-width: 0;
+  padding: var(--admin-space-4);
+  border: 1px solid var(--admin-gray-200);
+  border-radius: var(--admin-radius);
+  background: var(--admin-white);
+}
+/* A required form missing or run out: the first thing seen, and room for its two buttons at normal size. */
+.cardNeeds {
+  grid-column: 1 / -1;
+  border-color: var(--admin-danger);
+}
+/* Not needed: present, but out of the way. */
+.cardQuiet {
+  border-style: dashed;
+  background: transparent;
+}
+/* An open editor needs the width too. */
+.card:has(.editor) { grid-column: 1 / -1; }
+
+.cardHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-2) var(--admin-space-3);
+}
+.cardName { font-weight: var(--admin-weight-semibold); color: var(--admin-gray-900); }
+.cardMeta {
+  margin: var(--admin-space-2) 0 0;
+  font-size: var(--admin-text-base);
+  color: var(--admin-gray-600);
+}
+.cardActs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-2);
+  margin-top: var(--admin-space-3);
+}
+
+.muted { color: var(--admin-gray-500); }
+.problem {
+  margin: var(--admin-space-3) 0 0;
+  padding: var(--admin-space-2) var(--admin-space-3);
+  border: 1px solid var(--admin-danger);
+  border-radius: var(--admin-radius);
+  background: var(--admin-status-error-bg);
+  color: var(--admin-danger-dark);
+}
+
+/* Upload for family / Replace or remove pages, open inside its card. */
+.editor {
+  margin-top: var(--admin-space-3);
+  padding-top: var(--admin-space-3);
+  border-top: 1px solid var(--admin-gray-200);
+}
+.pageList { margin: 0; padding: 0; list-style: none; }
+.pageRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-2);
+  padding: var(--admin-space-2) 0;
+}
+.pageRow + .pageRow { border-top: 1px solid var(--admin-gray-100); }
+.pageActs { display: flex; flex-wrap: wrap; align-items: center; gap: var(--admin-space-2); }
+.dateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--admin-space-2) var(--admin-space-3);
+  margin-top: var(--admin-space-3);
+}
+.dateLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--admin-space-1);
+  font-size: var(--admin-text-sm);
+  font-weight: var(--admin-weight-bold);
+  color: var(--admin-gray-700);
+}
+.editorFoot { margin-top: var(--admin-space-3); }
+.picker { display: none; }
+
+/* Footer: review state on the left, Close and the review button on the right. */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--admin-space-3);
+  width: 100%;
+}
+.footState {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--admin-space-2) var(--admin-space-3);
+  min-width: 0;
+}
+.footActs { display: flex; flex-wrap: wrap; gap: var(--admin-space-2); margin-left: auto; }
+.footProblem { flex-basis: 100%; color: var(--admin-danger-dark); }

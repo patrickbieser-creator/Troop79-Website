@@ -2,8 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { adminClient } from './helpers/admin-client';
 import { createTestScout, deleteTestScout, type TestScout } from './helpers/signup-fixtures';
 import { memoryHealthStorage } from '../src/lib/health-files';
-import { healthOpensFor, healthPageOwner, listHealthPages, openHealthPage, removeHealthPage, saveHealthDates, saveHealthPage, unlinkedHouseholdScouts, type HealthDeps, type HealthViewer } from '../src/lib/health-store';
+import { healthOpensFor, healthPageOwner, listHealthPages, openHealthPage, removeHealthPage, saveHealthGoodUntil, saveHealthPage, setImmunizationInBsaForm, unlinkedHouseholdScouts, type HealthDeps, type HealthViewer } from '../src/lib/health-store';
 import { resolveFamilyScope } from '../src/lib/household-scope';
+import { addMonths, goodUntilSeed } from '../src/lib/health-records';
 
 /**
  * Health records against the real local database, storage in memory (Plans/Health-Forms.md). The family rule is
@@ -28,12 +29,13 @@ const rows = async (personId: number) =>
   }[];
 const logRows = async (personId: number) =>
   ((await admin.from('health_access_log').select('action, via, viewer_person_id, kind, page').eq('person_id', personId).order('id')).data ?? []) as { action: string; via: string; viewer_person_id: number; kind: string; page: number }[];
-const save = (personId: number, kind: string, page: number, bytes: Uint8Array, dates: { parentSigned?: string; doctorSigned?: string } = {}) =>
+const save = (personId: number, kind: string, page: number, bytes: Uint8Array, dates: { goodUntil?: string } = {}) =>
   saveHealthPage({ personId, kind, page, bytes, ...dates }, parent, deps);
 
 async function wipe(personId: number) {
   await admin.from('health_documents').delete().eq('person_id', personId);
   await admin.from('health_access_log').delete().eq('person_id', personId);
+  await admin.from('health_immunization_in_bsa_form').delete().eq('person_id', personId);
 }
 
 beforeAll(async () => {
@@ -79,18 +81,43 @@ describe('saveHealthPage', () => {
     expect([res.ok, row.content_type, blob.includes(Buffer.from('page one'))]).toEqual([true, 'image/jpeg', false]);
   });
 
-  it('Save_WithBothSignatureDates_ExpiresTwelveMonthsAfterTheLater', async () => {
+  it('GoodUntil_DefaultsToOneYearFromEntry_PerDocument', async () => {
     await wipe(scout.personId);
-    await save(scout.personId, 'bsa_ab', 1, PDF, { parentSigned: '2026-03-01', doctorSigned: '2026-03-04' });
+    await save(scout.personId, 'bsa_ab', 1, PDF);
     const [row] = await rows(scout.personId);
-    expect([row.effective_on, row.expires_on, row.content_type]).toEqual(['2026-03-04', '2027-03-04', 'application/pdf']);
+    expect([row.expires_on, row.content_type]).toEqual([addMonths(TODAY, 12), 'application/pdf']);
   });
 
-  it('Save_OfALaterPageWithDates_DatesEveryPageOfThatDocument', async () => {
+  it('GoodUntil_Given_IsKept', async () => {
+    await wipe(scout.personId);
+    await save(scout.personId, 'insurance', 1, JPEG('front'), { goodUntil: '2027-01-31' });
+    expect((await rows(scout.personId)).map((r) => r.expires_on)).toEqual(['2027-01-31']);
+  });
+
+  it('GoodUntil_PartsAandBShareOneDate_PartCAndInsuranceHaveTheirOwn', async () => {
+    await wipe(scout.personId);
+    await save(scout.personId, 'bsa_ab', 1, JPEG('ab1'), { goodUntil: '2027-03-01' });
+    await save(scout.personId, 'bsa_ab', 2, JPEG('ab2'));
+    await save(scout.personId, 'bsa_c', 1, JPEG('c1'), { goodUntil: '2027-08-15' });
+    await save(scout.personId, 'insurance', 1, JPEG('front'), { goodUntil: '2027-12-31' });
+    expect((await rows(scout.personId)).map((r) => `${r.kind}:${r.expires_on}`)).toEqual(['bsa_ab:2027-03-01', 'bsa_ab:2027-03-01', 'bsa_c:2027-08-15', 'insurance:2027-12-31']);
+  });
+
+  it('GoodUntil_OnALaterPage_DatesEveryPageOfThatDocument', async () => {
     await wipe(scout.personId);
     await save(scout.personId, 'bsa_ab', 1, JPEG('one'));
-    await save(scout.personId, 'bsa_ab', 2, JPEG('two'), { doctorSigned: '2026-05-10' });
+    await save(scout.personId, 'bsa_ab', 2, JPEG('two'), { goodUntil: '2027-05-10' });
     expect((await rows(scout.personId)).map((r) => r.expires_on)).toEqual(['2027-05-10', '2027-05-10']);
+  });
+
+  it('GoodUntilSeed_IsTheCurrentDate_OrAYearOnForARunOutForm', () => {
+    expect([goodUntilSeed('2027-01-01', TODAY), goodUntilSeed('2020-01-01', TODAY), goodUntilSeed(null, TODAY)]).toEqual(['2027-01-01', addMonths(TODAY, 12), addMonths(TODAY, 12)]);
+  });
+
+  it('Immunization_HasNoGoodUntil', async () => {
+    await wipe(scout.personId);
+    await save(scout.personId, 'immunization', 1, JPEG('imm'), { goodUntil: '2027-05-10' });
+    expect((await rows(scout.personId)).map((r) => r.expires_on)).toEqual([null]);
   });
 
   it('Parent_CanReplaceDocument_AndOldCiphertextIsDeleted', async () => {
@@ -117,8 +144,8 @@ describe('saveHealthPage', () => {
     expect((await save(scout.personId, 'dental', 1, JPEG('x'))).ok).toBe(false);
   });
 
-  it('Save_RefusesASignatureDateInTheFuture', async () => {
-    expect((await save(scout.personId, 'bsa_ab', 1, JPEG('x'), { doctorSigned: '2026-12-25' })).ok).toBe(false);
+  it('Save_RefusesAGoodUntilMoreThanThreeYearsOut', async () => {
+    expect((await save(scout.personId, 'bsa_ab', 1, JPEG('x'), { goodUntil: '2031-01-01' })).ok).toBe(false);
   });
 
   it('Upload_DeletesTheObject_WhenTheRowInsertFails', async () => {
@@ -136,17 +163,73 @@ describe('saveHealthPage', () => {
   });
 });
 
-describe('saveHealthDates', () => {
-  it('Dates_SetLater_ApplyToEveryPage', async () => {
+describe('saveHealthGoodUntil', () => {
+  it('GoodUntil_CanBeEdited_ForEveryPage', async () => {
     await wipe(scout.personId);
     await save(scout.personId, 'bsa_c', 1, JPEG('c1'));
     await save(scout.personId, 'bsa_c', 2, JPEG('c2'));
-    const res = await saveHealthDates({ personId: scout.personId, kind: 'bsa_c', parentSigned: null, doctorSigned: '2026-06-01' }, deps);
+    const res = await saveHealthGoodUntil({ personId: scout.personId, kind: 'bsa_c', goodUntil: '2027-06-01' }, parent, deps);
     expect([res.ok, (await rows(scout.personId)).map((r) => r.expires_on)]).toEqual([true, ['2027-06-01', '2027-06-01']]);
   });
 
-  it('Dates_WithNothingPicked_AreRefused', async () => {
-    expect((await saveHealthDates({ personId: scout.personId, kind: 'bsa_c', parentSigned: null, doctorSigned: null }, deps)).ok).toBe(false);
+  it('GoodUntil_Edit_IsLogged_AndClearsTheReview', async () => {
+    await wipe(scout.personId);
+    await save(scout.personId, 'bsa_c', 1, JPEG('c1'));
+    await admin.from('health_reviews').upsert({ person_id: scout.personId, reviewed_by_name: 'Leader' }, { onConflict: 'person_id' });
+    await saveHealthGoodUntil({ personId: scout.personId, kind: 'bsa_c', goodUntil: '2027-06-01' }, parent, deps);
+    const reviews = (await admin.from('health_reviews').select('person_id').eq('person_id', scout.personId)).data ?? [];
+    expect([(await logRows(scout.personId)).map((l) => `${l.action}:${l.kind}`), reviews.length]).toEqual([['upload:bsa_c', 'edit:bsa_c'], 0]);
+    await admin.from('health_reviews').delete().eq('person_id', scout.personId);
+  });
+
+  it('GoodUntil_Edit_ChangesNothing_WhenTheLogLineCannotBeWritten', async () => {
+    await wipe(scout.personId);
+    await save(scout.personId, 'bsa_c', 1, JPEG('c1'), { goodUntil: '2027-01-01' });
+    await expect(saveHealthGoodUntil({ personId: scout.personId, kind: 'bsa_c', goodUntil: '2027-06-01' }, { ...parent, personId: 2147483000 }, deps)).rejects.toThrow();
+    expect((await rows(scout.personId)).map((r) => r.expires_on)).toEqual(['2027-01-01']);
+  });
+
+  it('GoodUntil_Blank_IsRefused', async () => {
+    expect((await saveHealthGoodUntil({ personId: scout.personId, kind: 'bsa_c', goodUntil: null }, parent, deps)).ok).toBe(false);
+  });
+
+  it('GoodUntil_OnImmunization_IsRefused', async () => {
+    expect((await saveHealthGoodUntil({ personId: scout.personId, kind: 'immunization', goodUntil: '2027-06-01' }, parent, deps)).ok).toBe(false);
+  });
+});
+
+describe('in the BSA form', () => {
+  const flag = async (personId: number) => ((await admin.from('health_immunization_in_bsa_form').select('person_id').eq('person_id', personId)).data ?? []).length;
+
+  it('InBsaForm_ClearsWhenPartsAandBChange', async () => {
+    await wipe(scout.personId);
+    await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
+    const before = await flag(scout.personId);
+    await save(scout.personId, 'bsa_ab', 1, JPEG('ab'));
+    expect([before, await flag(scout.personId)]).toEqual([1, 0]);
+  });
+
+  it('InBsaForm_ClearsWhenAPartsAandBPageIsRemoved', async () => {
+    await wipe(scout.personId);
+    await save(scout.personId, 'bsa_ab', 1, JPEG('ab'));
+    await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
+    const [row] = await rows(scout.personId);
+    await removeHealthPage(row.id, [scout.personId], parent, deps);
+    expect(await flag(scout.personId)).toBe(0);
+  });
+
+  it('InBsaForm_IsLogged_BothWays', async () => {
+    await wipe(scout.personId);
+    await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
+    await setImmunizationInBsaForm(deps, scout.personId, false, { personId: parentId, name: 'Leader', via: 'named' });
+    expect((await logRows(scout.personId)).map((l) => `${l.action}:${l.kind}`)).toEqual(['edit:immunization', 'edit:immunization']);
+  });
+
+  it('InBsaForm_StaysWhenAnotherFormChanges', async () => {
+    await wipe(scout.personId);
+    await setImmunizationInBsaForm(deps, scout.personId, true, { personId: parentId, name: 'Leader', via: 'named' });
+    await save(scout.personId, 'insurance', 1, JPEG('front'));
+    expect(await flag(scout.personId)).toBe(1);
   });
 });
 

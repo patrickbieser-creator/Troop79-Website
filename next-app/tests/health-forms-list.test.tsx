@@ -9,6 +9,7 @@ vi.mock('next/navigation', () => ({
 
 import { HealthFormsList, type HealthListRow } from '../src/app/admin/(workspace)/health-forms/health-forms-list';
 import type { HealthMarkValue } from '../src/lib/health-marks';
+import type { SheetActions } from '../src/app/admin/(workspace)/health-forms/health-sheet';
 
 /**
  * Admin Health Forms list (Plans/Admin-Health-Forms.md, phase 2): default sort, the status tabs that carry the
@@ -36,7 +37,7 @@ const rows = [row(3, 'Cara Zed', 'adult', 'complete'), row(1, 'Ava Chen', 'scout
 const names = () => screen.getAllByRole('link', { name: /^(Ava Chen|Ben Adams|Cara Zed)$/ }).map((a) => a.textContent);
 
 function setup(openRecord = vi.fn(async () => ({ ok: false as const, error: 'no' }))) {
-  render(<HealthFormsList rows={rows} initialPersonId={null} lede="Lede" today="2026-11-15" openRecord={openRecord} />);
+  render(<HealthFormsList rows={rows} initialPersonId={null} lede="Lede" today="2026-11-15" openRecord={openRecord} actions={{} as SheetActions} />);
   return openRecord;
 }
 

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { healthAccess } from '@/lib/health-access';
+import { healthAccess, healthDeps } from '@/lib/health-access';
 import { createAdminClient } from '@/lib/supabase/server';
 import { grantHealthViewer, loadUpcomingTrip, revokeHealthViewer, setHealthReviewed } from '@/lib/health-store';
 import { remindFamilies, type HealthReminderOutcome } from '@/lib/health-reminders';
@@ -30,7 +30,7 @@ export async function setHealthReviewedAction(personId: number, on: boolean): Pr
   const id = idOf(personId);
   if (!access || id == null) return { ok: false, error: NOT_NAMED };
   try {
-    await setHealthReviewed(createAdminClient(), id, on === true, access.me);
+    await setHealthReviewed(healthDeps(), id, on === true, { ...access.me, via: 'named' });
   } catch (e) {
     console.error('[health] review failed:', e instanceof Error ? e.message : e);
     return { ok: false, error: FAILED };
@@ -83,7 +83,7 @@ export async function remindFamiliesAction(signupId: number, confirm: boolean): 
     const today = centralToday();
     const trip = await loadUpcomingTrip(supabase, id, today);
     if (!trip) return { ok: false, error: 'That trip is over, or its sign-up is gone.' };
-    const outcome = await remindFamilies(trip, confirm === true, { supabase, send: sendEmail, siteUrl: siteUrl(), today });
+    const outcome = await remindFamilies(trip, confirm === true, { supabase, send: sendEmail, siteUrl: siteUrl(), today, sentBy: access.me });
     return { ok: true, outcome };
   } catch (e) {
     console.error('[health] reminders failed:', e instanceof Error ? e.message : e);

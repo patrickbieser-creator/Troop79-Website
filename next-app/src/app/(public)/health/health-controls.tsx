@@ -40,7 +40,7 @@ export function ReviewTick({
           }}
         />
         <span>
-          Reviewed: {name.split(' ')[0]}&rsquo;s records are complete
+          Reviewed {name.split(' ')[0]}&rsquo;s records
           <span className={styles.reviewBy}>
             {review ? `${review.byName}, ${fmtDate(review.at)}` : 'Tick after reading the form. A new or replaced page clears it.'}
           </span>

@@ -17,6 +17,7 @@ import {
   revokeHealthViewer,
   saveHealthPage,
   setHealthReviewed,
+  healthOpensFor,
   type HealthAccess,
   type HealthDeps
 } from '../src/lib/health-store';
@@ -230,24 +231,59 @@ describe('the named list', () => {
 });
 
 describe('the review tick', () => {
-  const by = () => ({ personId: adultId, name: 'ZZVITEST Trip Adult' });
+  const by = () => ({ personId: adultId, name: 'ZZVITEST Trip Adult', via: 'named' as const });
   const reviewed = async () => (await listHealthReviews(admin, [scout.personId])).has(scout.personId);
 
   it('Review_IsRecorded_WithWhoAndWhen', async () => {
-    await setHealthReviewed(admin, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, true, by());
     expect((await listHealthReviews(admin, [scout.personId])).get(scout.personId)?.byName).toBe('ZZVITEST Trip Adult');
   });
 
   it('Review_CanBeTakenBack', async () => {
-    await setHealthReviewed(admin, scout.personId, true, by());
-    await setHealthReviewed(admin, scout.personId, false, by());
+    await setHealthReviewed(deps, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, false, by());
+    expect(await reviewed()).toBe(false);
+  });
+
+  const reviewLines = async () =>
+    ((await admin.from('health_access_log').select('action, viewer_name, kind').eq('person_id', scout.personId).in('action', ['review', 'unreview']).order('id')).data ?? []) as { action: string; viewer_name: string; kind: string }[];
+
+  it('NamedLeader_CanUndoReview_ReturnsToNotReviewed_LogsUndo', async () => {
+    await admin.from('health_access_log').delete().eq('person_id', scout.personId).in('action', ['review', 'unreview']);
+    await setHealthReviewed(deps, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, false, by());
+    expect([await reviewed(), (await reviewLines()).map((l) => `${l.action}:${l.viewer_name}:${l.kind}`)]).toEqual([
+      false,
+      ['review:ZZVITEST Trip Adult:record', 'unreview:ZZVITEST Trip Adult:record']
+    ]);
+  });
+
+  it('NamedLeader_CanMarkReviewedAgain_AfterUndo', async () => {
+    await setHealthReviewed(deps, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, false, by());
+    await setHealthReviewed(deps, scout.personId, true, by());
+    expect(await reviewed()).toBe(true);
+  });
+
+  it('Review_And_Undo_AppearInTheFamilysHistory', async () => {
+    await admin.from('health_access_log').delete().eq('person_id', scout.personId).in('action', ['review', 'unreview']);
+    await setHealthReviewed(deps, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, false, by());
+    const history = await healthOpensFor(admin, [scout.personId]);
+    expect(history.filter((h) => h.action === 'review' || h.action === 'unreview').map((h) => h.action)).toEqual(['unreview', 'review']);
+  });
+
+  it('Review_NothingChanges_WhenTheLogLineCannotBeWritten', async () => {
+    await setHealthReviewed(deps, scout.personId, false, by());
+    // A viewer name the log refuses (over 120 characters is cut, an empty one becomes "Someone"): use a bad person id.
+    await expect(setHealthReviewed(deps, scout.personId, true, { personId: 2147483000, name: 'Nobody', via: 'named' })).rejects.toThrow();
     expect(await reviewed()).toBe(false);
   });
 
   it('ReplacingADocument_ClearsTheReview', async () => {
     const parent = { personId: adultId, name: 'P', via: 'family' as const };
     await saveHealthPage({ personId: scout.personId, kind: 'bsa_ab', page: 1, bytes: JPEG }, parent, deps);
-    await setHealthReviewed(admin, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, true, by());
     await saveHealthPage({ personId: scout.personId, kind: 'bsa_ab', page: 1, bytes: JPEG }, parent, deps);
     expect(await reviewed()).toBe(false);
   });
@@ -255,7 +291,7 @@ describe('the review tick', () => {
   it('RemovingADocument_ClearsTheReview', async () => {
     const parent = { personId: adultId, name: 'P', via: 'family' as const };
     await saveHealthPage({ personId: scout.personId, kind: 'insurance', page: 1, bytes: JPEG }, parent, deps);
-    await setHealthReviewed(admin, scout.personId, true, by());
+    await setHealthReviewed(deps, scout.personId, true, by());
     const { data } = await admin.from('health_documents').select('id').eq('person_id', scout.personId).eq('kind', 'insurance').single();
     await removeHealthPage(String(data!.id), [scout.personId], parent, deps);
     expect(await reviewed()).toBe(false);

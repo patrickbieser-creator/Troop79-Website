@@ -8,11 +8,11 @@ import {
   addDays,
   inTripWindow,
   healthNeeds,
-  effectiveOn,
-  expiresOn,
+  defaultGoodUntil,
+  goodUntilProblem,
+  HEALTH_KIND,
   healthFileProblem,
   isHealthKind,
-  signedDateProblem,
   sniffHealthType,
   validPage,
   type HealthKind,
@@ -113,32 +113,49 @@ export async function listHealthPages(sb: SupabaseClient, personIds: number[]): 
 
 export type SaveResult = { ok: true; id: string } | { ok: false; error: string };
 
+/** "The immunizations are on the BSA form" no longer holds once Parts A and B change (decision 16). */
+async function clearInBsaForm(sb: SupabaseClient, personId: number): Promise<void> {
+  const { error } = await sb.from('health_immunization_in_bsa_form').delete().eq('person_id', personId);
+  if (error) throw new Error(error.message);
+}
+
+/** The Good until a dated document has now: the earliest of its pages' dates, or null. */
+async function currentGoodUntil(sb: SupabaseClient, personId: number, kind: HealthKind): Promise<string | null> {
+  const { data, error } = await sb.from('health_documents').select('expires_on').eq('person_id', personId).eq('kind', kind).not('expires_on', 'is', null).order('expires_on').limit(1);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as { expires_on: string }[])[0]?.expires_on ?? null;
+}
+
 /**
- * Saves one page: a new one, or a replacement for the page already in that slot. For a dated document the two
- * signature dates (either may be blank) set when the 12 months start, for every page of that document.
+ * Saves one page: a new one, or a replacement for the page already in that slot. A dated document carries ONE Good
+ * until for all its pages (Patrick, 2026-11-16): the one given, else the one it already has, else a year from today.
  */
 export async function saveHealthPage(
-  input: { personId: number; kind: string; page: number; bytes: Uint8Array; parentSigned?: string | null; doctorSigned?: string | null },
+  input: { personId: number; kind: string; page: number; bytes: Uint8Array; goodUntil?: string | null },
   viewer: HealthViewer,
   deps: HealthDeps
 ): Promise<SaveResult> {
   if (!isHealthKind(input.kind) || !validPage(input.kind, input.page)) return { ok: false, error: 'That page can’t be added here.' };
+  const kind = input.kind;
   const problem = healthFileProblem(input.bytes);
   if (problem) return { ok: false, error: problem };
   const today = deps.today();
-  const dateProblem = signedDateProblem(input.parentSigned, today) ?? signedDateProblem(input.doctorSigned, today);
-  if (dateProblem) return { ok: false, error: dateProblem };
+  const dated = HEALTH_KIND[kind].dated;
+  if (dated && input.goodUntil) {
+    const dateProblem = goodUntilProblem(input.goodUntil, today);
+    if (dateProblem) return { ok: false, error: dateProblem };
+  }
   const sb = deps.supabase;
 
-  const { data: old, error: oldError } = await sb.from('health_documents').select(COLS).eq('person_id', input.personId).eq('kind', input.kind).eq('page', input.page).maybeSingle();
+  const { data: old, error: oldError } = await sb.from('health_documents').select(COLS).eq('person_id', input.personId).eq('kind', kind).eq('page', input.page).maybeSingle();
   if (oldError) throw new Error(oldError.message);
   const before = (old as unknown as Row | null) ?? null;
+  const goodUntil = dated ? (input.goodUntil || (await currentGoodUntil(sb, input.personId, kind)) || defaultGoodUntil(today)) : null;
 
   // Logged before anything is stored: a write that then fails leaves a log line for something that didn't happen,
   // never a stored file with no line.
-  await log(deps, viewer, { person_id: input.personId, kind: input.kind, page: input.page, id: before?.id ?? null }, before ? 'replace' : 'upload');
+  await log(deps, viewer, { person_id: input.personId, kind, page: input.page, id: before?.id ?? null }, before ? 'replace' : 'upload');
 
-  const effective = effectiveOn(input.parentSigned, input.doctorSigned);
   const objectPath = randomUUID();
   const sealed = sealHealthFile(objectPath, input.bytes);
   await deps.storage.put(objectPath, sealed.blob);
@@ -151,11 +168,11 @@ export async function saveHealthPage(
     bytes: input.bytes.length,
     uploaded_by_person_id: viewer.personId,
     uploaded_at: new Date().toISOString(),
-    ...(effective ? { effective_on: effective, expires_on: expiresOn(effective) } : {})
+    ...(goodUntil ? { expires_on: goodUntil } : {})
   };
   const write = before
     ? sb.from('health_documents').update(fields).eq('id', before.id).select('id').single()
-    : sb.from('health_documents').insert({ person_id: input.personId, kind: input.kind, page: input.page, ...fields }).select('id').single();
+    : sb.from('health_documents').insert({ person_id: input.personId, kind, page: input.page, ...fields }).select('id').single();
   const { data: saved, error: writeError } = await write;
   if (writeError || !saved) {
     // The row is the only way back to the object: without it the ciphertext must not stay.
@@ -166,33 +183,40 @@ export async function saveHealthPage(
   const id = String((saved as { id: string }).id);
   // The old ciphertext goes at once; a storage hiccup here leaves an orphan for the sweep, never a readable file.
   if (before) await deps.storage.delete(before.object_path).catch((e) => console.error('[health] old object not deleted:', e instanceof Error ? e.message : e));
-  if (effective) {
-    const { error } = await sb.from('health_documents').update({ effective_on: effective, expires_on: expiresOn(effective) }).eq('person_id', input.personId).eq('kind', input.kind);
+  if (goodUntil) {
+    const { error } = await sb.from('health_documents').update({ expires_on: goodUntil }).eq('person_id', input.personId).eq('kind', kind);
     if (error) throw new Error(error.message);
   }
   await clearReview(sb, input.personId);
+  if (kind === 'bsa_ab') await clearInBsaForm(sb, input.personId);
   return { ok: true, id };
 }
 
-/** Sets when a dated document's 12 months start, for every page of it. */
-export async function saveHealthDates(
-  input: { personId: number; kind: string; parentSigned?: string | null; doctorSigned?: string | null },
+/**
+ * Changes a dated document's Good until, for every page of it. Logged first (an 'edit' line) and, like any change to
+ * the documents, it clears the review: a moved date is looked at again (qa-lead, 2026-11-16).
+ */
+export async function saveHealthGoodUntil(
+  input: { personId: number; kind: string; goodUntil: string | null },
+  viewer: HealthViewer,
   deps: HealthDeps
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!isHealthKind(input.kind)) return { ok: false, error: 'That document can’t be dated.' };
-  const today = deps.today();
-  const dateProblem = signedDateProblem(input.parentSigned, today) ?? signedDateProblem(input.doctorSigned, today);
-  if (dateProblem) return { ok: false, error: dateProblem };
-  const effective = effectiveOn(input.parentSigned, input.doctorSigned);
-  if (!effective) return { ok: false, error: 'Pick the date on the form.' };
+  if (!isHealthKind(input.kind) || !HEALTH_KIND[input.kind].dated) return { ok: false, error: 'That document has no Good until date.' };
+  const problem = goodUntilProblem(input.goodUntil, deps.today());
+  if (problem) return { ok: false, error: problem };
+  const { count, error: countError } = await deps.supabase.from('health_documents').select('id', { count: 'exact', head: true }).eq('person_id', input.personId).eq('kind', input.kind);
+  if (countError) throw new Error(countError.message);
+  if (!count) return { ok: false, error: 'Add a page first, then its date.' };
+  await log(deps, viewer, { person_id: input.personId, kind: input.kind, page: null, id: null }, 'edit');
   const { data, error } = await deps.supabase
     .from('health_documents')
-    .update({ effective_on: effective, expires_on: expiresOn(effective) })
+    .update({ expires_on: input.goodUntil })
     .eq('person_id', input.personId)
     .eq('kind', input.kind)
     .select('id');
   if (error) throw new Error(error.message);
-  if (!data?.length) return { ok: false, error: 'Add a page first, then its dates.' };
+  if (!data?.length) return { ok: false, error: 'Add a page first, then its date.' };
+  await clearReview(deps.supabase, input.personId);
   return { ok: true };
 }
 
@@ -207,6 +231,7 @@ export async function removeHealthPage(id: string, personIds: readonly number[],
   const { error } = await deps.supabase.from('health_documents').delete().eq('id', row.id);
   if (error) throw new Error(error.message);
   await clearReview(deps.supabase, Number(row.person_id));
+  if (row.kind === 'bsa_ab') await clearInBsaForm(deps.supabase, Number(row.person_id));
   return { ok: true };
 }
 
@@ -255,14 +280,15 @@ export interface HealthLogLine {
   via: string;
 }
 
-/** Who opened these people's records, newest first: what a family sees under "Who opened these". */
+/** Who opened or reviewed these people's records, newest first: what a family sees under "Who opened these"
+ *  (the full history of reviews is theirs to see, Patrick 2026-11-16). */
 export async function healthOpensFor(sb: SupabaseClient, personIds: number[], limit = 50): Promise<HealthLogLine[]> {
   if (personIds.length === 0) return [];
   const { data, error } = await sb
     .from('health_access_log')
     .select('at, viewer_name, person_id, kind, page, action, via')
     .in('person_id', personIds)
-    .in('action', ['view', 'download', 'print'])
+    .in('action', ['view', 'download', 'print', 'review', 'unreview'])
     .order('at', { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
@@ -483,15 +509,39 @@ export async function loadHealthRoster(sb: SupabaseClient): Promise<HealthRoster
   });
 }
 
+export interface HealthContact {
+  personId: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+}
+
+/** The last Mark reviewed or Undo review, from the access log: "Review undone by <name> on <date>". */
+export interface HealthReviewChange {
+  action: 'review' | 'unreview';
+  byName: string;
+  at: string;
+}
+
+export interface HealthReminderSent {
+  at: string;
+  byName: string;
+  to: string[];
+}
+
 export interface HealthRecordView {
   personId: number;
   name: string;
   /** "Things we should know", typed by the family. */
   told: string | null;
-  /** Parents and guardians, with a phone when one is on file. */
-  contacts: { personId: number; name: string; phone: string | null }[];
+  /** Parents and guardians, with a phone and an email when one is on file; for someone with none, themselves. */
+  contacts: HealthContact[];
   pages: HealthPage[];
   review: HealthReview | null;
+  reviewChange: HealthReviewChange | null;
+  /** A named leader's "the immunizations are on the BSA form" (decision 16). */
+  inBsaForm: { byName: string; at: string } | null;
+  lastReminder: HealthReminderSent | null;
   lastUpload: string | null;
 }
 
@@ -505,40 +555,128 @@ export async function openHealthRecord(personId: number, viewer: HealthViewer, d
   } catch {
     return null;
   }
-  const sb = deps.supabase;
-  const [{ data: person }, { data: parentRows }, pages, reviews] = await Promise.all([
+  return loadHealthRecordView(deps.supabase, personId);
+}
+
+/**
+ * The sheet's contents WITHOUT a log line: only for a write a named leader just made from the sheet they already
+ * opened (and logged), so the sheet can show the result. Never the way in to a record.
+ */
+export async function loadHealthRecordView(sb: SupabaseClient, personId: number): Promise<HealthRecordView | null> {
+  const [{ data: person }, { data: parentRows }, pages, reviews, change, inBsa, reminders] = await Promise.all([
     sb.from('people').select('id, display_name, things_we_should_know').eq('id', personId).maybeSingle(),
     sb.from('relationships').select('person_id').eq('related_person_id', personId).in('type', ['parent_of', 'guardian_of']),
     listHealthPages(sb, [personId]),
-    listHealthReviews(sb, [personId])
+    listHealthReviews(sb, [personId]),
+    lastReviewChange(sb, personId),
+    sb.from('health_immunization_in_bsa_form').select('set_by_name, set_at').eq('person_id', personId).maybeSingle(),
+    lastHealthReminders(sb, [personId])
   ]);
   if (!person) return null;
   const parentIds = ((parentRows ?? []) as { person_id: number }[]).map((r) => Number(r.person_id));
   const { data: parents } = parentIds.length
-    ? await sb.from('people').select('id, display_name, primary_phone').in('id', parentIds).order('display_name')
+    ? await sb.from('people').select('id, display_name, primary_phone, primary_email').in('id', parentIds).order('display_name')
     : { data: [] };
   const p = person as { id: number; display_name: string; things_we_should_know: string | null };
+  // An adult has no parent on file: they are their own contact.
+  const { data: self } = parentIds.length ? { data: [] } : await sb.from('people').select('id, display_name, primary_phone, primary_email').eq('id', personId);
+  const flag = inBsa.data as { set_by_name: string; set_at: string } | null;
   return {
     personId,
     name: p.display_name,
     told: p.things_we_should_know?.trim() || null,
-    contacts: ((parents ?? []) as { id: number; display_name: string; primary_phone: string | null }[]).map((c) => ({
+    contacts: ([...(parents ?? []), ...(self ?? [])] as { id: number; display_name: string; primary_phone: string | null; primary_email: string | null }[]).map((c) => ({
       personId: Number(c.id),
       name: c.display_name,
-      phone: c.primary_phone
+      phone: c.primary_phone,
+      email: c.primary_email
     })),
     pages,
     review: reviews.get(personId) ?? null,
+    reviewChange: change,
+    inBsaForm: flag ? { byName: flag.set_by_name, at: flag.set_at } : null,
+    lastReminder: reminders.get(personId) ?? null,
     lastUpload: pages.map((x) => x.uploadedAt).sort().at(-1) ?? null
   };
 }
 
-/** "Reviewed, complete" on or off for one person. */
-export async function setHealthReviewed(sb: SupabaseClient, personId: number, on: boolean, by: { personId: number; name: string }): Promise<void> {
+async function lastReviewChange(sb: SupabaseClient, personId: number): Promise<HealthReviewChange | null> {
+  const { data, error } = await sb.from('health_access_log').select('action, viewer_name, at').eq('person_id', personId).in('action', ['review', 'unreview']).order('at', { ascending: false }).order('id', { ascending: false }).limit(1);
+  if (error) throw new Error(error.message);
+  const r = ((data ?? []) as { action: 'review' | 'unreview'; viewer_name: string; at: string }[])[0];
+  return r ? { action: r.action, byName: r.viewer_name, at: r.at } : null;
+}
+
+/**
+ * Mark reviewed (on) or Undo review (off) for one person. The change is written to the access log FIRST, as a
+ * 'review' or 'unreview' line, so the family sees the full history of reviews (Patrick, 2026-11-16); if the line
+ * can't be written, nothing changes.
+ */
+export async function setHealthReviewed(deps: HealthDeps, personId: number, on: boolean, viewer: HealthViewer): Promise<void> {
+  await log(deps, viewer, { person_id: personId, kind: 'record', page: null, id: null }, on ? 'review' : 'unreview');
+  const sb = deps.supabase;
   const { error } = on
-    ? await sb.from('health_reviews').upsert({ person_id: personId, reviewed_by_person_id: by.personId, reviewed_by_name: by.name.slice(0, 120) || 'A leader', reviewed_at: new Date().toISOString() }, { onConflict: 'person_id' })
+    ? await sb.from('health_reviews').upsert({ person_id: personId, reviewed_by_person_id: viewer.personId, reviewed_by_name: viewer.name.slice(0, 120) || 'A leader', reviewed_at: new Date().toISOString() }, { onConflict: 'person_id' })
     : await sb.from('health_reviews').delete().eq('person_id', personId);
   if (error) throw new Error(error.message);
+}
+
+/** A named leader's "the immunizations are on the BSA form" for one person, on or off (decision 16). Logged first, as
+ *  an 'edit' line on the immunization record, both ways: turning it off deletes the row that named who set it. */
+export async function setImmunizationInBsaForm(deps: HealthDeps, personId: number, on: boolean, by: HealthViewer): Promise<void> {
+  await log(deps, by, { person_id: personId, kind: 'immunization', page: null, id: null }, 'edit');
+  const sb = deps.supabase;
+  const { error } = on
+    ? await sb.from('health_immunization_in_bsa_form').upsert({ person_id: personId, set_by_person_id: by.personId, set_by_name: by.name.slice(0, 120) || 'A leader', set_at: new Date().toISOString() }, { onConflict: 'person_id' })
+    : await sb.from('health_immunization_in_bsa_form').delete().eq('person_id', personId);
+  if (error) throw new Error(error.message);
+}
+
+/** Everyone with "in the BSA form" set: for the list's Imm. mark. */
+export async function listImmunizationInBsaForm(sb: SupabaseClient): Promise<Set<number>> {
+  const rows = await fetchAllRows<{ person_id: number }>((from, to) => sb.from('health_immunization_in_bsa_form').select('person_id').order('person_id').range(from, to));
+  return new Set(rows.map((r) => Number(r.person_id)));
+}
+
+/** A reminder is about to be emailed about this person: logged first, like every write in the sheet. */
+export async function logHealthReminder(personId: number, viewer: HealthViewer, deps: HealthDeps): Promise<void> {
+  await log(deps, viewer, { person_id: personId, kind: 'record', page: null, id: null }, 'remind');
+}
+
+/** Records that a reminder went out about each of these people (decision 13): one row per person. */
+export async function recordHealthReminders(
+  sb: SupabaseClient,
+  sent: { personIds: number[]; to: string[]; by: { personId: number; name: string }; eventId?: number | null }
+): Promise<void> {
+  if (sent.personIds.length === 0 || sent.to.length === 0) return;
+  const { error } = await sb.from('health_reminders_sent').insert(
+    sent.personIds.map((id) => ({
+      person_id: id,
+      sent_by_person_id: sent.by.personId,
+      sent_by_name: sent.by.name.slice(0, 120) || 'A leader',
+      sent_to: sent.to.slice(0, 20),
+      event_id: sent.eventId ?? null
+    }))
+  );
+  if (error) throw new Error(error.message);
+}
+
+/** The latest reminder sent about each of these people. */
+export async function lastHealthReminders(sb: SupabaseClient, personIds: number[]): Promise<Map<number, HealthReminderSent>> {
+  if (personIds.length === 0) return new Map();
+  const { data, error } = await sb
+    .from('health_reminders_sent')
+    .select('person_id, sent_at, sent_by_name, sent_to')
+    .in('person_id', personIds)
+    .order('sent_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(500);
+  if (error) throw new Error(error.message);
+  const out = new Map<number, HealthReminderSent>();
+  for (const r of (data ?? []) as { person_id: number; sent_at: string; sent_by_name: string; sent_to: string[] }[]) {
+    if (!out.has(Number(r.person_id))) out.set(Number(r.person_id), { at: r.sent_at, byName: r.sent_by_name, to: r.sent_to });
+  }
+  return out;
 }
 
 /** The whole log, newest first: for the named list only. */
@@ -649,22 +787,36 @@ export async function loadUpcomingTrip(sb: SupabaseClient, signupId: number, tod
 export interface HealthReminderGroup {
   /** One family's addresses: a scout's parents, or the adult themselves. */
   to: string[];
-  people: { name: string; needs: string[] }[];
+  people: { personId: number; name: string; needs: string[] }[];
+}
+
+/** Who a reminder is about: a trip's attendees (rated for that trip), or anyone at all, any time (decision 13). */
+export interface HealthReminderScope {
+  personIds: number[];
+  /** The trip asks for Part C. */
+  needsPartC: boolean;
+  /** The day the forms must still be good on: the trip's last day. Unset for a reminder sent any time. */
+  asOf?: string;
+}
+
+/** A trip as a reminder scope. */
+export function tripReminderScope(trip: HealthTrip): HealthReminderScope {
+  return { personIds: trip.attendeeIds, needsPartC: trip.needsPartC, asOf: trip.endDate ?? trip.entryDate };
 }
 
 /**
- * Who to remind before a trip, and about what: every attendee with a file missing or run out, grouped by the
- * addresses that answer for them so each family gets ONE email that names only its own people. `emailsFor` gives
- * the addresses for one person (lib/email-recipients for a scout's parents; the adult's own for an adult).
+ * Who to remind, and about what: everyone in scope with a file missing or run out, grouped by the addresses that
+ * answer for them so each family gets ONE email that names only its own people. `emailsFor` gives the addresses for
+ * one person (lib/email-recipients for a scout's parents; the adult's own for an adult).
  */
 export async function buildHealthReminders(
   sb: SupabaseClient,
-  trip: HealthTrip,
+  scope: HealthReminderScope,
   today: string,
   emailsFor: (personId: number) => Promise<string[]>,
   fmt: (iso: string) => string
 ): Promise<{ groups: HealthReminderGroup[]; noEmail: string[] }> {
-  const ids = trip.attendeeIds;
+  const ids = scope.personIds;
   if (ids.length === 0) return { groups: [], noEmail: [] };
   const [{ data: people, error }, pages] = await Promise.all([sb.from('people').select('id, display_name, guest_host_household_id').in('id', ids), listHealthPages(sb, ids)]);
   if (error) throw new Error(error.message);
@@ -674,7 +826,7 @@ export async function buildHealthReminders(
   for (const p of rows) {
     // A sign-up guest has no account to upload to: their host family is asked in person, not by this email.
     if (p.guest_host_household_id != null) continue;
-    const needs = healthNeeds(pages.filter((x) => x.personId === Number(p.id)), { needsPartC: trip.needsPartC, today, asOf: trip.endDate ?? trip.entryDate }, fmt);
+    const needs = healthNeeds(pages.filter((x) => x.personId === Number(p.id)), { needsPartC: scope.needsPartC, today, asOf: scope.asOf }, fmt);
     if (needs.length === 0) continue;
     const to = [...new Set((await emailsFor(Number(p.id))).map((e) => e.trim().toLowerCase()).filter(Boolean))].sort();
     if (to.length === 0) {
@@ -683,7 +835,7 @@ export async function buildHealthReminders(
     }
     const key = to.join(',');
     const group = byKey.get(key) ?? { to, people: [] };
-    group.people.push({ name: p.display_name, needs });
+    group.people.push({ personId: Number(p.id), name: p.display_name, needs });
     byKey.set(key, group);
   }
   return { groups: [...byKey.values()], noEmail };

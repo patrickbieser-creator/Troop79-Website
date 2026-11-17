@@ -20,7 +20,7 @@ export const metadata = {
   robots: { index: false, follow: false }
 };
 
-const VERB: Record<string, string> = { upload: 'added', replace: 'replaced', delete: 'removed', view: 'opened', download: 'downloaded', print: 'printed' };
+const VERB: Record<string, string> = { upload: 'added', replace: 'replaced', delete: 'removed', view: 'opened', download: 'downloaded', print: 'printed', review: 'marked as reviewed', unreview: 'undid the review of', edit: 'changed', remind: 'emailed a reminder about' };
 const VIA: Record<string, string> = { family: 'family', named: 'named leader', trip: 'adult on the trip' };
 
 export default async function HealthLogPage() {

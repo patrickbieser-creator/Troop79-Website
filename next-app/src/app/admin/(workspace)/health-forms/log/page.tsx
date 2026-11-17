@@ -17,7 +17,7 @@ export const metadata = {
 };
 
 const BACK = { label: 'Health Forms', href: '/admin/health-forms' };
-const VERB: Record<string, string> = { upload: 'Added', replace: 'Replaced', delete: 'Removed', view: 'Opened', download: 'Downloaded', print: 'Printed' };
+const VERB: Record<string, string> = { upload: 'Added', replace: 'Replaced', delete: 'Removed', view: 'Opened', download: 'Downloaded', print: 'Printed', review: 'Marked reviewed', unreview: 'Undid the review of', edit: 'Changed', remind: 'Emailed a reminder about' };
 const VIA: Record<string, string> = { family: 'Family', named: 'Named leader', trip: 'Adult on the trip' };
 
 export default async function HealthLogPage() {

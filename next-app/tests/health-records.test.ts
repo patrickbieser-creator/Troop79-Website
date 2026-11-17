@@ -6,15 +6,15 @@ import {
   inTripWindow,
   needsAttention,
   addMonths,
-  effectiveOn,
-  expiresOn,
+  defaultGoodUntil,
+  goodUntilProblem,
+  HEALTH_KIND,
   healthFileProblem,
   HEALTH_MAX_BYTES,
   kindStatus,
   nextPage,
   pageName,
   personStatus,
-  signedDateProblem,
   sniffHealthType,
   validPage,
   type HealthKind,
@@ -39,25 +39,25 @@ const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
 const PDF = new TextEncoder().encode('%PDF-1.7 rest');
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
 
-describe('expiry', () => {
-  it('Expiry_IsTwelveMonths_FromTheLaterSignatureDate', () => {
-    expect(expiresOn(effectiveOn('2026-03-01', '2026-03-04'))).toBe('2027-03-04');
+describe('good until (Patrick, 2026-11-16)', () => {
+  it('GoodUntil_DefaultsToOneYearFromEntry', () => {
+    expect(defaultGoodUntil('2026-11-16')).toBe('2027-11-16');
   });
 
-  it('Effective_WithOneDate_IsThatDate', () => {
-    expect(effectiveOn(null, '2026-03-04')).toBe('2026-03-04');
+  it('GoodUntil_DatedDocuments_AreTheBsaPartsAndInsurance_NotImmunization', () => {
+    expect([HEALTH_KIND.bsa_ab.dated, HEALTH_KIND.bsa_c.dated, HEALTH_KIND.insurance.dated, HEALTH_KIND.immunization.dated]).toEqual([true, true, true, false]);
   });
 
-  it('Effective_WithNoDates_IsNull', () => {
-    expect([effectiveOn(null, ''), expiresOn(null)]).toEqual([null, null]);
+  it('GoodUntil_AcceptsAPastDate_AnOldFormIsRecordedAsRunOut', () => {
+    expect(goodUntilProblem('2025-01-10', TODAY)).toBeNull();
+  });
+
+  it('GoodUntil_RefusesBlankMalformedAndFarFuture', () => {
+    expect([goodUntilProblem('', TODAY) != null, goodUntilProblem('2026-13-01', TODAY) != null, goodUntilProblem('2030-01-01', TODAY) != null]).toEqual([true, true, true]);
   });
 
   it('AddMonths_ClampsToTheMonthsLastDay', () => {
     expect([addMonths('2024-02-29', 12), addMonths('2026-01-31', 1)]).toEqual(['2025-02-28', '2026-02-28']);
-  });
-
-  it('SignedDate_InTheFuture_IsRefused', () => {
-    expect([signedDateProblem('2026-11-14', TODAY) != null, signedDateProblem('2026-11-13', TODAY), signedDateProblem(null, TODAY)]).toEqual([true, null, null]);
   });
 });
 

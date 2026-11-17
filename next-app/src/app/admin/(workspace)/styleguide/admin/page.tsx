@@ -1503,6 +1503,10 @@ export default function StyleguidePage() {
             <AdminDrawerDemo />
           </div>
           <div className={sg.specimen}>
+            <div className={sg.specimenLabel}>AdminDrawer wide &mdash; a centred two-pane record with a footer (the health record sheet, 2026-11-16)</div>
+            <AdminDrawerDemo wide />
+          </div>
+          <div className={sg.specimen}>
             <div className={sg.specimenLabel}>DangerConfirm &mdash; a destructive control&rsquo;s confirm, naming the consequence (D-332)</div>
             <DangerConfirmSpecimen />
           </div>

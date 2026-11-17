@@ -4,19 +4,27 @@
  * The routine-maintenance home for health records: everyone the troop keeps records for, with a mark per document
  * and a status, and each person's record in a side sheet. Only an admin who is also on the health viewers list gets
  * in (decision 3); the layout has already required admin access, and the nav item shows only to viewers.
- * Writes (upload, remove, review) and the bulk actions arrive in phases 3 and 4.
+ * The sheet's writes: Plans/Admin-Health-Record-Sheet-Redesign.md. The bulk actions arrive in phase 4.
  */
 import { createAdminClient } from '@/lib/supabase/server';
 import { healthAdminAccess } from '@/lib/health-access';
 import { healthFilesConfigured } from '@/lib/health-files';
-import { loadHealthRoster } from '@/lib/health-store';
+import { listImmunizationInBsaForm, loadHealthRoster } from '@/lib/health-store';
 import { HEALTH_KINDS, healthStanding } from '@/lib/health-records';
 import { healthMark, HEALTH_STANDING_RANK } from '@/lib/health-marks';
 import { centralToday } from '@/lib/dates';
 import { PageTitle } from '../_components/page-title';
 import { Notice } from '../_components/notice';
 import { HealthFormsList, type HealthListRow } from './health-forms-list';
-import { openHealthRecordAction } from './actions';
+import {
+  openHealthRecordAction,
+  removeHealthPageAdminAction,
+  saveHealthGoodUntilAdminAction,
+  sendHealthReminderAdminAction,
+  setHealthReviewedAdminAction,
+  setImmunizationInBsaFormAdminAction,
+  uploadHealthPageAdminAction
+} from './actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +55,8 @@ export default async function HealthFormsPage({ searchParams }: { searchParams: 
 
   const sp = await searchParams;
   const today = centralToday();
-  const roster = await loadHealthRoster(createAdminClient());
+  const sb = createAdminClient();
+  const [roster, inBsaForm] = await Promise.all([loadHealthRoster(sb), listImmunizationInBsaForm(sb)]);
   const rows: HealthListRow[] = roster.map((r) => {
     const standing = healthStanding(r.pages, { reviewed: r.review != null, needsPartC: false, today });
     return {
@@ -57,7 +66,7 @@ export default async function HealthFormsPage({ searchParams }: { searchParams: 
       lastName: r.lastName,
       type: r.type,
       lastUpload: r.lastUpload,
-      marks: Object.fromEntries(HEALTH_KINDS.map((k) => [k, healthMark(k, r.pages, today)])) as HealthListRow['marks'],
+      marks: Object.fromEntries(HEALTH_KINDS.map((k) => [k, healthMark(k, r.pages, today, { inBsaForm: inBsaForm.has(r.personId) })])) as HealthListRow['marks'],
       standing,
       standingRank: HEALTH_STANDING_RANK[standing]
     };
@@ -71,6 +80,14 @@ export default async function HealthFormsPage({ searchParams }: { searchParams: 
       lede={LEDE}
       today={today}
       openRecord={openHealthRecordAction}
+      actions={{
+        upload: uploadHealthPageAdminAction,
+        saveGoodUntil: saveHealthGoodUntilAdminAction,
+        remove: removeHealthPageAdminAction,
+        setReviewed: setHealthReviewedAdminAction,
+        setInBsaForm: setImmunizationInBsaFormAdminAction,
+        remind: sendHealthReminderAdminAction
+      }}
     />
   );
 }

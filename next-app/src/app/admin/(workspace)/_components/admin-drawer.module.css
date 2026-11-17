@@ -93,8 +93,30 @@
   border-top: 1px solid var(--admin-gray-200);
 }
 
+/* wide: a centred dialog (the health record sheet). The space around the panel is still the dialog box, so a click
+   there is a click on the dimmed page and closes it. */
+.wide[open] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wide .panel {
+  width: min(860px, calc(100% - 2 * var(--admin-space-6)));
+  height: auto;
+  max-height: calc(100% - 2 * var(--admin-space-8));
+  margin: 0;
+  border-radius: var(--admin-radius-lg);
+  overflow: hidden;
+}
+
 @media (max-width: 767px) {
   .panel { width: 100%; }
+  .wide .panel {
+    width: 100%;
+    height: 100%;
+    max-height: none;
+    border-radius: 0;
+  }
   .head,
   .body,
   .foot {

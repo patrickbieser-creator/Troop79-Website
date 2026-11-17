@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { healthDeps, healthFamilyAccess } from '@/lib/health-access';
 import { healthFilesConfigured } from '@/lib/health-files';
-import { removeHealthPage, saveHealthDates, saveHealthPage } from '@/lib/health-store';
+import { removeHealthPage, saveHealthGoodUntil, saveHealthPage } from '@/lib/health-store';
 
 /**
  * A family's health-record writes (Plans/Health-Forms.md). Each action re-resolves who is signed in and who they
@@ -33,8 +33,7 @@ export async function uploadHealthPageAction(formData: FormData): Promise<Health
         kind: String(formData.get('kind') ?? ''),
         page: Number(formData.get('page')),
         bytes: new Uint8Array(await file.arrayBuffer()),
-        parentSigned: text(formData.get('parentSigned')),
-        doctorSigned: text(formData.get('doctorSigned'))
+        goodUntil: text(formData.get('goodUntil'))
       },
       access.viewer,
       healthDeps()
@@ -49,17 +48,18 @@ export async function uploadHealthPageAction(formData: FormData): Promise<Health
   return { ok: true };
 }
 
-export async function saveHealthDatesAction(input: { personId: number; kind: string; parentSigned: string | null; doctorSigned: string | null }): Promise<HealthResult> {
+/** Changes a document's Good until (Patrick, 2026-11-16: a year from entry by default, editable). */
+export async function saveHealthGoodUntilAction(input: { personId: number; kind: string; goodUntil: string | null }): Promise<HealthResult> {
   const access = await healthFamilyAccess();
   // Rebuilt from primitives: nothing posted reaches the store unchecked.
   const personId = typeof input?.personId === 'number' ? input.personId : NaN;
   if (!access || !access.personIds.includes(personId)) return { ok: false, error: NOT_YOURS };
-  const date = (v: unknown) => (typeof v === 'string' && v ? v : null);
+  const goodUntil = typeof input.goodUntil === 'string' && input.goodUntil ? input.goodUntil : null;
   try {
-    const res = await saveHealthDates({ personId, kind: String(input.kind), parentSigned: date(input.parentSigned), doctorSigned: date(input.doctorSigned) }, healthDeps());
+    const res = await saveHealthGoodUntil({ personId, kind: String(input.kind), goodUntil }, access.viewer, healthDeps());
     if (!res.ok) return res;
   } catch (e) {
-    console.error('[health] saving dates failed:', e instanceof Error ? e.message : e);
+    console.error('[health] saving the date failed:', e instanceof Error ? e.message : e);
     return { ok: false, error: FAILED };
   }
   revalidatePath('/member/health-forms');

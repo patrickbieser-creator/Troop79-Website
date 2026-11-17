@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * The admin Health Forms list and its record sheet (Plans/Admin-Health-Forms.md, phase 2: read-only).
+ * The admin Health Forms list and its record sheet (Plans/Admin-Health-Forms.md; the sheet is
+ * Plans/Admin-Health-Record-Sheet-Redesign.md).
  *
  * Full-width DataTable · Compact; the status tabs carry the totals; Type is a SegmentedControl; the name search is
  * useTableSearch; every column but View sorts (useSortable), Name A–Z by default. A name or View opens the person in
- * an AdminDrawer over the list (the list stays mounted), with ‹ Prev · Next › through the current filtered order.
- * The sheet's contents come from `openRecord`, which writes the access-log line before returning anything.
+ * a wide AdminDrawer over the list (the list stays mounted). The sheet's contents come from `openRecord`, which writes
+ * the access-log line before returning anything; each write in the sheet answers with the record as it now is.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { HEALTH_KINDS, type HealthKind, type HealthStanding, HEALTH_STANDING_LABEL, HEALTH_STANDING_TONE } from '@/lib/health-records';
 import { HEALTH_MARK_NAME, type HealthMarkValue } from '@/lib/health-marks';
@@ -24,7 +25,7 @@ import { SearchField, useTableSearch } from '../_components/search-field';
 import { SegmentedControl } from '../_components/segmented-control';
 import { TabStrip } from '../_components/tab-strip';
 import { SortHeader, useSortable } from '../_components/use-sortable';
-import { HealthSheet } from './health-sheet';
+import { HealthSheet, HealthSheetFooter, type SheetActions } from './health-sheet';
 import styles from './health-forms.module.css';
 
 export interface HealthListRow {
@@ -89,7 +90,8 @@ export function HealthFormsList({
   initialPersonId,
   lede,
   today,
-  openRecord
+  openRecord,
+  actions
 }: {
   rows: HealthListRow[];
   initialPersonId: number | null;
@@ -97,6 +99,7 @@ export function HealthFormsList({
   /** Central-time calendar day, from the server: the sheet rates documents as of it. */
   today: string;
   openRecord: OpenRecord;
+  actions: SheetActions;
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('all');
@@ -113,14 +116,18 @@ export function HealthFormsList({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(initialPersonId != null);
 
+  // Which open is current: a slow answer for someone already closed (or replaced) must not land under another name.
+  const request = useRef(0);
   const open = useCallback(
     async (personId: number) => {
+      const mine = (request.current += 1);
       setOpenId(personId);
       setPersonInUrl(personId);
       setRecord(null);
       setError(null);
       setLoading(true);
       const res = await openRecord(personId);
+      if (mine !== request.current) return;
       setLoading(false);
       if (res.ok) setRecord(res.record);
       else setError(res.error);
@@ -128,6 +135,7 @@ export function HealthFormsList({
     [openRecord]
   );
   const close = useCallback(() => {
+    request.current += 1;
     setOpenId(null);
     setRecord(null);
     setError(null);
@@ -150,8 +158,9 @@ export function HealthFormsList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const order = sorted.map((r) => r.personId);
-  const at = openId == null ? -1 : order.indexOf(openId);
+  // A write in the sheet answers with the record; the action's revalidatePath refreshes the list underneath. A late
+  // answer for someone no longer open is dropped.
+  const onRecord = useCallback((r: HealthRecordView) => setRecord((cur) => (cur && cur.personId === r.personId ? r : cur)), []);
   const openRow = openId == null ? null : (rows.find((r) => r.personId === openId) ?? null);
 
   const counts = useMemo(() => {
@@ -185,7 +194,7 @@ export function HealthFormsList({
           { key: 'attention', label: 'Missing or expired', count: counts.attention, onSelect: () => setTab('attention') },
           { key: 'soon', label: 'Expires soon', count: counts.soon, onSelect: () => setTab('soon') },
           { key: 'ready', label: 'Ready for review', count: counts.ready, onSelect: () => setTab('ready') },
-          { key: 'complete', label: 'Complete', count: counts.complete, onSelect: () => setTab('complete') }
+          { key: 'complete', label: 'Reviewed', count: counts.complete, onSelect: () => setTab('complete') }
         ]}
       />
 
@@ -273,31 +282,25 @@ export function HealthFormsList({
 
       {openId != null && (
         <AdminDrawer
-          title={
-            <>
-              {openRow?.name ?? record?.name ?? 'Health record'}
-              {openRow && <Badge variant={HEALTH_STANDING_TONE[openRow.standing]}>{HEALTH_STANDING_LABEL[openRow.standing]}</Badge>}
-            </>
-          }
+          wide
+          title={openRow?.name ?? record?.name ?? 'Health record'}
           sub={
             <>
-              {openRow ? `${TYPE_LABEL[openRow.type]} · ` : ''}
-              {record?.lastUpload ? `Last upload ${fmtDate(record.lastUpload)} · ` : ''}Viewing is logged.
-            </>
-          }
-          actions={
-            <>
-              <Button variant="quiet" size="sm" disabled={at <= 0} onClick={() => void open(order[at - 1])}>
-                ‹ Prev
-              </Button>
-              <Button variant="quiet" size="sm" disabled={at < 0 || at >= order.length - 1} onClick={() => void open(order[at + 1])}>
-                Next ›
-              </Button>
+              {openRow ? TYPE_LABEL[openRow.type] : ''}
+              {openRow && record?.lastUpload ? ' · ' : ''}
+              {record?.lastUpload ? `Last upload ${fmtDate(record.lastUpload)}` : ''}
             </>
           }
           onClose={close}
+          footer={record ? <HealthSheetFooter record={record} actions={actions} onRecord={onRecord} onClose={close} /> : undefined}
         >
-          {loading ? <p className={styles.muted}>Opening…</p> : error ? <p className={styles.problem}>{error}</p> : record ? <HealthSheet record={record} today={today} /> : null}
+          {loading ? (
+            <p className={styles.muted}>Opening…</p>
+          ) : error ? (
+            <p className={styles.problem}>{error}</p>
+          ) : record ? (
+            <HealthSheet record={record} today={today} actions={actions} onRecord={onRecord} />
+          ) : null}
         </AdminDrawer>
       )}
     </>

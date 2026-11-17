@@ -11,8 +11,7 @@ import {
   HEALTH_KIND,
   HEALTH_KINDS,
   HEALTH_STATUS_LABEL,
-  effectiveOn,
-  expiresOn,
+  goodUntilSeed,
   kindStatus,
   nextPage,
   pageName,
@@ -21,14 +20,15 @@ import {
   type HealthPage,
   type HealthStatus
 } from '@/lib/health-records';
-import { shrinkPhoto } from './shrink-photo';
+import { shrinkPhoto } from '@/lib/shrink-photo';
 import type { HealthResult } from './actions';
 import styles from './health-forms.module.css';
 
 /**
  * A family's health records (Plans/Health-Forms.md, release 1): one card per person, one block per document, one
  * line per page with View, Replace and Remove. Adding is one tap: choose or take a photo and it is saved; there is
- * no draft to lose. A dated document asks for the two signature dates and shows what they come to.
+ * no draft to lose. A dated document has one Good until date: a year from the day it is added, and editable
+ * (Patrick, 2026-11-16).
  */
 export interface HealthPerson {
   personId: number;
@@ -38,7 +38,7 @@ export interface HealthPerson {
 
 export interface HealthActions {
   upload: (fd: FormData) => Promise<HealthResult>;
-  saveDates: (input: { personId: number; kind: string; parentSigned: string | null; doctorSigned: string | null }) => Promise<HealthResult>;
+  saveGoodUntil: (input: { personId: number; kind: string; goodUntil: string | null }) => Promise<HealthResult>;
   remove: (id: string) => Promise<HealthResult>;
 }
 
@@ -72,15 +72,13 @@ function DocumentBlock({ person, kind, pages, today, actions }: { person: Health
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
-  const [parentSigned, setParentSigned] = useState('');
-  const [doctorSigned, setDoctorSigned] = useState('');
   const picker = useRef<HTMLInputElement>(null);
   const target = useRef<number | null>(null);
 
   const status = kindStatus(kind, pages, today);
   const expires = pages.map((p) => p.expiresOn).filter((d): d is string => !!d).sort()[0] ?? null;
   const free = nextPage(kind, pages);
-  const typedEffective = effectiveOn(parentSigned || null, doctorSigned || null);
+  const [goodUntil, setGoodUntil] = useState(() => goodUntilSeed(expires, today));
   const optional = !def.required && pages.length === 0;
 
   const run = (work: () => Promise<HealthResult>) =>
@@ -110,10 +108,7 @@ function DocumentBlock({ person, kind, pages, today, actions }: { person: Health
       fd.set('kind', kind);
       fd.set('page', String(page));
       fd.set('file', small);
-      if (def.dated) {
-        fd.set('parentSigned', parentSigned);
-        fd.set('doctorSigned', doctorSigned);
-      }
+      if (def.dated && goodUntil) fd.set('goodUntil', goodUntil);
       return actions.upload(fd);
     });
   };
@@ -168,24 +163,21 @@ function DocumentBlock({ person, kind, pages, today, actions }: { person: Health
       {def.dated && (free != null || pages.length > 0) && (
         <div className={styles.dates}>
           <label className={styles.dateField}>
-            <span>Date the parent signed</span>
-            <DateField value={parentSigned} onChange={setParentSigned} />
+            <span>Good until</span>
+            <DateField value={goodUntil} onChange={setGoodUntil} />
           </label>
-          <label className={styles.dateField}>
-            <span>Date the doctor signed</span>
-            <DateField value={doctorSigned} onChange={setDoctorSigned} />
-          </label>
-          {typedEffective && <p className={styles.goodUntil}>Good until {fmtDate(expiresOn(typedEffective)!)}</p>}
-          {pages.length > 0 && typedEffective && (
+          {pages.length > 0 && (
             <Button
               variant="secondary"
               size="sm"
-              disabled={busy}
-              onClick={() => run(() => actions.saveDates({ personId: person.personId, kind, parentSigned: parentSigned || null, doctorSigned: doctorSigned || null }))}
+              disabled={busy || goodUntil === expires}
+              title={goodUntil === expires ? 'No change to save yet' : undefined}
+              onClick={() => run(() => actions.saveGoodUntil({ personId: person.personId, kind, goodUntil: goodUntil || null }))}
             >
-              Save dates
+              {goodUntil === expires ? 'Saved' : 'Save date'}
             </Button>
           )}
+          <p className={styles.goodUntil}>{pages.length === 0 ? 'A year from today unless you change it.' : 'Change it if the form says otherwise.'}</p>
         </div>
       )}
 

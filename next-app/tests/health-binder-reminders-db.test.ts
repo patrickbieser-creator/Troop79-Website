@@ -4,7 +4,7 @@ import { adminClient } from './helpers/admin-client';
 import { createTestEvent, createTestScout, deleteTestEvent, deleteTestScout, type TestEvent, type TestScout } from './helpers/signup-fixtures';
 import { memoryHealthStorage } from '../src/lib/health-files';
 import { addDays } from '../src/lib/health-records';
-import { buildHealthReminders, loadUpcomingTrip, openHealthPagesForPrint, saveHealthPage, type HealthDeps, type HealthTrip } from '../src/lib/health-store';
+import { buildHealthReminders, lastHealthReminders, loadUpcomingTrip, openHealthPagesForPrint, saveHealthPage, tripReminderScope, type HealthDeps, type HealthTrip } from '../src/lib/health-store';
 import { centralToday } from '../src/lib/dates';
 
 /**
@@ -145,29 +145,36 @@ describe('buildHealthReminders', () => {
   const emails = async (id: number) => (id === missing.personId ? ['Mom@Example.test ', 'dad@example.test'] : id === adultId ? ['dad@example.test', 'mom@example.test'] : []);
 
   it('OnlyPeopleWithSomethingMissing_AreReminded', async () => {
-    const { groups } = await buildHealthReminders(admin, trip, TODAY, emails, (d) => d);
+    const { groups } = await buildHealthReminders(admin, tripReminderScope(trip), TODAY, emails, (d) => d);
     expect(groups.flatMap((g) => g.people.map((p) => p.name)).sort()).toEqual(['ZZVITEST Health Officer', 'ZZVITEST Scout BinderMissing']);
   });
 
   it('PeopleWhoShareTheSameAddresses_GetOneEmail', async () => {
-    const { groups } = await buildHealthReminders(admin, trip, TODAY, emails, (d) => d);
+    const { groups } = await buildHealthReminders(admin, tripReminderScope(trip), TODAY, emails, (d) => d);
     expect(groups.map((g) => [g.to, g.people.length])).toEqual([[['dad@example.test', 'mom@example.test'], 2]]);
   });
 
   it('SomeoneWithNoAddress_IsListedToAskInPerson', async () => {
-    const { groups, noEmail } = await buildHealthReminders(admin, trip, TODAY, async () => [], (d) => d);
+    const { groups, noEmail } = await buildHealthReminders(admin, tripReminderScope(trip), TODAY, async () => [], (d) => d);
     expect([groups, noEmail.sort()]).toEqual([[], ['ZZVITEST Health Officer', 'ZZVITEST Scout BinderMissing']]);
   });
 });
 
 describe('the reminder email', () => {
   it('NamesTheDocuments_AndLinksToTheUploadPage_NothingMedical', () => {
-    const mail = healthReminderEmail(trip, { to: ['a@example.test'], people: [{ name: 'Ben Example', needs: ['Insurance card: missing'] }] }, 'https://troop.test');
+    const mail = healthReminderEmail(trip, { to: ['a@example.test'], people: [{ personId: 1, name: 'Ben Example', needs: ['Insurance card: missing'] }] }, 'https://troop.test');
     expect([mail.subject, mail.text.includes('Ben Example: Insurance card: missing'), mail.text.includes('https://troop.test/member/health-forms')]).toEqual([
       'Troop 79: health forms needed for ZZVITEST Binder Camp',
       true,
       true
     ]);
+  });
+});
+
+describe('the reminder email with no trip', () => {
+  it('Reminder_NoTrip_NamesWhatIsMissing_AndNoTrip', () => {
+    const mail = healthReminderEmail(null, { to: ['a@example.test'], people: [{ personId: 1, name: 'Ben Example', needs: ['Insurance card: missing'] }] }, 'https://troop.test');
+    expect([mail.subject, mail.text.includes('Ben Example: Insurance card: missing'), mail.text.includes('coming up')]).toEqual(['Troop 79: health forms needed', true, false]);
   });
 });
 
@@ -184,6 +191,22 @@ describe('remindFamiliesAction', () => {
     sent.mails.length = 0;
     const res = await remindFamiliesAction(event.eventSignupId, true);
     expect([res.ok && res.outcome.sent, res.ok && res.outcome.failed, sent.mails.map((m) => [m.to, m.confirm])]).toEqual([true, 0, [[['zzvitest-officer@example.test'], true]]]);
+  });
+
+  it('TripReminder_RecordsLastSent', async () => {
+    signIn({ named: true });
+    await admin.from('health_reminders_sent').delete().eq('person_id', adultId);
+    await remindFamiliesAction(event.eventSignupId, true);
+    const last = (await lastHealthReminders(admin, [adultId])).get(adultId);
+    const { data } = await admin.from('health_reminders_sent').select('event_id').eq('person_id', adultId).single();
+    expect([last?.to, last?.byName, data?.event_id]).toEqual([['zzvitest-officer@example.test'], 'ZZVITEST Health Officer', event.calendarEntryId]);
+  });
+
+  it('TripReminder_Preview_RecordsNothing', async () => {
+    signIn({ named: true });
+    await admin.from('health_reminders_sent').delete().eq('person_id', adultId);
+    await remindFamiliesAction(event.eventSignupId, false);
+    expect((await lastHealthReminders(admin, [adultId])).size).toBe(0);
   });
 
   it('AScoutWithNoParentOnFile_IsListedToAskInPerson', async () => {
