@@ -2,7 +2,7 @@
 
 /**
  * The admin Health Forms list and its record sheet (Plans/Admin-Health-Forms.md; the sheet is
- * Plans/Admin-Health-Record-Sheet-Redesign.md).
+ * Plans/Completed/Admin-Health-Record-Sheet-Redesign.md).
  *
  * Full-width DataTable · Compact; the status tabs carry the totals; Type is a SegmentedControl; the name search is
  * useTableSearch; every column but View sorts (useSortable), Name A–Z by default. A name or View opens the person in

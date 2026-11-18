@@ -79,7 +79,7 @@ export async function revokeHealthViewerAdminAction(personId: number): Promise<H
   return { ok: true };
 }
 
-/* ── Writes in the record sheet (Plans/Admin-Health-Record-Sheet-Redesign.md) ─────────────────────────────────── */
+/* ── Writes in the record sheet (Plans/Completed/Admin-Health-Record-Sheet-Redesign.md) ─────────────────────────────────── */
 
 /** Every sheet write answers with the record as it now is, read without another "opened" line. Each write leaves its
  *  own access-log line first (upload, replace, delete, review, unreview, edit, remind), naming who did it, so nothing

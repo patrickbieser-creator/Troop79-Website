@@ -5,7 +5,7 @@ import { centralToday } from '../src/lib/dates';
 import type { HealthDeps } from '../src/lib/health-store';
 
 /**
- * The record sheet's writes against the real local database (Plans/Admin-Health-Record-Sheet-Redesign.md). The admin
+ * The record sheet's writes against the real local database (Plans/Completed/Admin-Health-Record-Sheet-Redesign.md). The admin
  * gate is faked at lib/health-access; storage is in memory; no email leaves (the sender is a spy).
  */
 const admin = adminClient();

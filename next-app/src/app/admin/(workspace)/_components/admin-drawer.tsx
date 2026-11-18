@@ -4,7 +4,7 @@
  * AdminDrawer — a right-side sheet over a full-width admin list (first used by Health Forms,
  * Plans/Admin-Health-Forms.md). The list stays mounted underneath, so ticks and scroll survive. 480px wide; the full
  * screen below 768px. `wide` is a centred 860px dialog instead, for a record that needs two panes (the health record
- * sheet, Plans/Admin-Health-Record-Sheet-Redesign.md). The header (title, sub, actions such as a ⋯, Close) and the
+ * sheet, Plans/Completed/Admin-Health-Record-Sheet-Redesign.md). The header (title, sub, actions such as a ⋯, Close) and the
  * footer stay put; only the body scrolls.
  *
  * Behaviour (modal <dialog>, Esc and a click on the dimmed page close it, focus returns to the opener, the page is

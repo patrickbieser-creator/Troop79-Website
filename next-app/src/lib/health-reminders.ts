@@ -7,7 +7,7 @@ import { renderEmail, type SendResult } from '@/lib/email';
 import { fmtDate, fmtRange } from '@/lib/format-date';
 
 /**
- * Health-form reminders (Plans/Health-Forms.md; any time, Plans/Admin-Health-Record-Sheet-Redesign.md decision 13):
+ * Health-form reminders (Plans/Health-Forms.md; any time, Plans/Completed/Admin-Health-Record-Sheet-Redesign.md decision 13):
  * one email per family, naming only that family's people and which documents are missing or run out. No medical
  * detail is in the email, only the names of the documents. A scout's reminder goes to their parents (never to the
  * scout, answer 7); an adult's goes to the adult. Each send is recorded per person, so the sheet can say who was

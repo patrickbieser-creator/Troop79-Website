@@ -14,7 +14,7 @@ import type { HealthRecordView } from '../src/lib/health-store';
 import type { HealthPage } from '../src/lib/health-records';
 
 /**
- * The record sheet (Plans/Admin-Health-Record-Sheet-Redesign.md, version B): the family's note first, contacts with
+ * The record sheet (Plans/Completed/Admin-Health-Record-Sheet-Redesign.md, version B): the family's note first, contacts with
  * tel: and mailto:, the forms as cards with their own actions, and the review footer with an undo.
  */
 afterEach(cleanup);

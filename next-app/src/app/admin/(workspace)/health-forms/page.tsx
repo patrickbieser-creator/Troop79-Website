@@ -4,7 +4,7 @@
  * The routine-maintenance home for health records: everyone the troop keeps records for, with a mark per document
  * and a status, and each person's record in a side sheet. Only an admin who is also on the health viewers list gets
  * in (decision 3); the layout has already required admin access, and the nav item shows only to viewers.
- * The sheet's writes: Plans/Admin-Health-Record-Sheet-Redesign.md. The bulk actions arrive in phase 4.
+ * The sheet's writes: Plans/Completed/Admin-Health-Record-Sheet-Redesign.md. The bulk actions arrive in phase 4.
  */
 import { createAdminClient } from '@/lib/supabase/server';
 import { healthAdminAccess } from '@/lib/health-access';

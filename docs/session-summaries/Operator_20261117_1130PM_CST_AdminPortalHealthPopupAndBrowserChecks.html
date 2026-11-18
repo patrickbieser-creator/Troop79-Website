@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session 85 Summary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --nw-green: #3d5a3e;
+            --nw-gray: #81827e;
+            --nw-teal: #1e3a4a;
+            --nw-dark-gray: #4b4b4b;
+            --nw-dark-green: #3d5a3e;
+            --nw-brown: #55392a;
+            --nw-gold: #ddb027;
+            --nw-orange: #a95b28;
+            --nw-slate-blue: #4c7887;
+            --nw-teal-green: #418c7d;
+            --nw-pale-green: #e1e6d2;
+            --nw-cream: #f0eecd;
+            --nw-light-gray: #e6e6e6;
+            --nw-sage: #d7e1d7;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Montserrat', Arial, sans-serif; color: var(--nw-dark-gray); line-height: 1.7; background: #f8f9fa; }
+        header { background: linear-gradient(135deg, var(--nw-teal) 0%, var(--nw-dark-green) 100%); color: white; padding: 2.5rem 2rem; }
+        header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.25rem; }
+        header .subtitle { font-size: 1rem; font-weight: 300; opacity: 0.9; }
+        header .meta { display: flex; gap: 1.5rem; margin-top: 1rem; font-size: 0.85rem; opacity: 0.8; flex-wrap: wrap; }
+        header .meta span { display: flex; align-items: center; gap: 0.35rem; }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h2 { color: var(--nw-teal); font-size: 1.5rem; font-weight: 600; margin: 2rem 0 0.75rem; padding-bottom: 0.4rem; border-bottom: 3px solid var(--nw-green); }
+        h3 { color: var(--nw-teal); font-size: 1.1rem; font-weight: 500; margin: 1.25rem 0 0.5rem; }
+        p, li { margin-bottom: 0.5rem; font-size: 0.95rem; }
+        ul { padding-left: 1.25rem; }
+        .stats { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1.5rem 0; }
+        .stat { background: white; border: 1px solid var(--nw-light-gray); border-radius: 10px; padding: 1rem 1.25rem; text-align: center; flex: 1; min-width: 120px; }
+        .stat .number { font-size: 1.75rem; font-weight: 700; color: var(--nw-teal); }
+        .stat .label { font-size: 0.75rem; color: var(--nw-gray); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.15rem; }
+        .callout { border-left: 4px solid; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; font-size: 0.9rem; }
+        .callout-green { border-color: var(--nw-green); background: #f0f7e6; }
+        .callout-gold { border-color: var(--nw-gold); background: #fdf8e8; }
+        .callout-orange { border-color: var(--nw-orange); background: #fdf0e8; }
+        .callout-teal { border-color: var(--nw-teal); background: #e8f4f5; }
+        .callout strong { font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 0.75rem 0 1.25rem; font-size: 0.9rem; }
+        thead { background: var(--nw-pale-green); }
+        th { text-align: left; padding: 0.6rem 0.75rem; font-size: 0.8rem; font-weight: 600; color: var(--nw-teal); border-bottom: 2px solid var(--nw-green); text-transform: uppercase; letter-spacing: 0.03em; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--nw-light-gray); vertical-align: top; }
+        tr:hover { background: var(--nw-sage); }
+        .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 1rem; font-size: 0.7rem; font-weight: 700; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-gold { background: #fef3c7; color: #92400e; }
+        .badge-red { background: #fecaca; color: #991b1b; }
+        .file-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--nw-teal); }
+        code { font-family: 'Courier New', monospace; font-size: 0.85em; background: var(--nw-light-gray); padding: 0 0.3em; border-radius: 3px; }
+        footer { text-align: center; padding: 1.5rem; color: var(--nw-gray); font-size: 0.8rem; border-top: 1px solid var(--nw-light-gray); margin-top: 2rem; }
+        @media print { body { background: white; } header { padding: 1.5rem; } .container { padding: 1rem; } .stat { break-inside: avoid; } }
+        @media (max-width: 600px) { header h1 { font-size: 1.5rem; } .stats { flex-direction: column; } }
+    </style>
+<body>
+    <header>
+        <h1>A new leader workspace, a health record pop-up, and headless browser checks</h1>
+        <p class="subtitle">Session 85. The admin got one menu system built from a single list of screens, with a rail, pins, an A&ndash;Z, a new Home and Ctrl K search. Health records can now be maintained from a two-pane pop-up. UI changes are checked in a headless browser instead of on tests alone.</p>
+        <div class="meta">
+            <span>&#128197; November 17, 2026</span>
+            <span>&#129302; Operator (Opus 5.5)</span>
+            <span>&#128204; Troop79-Website</span>
+            <span>&#128640; v1.274.0</span>
+        </div>
+    </header>
+    <div class="container">
+        <h2>Key Metrics</h2>
+        <div class="stats">
+            <div class="stat"><div class="number">8,894</div><div class="label">Tests passing on the last full run (was 8,770)</div></div>
+            <div class="stat"><div class="number">11</div><div class="label">Commits to main, all live as v1.274.0</div></div>
+            <div class="stat"><div class="number">3</div><div class="label">Production migrations (pins, nav opens, health sheet)</div></div>
+            <div class="stat"><div class="number">+8,501 / &minus;2,988</div><div class="label">Lines changed across 139 files</div></div>
+        </div>
+        <h2>What Was Accomplished</h2>
+        <div class="callout callout-teal">
+            <strong>The outcome:</strong> a leader finds any admin screen, task or report from the rail, an A&ndash;Z or Ctrl K, and sees what needs them on Home. A health viewer can review, fix and chase a family's health forms from one pop-up, and every change is logged first.
+        </div>
+        <h3>Leader workspace (Admin Portal phases 1&ndash;6)</h3>
+        <ul>
+            <li>One registry lists every admin screen, report, task and setup page; a test fails any page left out.</li>
+            <li>A rail with area menus (Do &middot; Screens &middot; Reports &middot; Setup), pins that follow you between devices, and Everything A&ndash;Z.</li>
+            <li>Home is a dashboard: Needs you today, This week, your shortcuts, At a glance tiles, and the old Advancement dashboard cards. New Missing BSA IDs report.</li>
+            <li>Find anything (Ctrl K or /) searches screens and tasks, plus people, events and articles; never health or money.</li>
+            <li>Utilities and the old section bar are retired; Financial Ledger tasks open from a link.</li>
+        </ul>
+        <h3>Health record pop-up</h3>
+        <ul>
+            <li>View opens a wide two-pane pop-up: the family's note and who to contact on the left, a card per form on the right.</li>
+            <li>A missing or expired form gets a red card with Email reminder and Upload for family; other cards offer View, Download and Change&hellip;</li>
+            <li>Each form has its own Good until date; Mark reviewed can be undone; reminders no longer need a trip.</li>
+            <li>Patrick's follow-ups: the immunization record reads On Part C, Attached or Missing; a missing Part C is red; the From the family box is always shown, and leaders can paste in a family's emailed note; long notes show four lines with Show more; PDFs open in the browser.</li>
+        </ul>
+        <h3>Browser checks</h3>
+        <ul>
+            <li><code>npm run shot</code> signs in as a local leader, opens a page at desktop and phone widths in headless Chrome or Firefox, runs steps, and reports console errors.</li>
+            <li>Claude in Chrome stays for short production checks with Patrick at the machine; the checklist to make it reliable is in the backlog.</li>
+        </ul>
+        <h2>Decisions</h2>
+        <table>
+            <thead><tr><th>ID</th><th>Decision</th></tr></thead>
+            <tbody>
+                <tr><td>D-502</td><td>The admin feature registry is the one source of admin navigation</td></tr>
+                <tr><td>D-503</td><td>Health viewers maintain records from the pop-up; immunization is always needed but left out of the overall standing for now</td></tr>
+                <tr><td>D-504</td><td>Health PDFs open in the browser with their own security headers; download only on request</td></tr>
+                <tr><td>D-505</td><td>Browser checks run headless by default; Claude in Chrome is for production only</td></tr>
+            </tbody>
+        </table>
+        <h2>Next Steps</h2>
+        <ul>
+            <li>Health Forms phases 4&ndash;5: bulk print and notices, trip filter, trim /health to the trip view; audit line for viewer grants.</li>
+            <li>Check Approvals in the headless browser; sign off the service-hours findings.</li>
+            <li>Family-side note editing; the retention job; immunization in the standing when Patrick says.</li>
+        </ul>
+        <h2>Files Changed</h2>
+        <table>
+            <thead><tr><th>File</th><th>Change</th></tr></thead>
+            <tbody>
+                <tr><td>admin/_components/feature-registry, area-menu, rail, search</td><td>New: registry, rail, menus, pins, Find anything</td></tr>
+                <tr><td>admin/_home/, admin/everything, admin/pins, reports/missing-bsa-ids</td><td>New Home, A&ndash;Z, Edit pins, new report</td></tr>
+                <tr><td>nav-data, section-nav, reports-landing, utilities, advancement/dashboard</td><td>Removed (old navigation)</td></tr>
+                <tr><td>admin/health-forms/health-sheet, actions; lib/health-store, health-marks, health-records, health-reminders</td><td>Record pop-up, writes, immunization rules, note save</td></tr>
+                <tr><td>api/health-files/[id]</td><td>PDFs inline with their own headers</td></tr>
+                <tr><td>supabase/migrations (3)</td><td>admin_pins, admin_nav_events, health_record_sheet</td></tr>
+                <tr><td>next-app/scripts/shot.mjs, dev-login.mjs, AGENTS.md</td><td>New: headless browser checks</td></tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

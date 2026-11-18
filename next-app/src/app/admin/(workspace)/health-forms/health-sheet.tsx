@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * The admin Health Forms record sheet (Plans/Admin-Health-Record-Sheet-Redesign.md, version B: two panes). Left: what
+ * The admin Health Forms record sheet (Plans/Completed/Admin-Health-Record-Sheet-Redesign.md, version B: two panes). Left: what
  * an adult needs at a glance, the family's note (always there; a leader can paste one in) and who to contact. Right: one card per form, with that form's
  * actions on its card (Change… opens replace / remove / add / Good until in place). The footer (HealthSheetFooter) carries the review, with an undo, and Close.
  *

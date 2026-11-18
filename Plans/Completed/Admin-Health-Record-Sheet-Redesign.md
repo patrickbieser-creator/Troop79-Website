@@ -1,6 +1,6 @@
 # Admin › Health Forms — Record sheet redesign
 
-**Status:** Built 2026-11-16, waiting for Patrick's say-so to ship (migration `20270107100000_health_record_sheet.sql`).
+**Status:** SHIPPED v1.274.0 (2026-11-17, 691389f0 + follow-ups a15d3aa9, a3ccf0f1).
 **Parked:** 2026-11-16
 **Priority:** High. It reworks the **Record sheet (View)** in `Plans/Admin-Health-Forms.md` (phases 2–3), which is built
 as a 480px right-side sheet today.
