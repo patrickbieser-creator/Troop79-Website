@@ -5,7 +5,7 @@ import type { PickupList } from '../src/lib/wreaths/pickup-list';
 
 /** Admin › Wreath Sale › Pickup list renders the rollup from lib/wreaths/pickup-list (2026-11-21). */
 const EMPTY: PickupList = { scouts: [], lotPickups: [], troopDelivery: [], donated: [], totals: [] };
-const ORDER = { id: 1, orderNumber: 'W-1001', customerName: 'Jane Doe', customerPhone: '', address: '', items: [{ catalogNumber: 1, label: '20″ Wreath', quantity: 2 }], due: 52, note: '' };
+const ORDER = { id: 1, orderNumber: 'W-1001', customerName: 'Jane Doe', customerPhone: '', address: '9 Elm St, Milwaukee 53202', items: [{ catalogNumber: 1, label: '20″ Wreath', quantity: 2 }], due: 52, note: '' };
 const FULL: PickupList = {
   scouts: [{ personId: 100, name: 'Anna Able', items: ORDER.items, orders: [ORDER], due: 52 }],
   lotPickups: [{ ...ORDER, id: 2, orderNumber: 'W-1002', customerName: 'Pat Pickup', due: 0 }],
@@ -16,32 +16,47 @@ const FULL: PickupList = {
 
 describe('PickupListPanel', () => {
   it('says so when there are no orders', () => {
-    render(<PickupListPanel p={EMPTY} />);
+    render(<PickupListPanel p={EMPTY} year={2026} />);
     expect(screen.getByText(/No orders yet/)).toBeTruthy();
   });
 
   it('shows each scout’s card with their item count', () => {
-    render(<PickupListPanel p={FULL} />);
+    render(<PickupListPanel p={FULL} year={2026} />);
     expect(screen.getByRole('region', { name: 'Anna Able pickup' }).textContent).toContain('2 items');
   });
 
   it('flags what a scout still has to collect', () => {
-    render(<PickupListPanel p={FULL} />);
+    render(<PickupListPanel p={FULL} year={2026} />);
     expect(screen.getByRole('region', { name: 'Anna Able pickup' }).textContent).toContain('To collect: $52.00');
   });
 
   it('gives troop deliveries their address', () => {
-    render(<PickupListPanel p={FULL} />);
+    render(<PickupListPanel p={FULL} year={2026} />);
     expect(screen.getByRole('region', { name: 'Troop delivers' }).textContent).toContain('1 Main St, Milwaukee 53211');
   });
 
   it('lists lot pickups and donated wreaths', () => {
-    render(<PickupListPanel p={FULL} />);
+    render(<PickupListPanel p={FULL} year={2026} />);
     expect([screen.queryByRole('region', { name: 'Customer pickup at the lot' }), screen.queryByRole('region', { name: 'Donated to veterans' })].every(Boolean)).toBe(true);
   });
 
   it('says "1 item", not "1 items"', () => {
-    render(<PickupListPanel p={{ ...FULL, donated: [{ catalogNumber: 1, label: '20″ Wreath', quantity: 1 }] }} />);
+    render(<PickupListPanel p={{ ...FULL, donated: [{ catalogNumber: 1, label: '20″ Wreath', quantity: 1 }] }} year={2026} />);
     expect(screen.getByRole('region', { name: 'Donated to veterans' }).textContent).toMatch(/(^|\D)1 item(?!s)/);
+  });
+
+  it('gives a scout the delivery address on each order', () => {
+    render(<PickupListPanel p={FULL} year={2026} />);
+    expect(screen.getByRole('region', { name: 'Anna Able pickup' }).textContent).toContain('9 Elm St, Milwaukee 53202');
+  });
+
+  it('offers a one-scout-per-page print', () => {
+    render(<PickupListPanel p={FULL} year={2026} />);
+    expect(screen.getByRole('button', { name: 'Print scout pages' })).toBeTruthy();
+  });
+
+  it('heads each scout page with the sale', () => {
+    render(<PickupListPanel p={FULL} year={2026} />);
+    expect(screen.getByRole('region', { name: 'Anna Able pickup' }).textContent).toContain('Troop 79 Wreath Sale 2026');
   });
 });

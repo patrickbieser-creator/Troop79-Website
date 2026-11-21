@@ -2,35 +2,41 @@
  * Wreath sale › Pickup list (Patrick, 2026-11-21 — distribution day): one card per scout with how many of each item
  * they take home, their customers' orders underneath (and what is still to collect), then customer pickups at the lot,
  * troop deliveries, and donated wreaths. A totals table up top checks the stack against the Rose order. Read-only and
- * server-rendered from lib/wreaths/pickup-list; Print keeps only the list (data-pickup-print).
+ * server-rendered from lib/wreaths/pickup-list; Print keeps only the list (data-pickup-print), and Print scout pages
+ * keeps only the scout cards, one per page, to hand each scout to take home (2026-11-21).
  */
 import { fmtMoney2 } from '@/lib/wreaths/rules';
 import type { PickupItem, PickupList, PickupOrder } from '@/lib/wreaths/pickup-list';
 import { PrintStatementButton } from './reconciliation-controls';
+import { PrintScoutPagesButton } from './pickup-print-button';
 import styles from './wreaths.module.css';
 
 const itemsText = (items: PickupItem[]) => items.map((i) => `${i.quantity} × ${i.label}`).join(', ');
 const count = (items: PickupItem[]) => items.reduce((n, i) => n + i.quantity, 0);
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-export function PickupListPanel({ p }: { p: PickupList }) {
+export function PickupListPanel({ p, year }: { p: PickupList; year: number }) {
   const empty = p.scouts.length === 0 && p.lotPickups.length === 0 && p.troopDelivery.length === 0 && p.donated.length === 0;
   return (
     <>
       <div className={styles.toolbar}>
         <span className={styles.spacer} />
+        {p.scouts.length > 0 && <PrintScoutPagesButton />}
         {!empty && <PrintStatementButton />}
       </div>
       {empty ? (
         <p className={styles.muted}>No orders yet. Each scout’s pickup appears here as orders come in.</p>
       ) : (
         <div data-pickup-print="">
-          <TotalsTable p={p} />
+          <div className={styles.pickupSummary}>
+            <TotalsTable p={p} />
+          </div>
 
           <h3 className={`${styles.dashHeading} ${styles.pickupHeading}`}>Scouts ({p.scouts.length})</h3>
           <div className={styles.pickupGrid}>
             {p.scouts.map((s) => (
               <section key={s.personId} className={styles.pickupCard} aria-label={`${s.name} pickup`}>
+                <p className={styles.pickupPageHead}>Troop 79 Wreath Sale {year} · your wreaths to deliver</p>
                 <div className={styles.pickupHead}>
                   <span className={styles.pickupBox} aria-hidden="true" />
                   <h4 className={styles.pickupName}>{s.name}</h4>
@@ -43,12 +49,13 @@ export function PickupListPanel({ p }: { p: PickupList }) {
                     </li>
                   ))}
                 </ul>
-                <OrderList orders={s.orders} />
+                <OrderList orders={s.orders} showAddress />
                 {s.due > 0 && <p className={styles.pickupDue}>To collect: {fmtMoney2(s.due)}</p>}
               </section>
             ))}
           </div>
 
+          <div className={styles.pickupSummary}>
           {p.lotPickups.length > 0 && <OrderSection title="Customer pickup at the lot" orders={p.lotPickups} />}
           {p.troopDelivery.length > 0 && <OrderSection title="Troop delivers" orders={p.troopDelivery} showAddress />}
 
@@ -67,6 +74,7 @@ export function PickupListPanel({ p }: { p: PickupList }) {
               </ul>
             </section>
           )}
+          </div>
         </div>
       )}
     </>

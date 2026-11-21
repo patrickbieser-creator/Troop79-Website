@@ -168,3 +168,16 @@
   .pickupGrid { grid-template-columns: 1fr 1fr; }
   .pickupCard { box-shadow: none; }
 }
+/* Print scout pages: the body carries data-pickup-pages while printing, so only the scout cards print, one per page,
+   with a heading line and larger type for a scout to take home. */
+.pickupPageHead { display: none; }
+@media print {
+  :global(body[data-pickup-pages]) .pickupSummary, :global(body[data-pickup-pages]) .pickupHeading { display: none !important; }
+  :global(body[data-pickup-pages]) .pickupGrid { display: block; }
+  :global(body[data-pickup-pages]) .pickupBox { display: none; }
+  :global(body[data-pickup-pages]) .pickupCard { break-after: page; border: none; padding: 0; }
+  :global(body[data-pickup-pages]) .pickupPageHead { display: block; margin: 0 0 var(--admin-space-6); font-size: var(--admin-text-md); color: var(--admin-gray-600); }
+  :global(body[data-pickup-pages]) .pickupName { font-size: var(--admin-text-3xl); }
+  :global(body[data-pickup-pages]) .pickupItems { font-size: var(--admin-text-xl); }
+  :global(body[data-pickup-pages]) .pickupOrders, :global(body[data-pickup-pages]) .pickupDue { font-size: var(--admin-text-lg); }
+}

@@ -102,7 +102,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
         </>
       )}
       {tab === 'dashboard' && <SalesDashboardView d={buildSalesDashboard({ orders, sellers, sale })} />}
-      {tab === 'pickup' && <PickupListPanel p={buildPickupList({ orders, sellers })} />}
+      {tab === 'pickup' && <PickupListPanel p={buildPickupList({ orders, sellers })} year={sale.year} />}
       {tab === 'reconciliation' && (
         <ReconciliationPanel r={buildReconciliation({ orders, sellers, items: await loadAdminItems(sb, sale.id), sale })} scout={rawScout ?? ''} asOf={new Date().toISOString()} />
       )}
