@@ -162,6 +162,8 @@
 .pickupOrders li { padding: var(--admin-space-1) 0; }
 .pickupUnpaid { color: var(--admin-danger); font-weight: var(--admin-weight-semibold); }
 .pickupNote { display: block; font-style: italic; }
+.pickupHow { display: block; font-weight: var(--admin-weight-semibold); color: var(--admin-gray-800); }
+.pickupDonated { margin: 0 0 var(--admin-space-4); font-size: var(--admin-text-md); color: var(--admin-gray-600); }
 .pickupDue { margin: var(--admin-space-3) 0 0; font-size: var(--admin-text-md); font-weight: var(--admin-weight-semibold); color: var(--admin-danger); }
 @media print {
   :global(body:has([data-pickup-print]) *:not(:has([data-pickup-print])):not([data-pickup-print]):not([data-pickup-print] *)) { display: none !important; }

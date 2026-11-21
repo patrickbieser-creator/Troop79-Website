@@ -69,13 +69,41 @@ describe('buildPickupList — scouts', () => {
     ]);
   });
 
-  it('groups by the delivering scout, not the credited one', () => {
+  it('groups by the credited scout, whoever delivers', () => {
     const p = buildPickupList({ orders: [order({ creditedPersonId: ANNA, deliveringPersonId: BEN })], sellers: SELLERS });
-    expect(p.scouts.map((s) => s.name)).toEqual(['Ben Baker']);
+    expect(p.scouts.map((s) => s.name)).toEqual(['Anna Able']);
+  });
+
+  it('puts a troop-delivery order on the credited scout’s sheet', () => {
+    const p = buildPickupList({ orders: [order({ fulfillment: 'delivery', deliveringPersonId: null })], sellers: SELLERS });
+    expect(p.scouts[0].orders).toHaveLength(1);
+  });
+
+  it('counts a troop-delivery order in the scout’s items', () => {
+    const p = buildPickupList({ orders: [order({ lines: [line(1, 1)] }), order({ fulfillment: 'delivery', deliveringPersonId: null, lines: [line(1, 2)] })], sellers: SELLERS });
+    expect(p.scouts[0].items).toEqual([{ catalogNumber: 1, label: 'Item 1', quantity: 3 }]);
+  });
+
+  it('notes how an order is delivered when the scout isn’t delivering it', () => {
+    const p = buildPickupList({
+      orders: [
+        order({ customerName: 'A', fulfillment: 'delivery', deliveringPersonId: null }),
+        order({ customerName: 'B', fulfillment: 'pickup', deliveringPersonId: null }),
+        order({ customerName: 'C', deliveringPersonId: BEN }),
+        order({ customerName: 'D' })
+      ],
+      sellers: SELLERS
+    });
+    expect(p.scouts[0].orders.map((o) => o.how)).toEqual(['The troop delivers this one', 'Customer picks up at the lot', 'Ben Baker delivers this one', null]);
+  });
+
+  it('leaves orders with no scout credit off every scout sheet', () => {
+    const p = buildPickupList({ orders: [order({ fulfillment: 'pickup', creditedPersonId: null, deliveringPersonId: null })], sellers: SELLERS });
+    expect(p.scouts).toEqual([]);
   });
 
   it('lists scouts by name', () => {
-    const p = buildPickupList({ orders: [order({ deliveringPersonId: BEN }), order({ deliveringPersonId: ANNA })], sellers: SELLERS });
+    const p = buildPickupList({ orders: [order({ creditedPersonId: BEN, deliveringPersonId: BEN }), order()], sellers: SELLERS });
     expect(p.scouts.map((s) => s.name)).toEqual(['Anna Able', 'Ben Baker']);
   });
 
@@ -89,9 +117,14 @@ describe('buildPickupList — scouts', () => {
     expect(p.scouts[0].items).toEqual([{ catalogNumber: 1, label: 'Item 1', quantity: 2 }]);
   });
 
-  it('drops a donation-only order from the scout’s orders', () => {
-    const p = buildPickupList({ orders: [order({ lines: [line(1, 2)] }), order({ lines: [line(1, 5, { donated: true })] })], sellers: SELLERS });
-    expect(p.scouts[0].orders).toHaveLength(1);
+  it('keeps a donation-only order on the scout’s sheet, marked as donated', () => {
+    const p = buildPickupList({ orders: [order({ fulfillment: 'none', deliveringPersonId: null, lines: [line(1, 5, { donated: true })] })], sellers: SELLERS });
+    expect(p.scouts[0].orders[0]).toMatchObject({ items: [], donated: 5, how: 'Donated to veterans' });
+  });
+
+  it('totals the donated wreaths a scout sold', () => {
+    const p = buildPickupList({ orders: [order({ lines: [line(1, 2), line(1, 3, { donated: true })] }), order({ lines: [line(2, 1, { donated: true })] })], sellers: SELLERS });
+    expect(p.scouts[0].donated).toBe(4);
   });
 
   it('lists each order under the scout with customer, items and what is still owed', () => {
@@ -112,7 +145,7 @@ describe('buildPickupList — scouts', () => {
   });
 
   it('falls back to the credited name when the scout is not a seller', () => {
-    const p = buildPickupList({ orders: [order({ deliveringPersonId: 999, creditedName: 'Old Scout' })], sellers: SELLERS });
+    const p = buildPickupList({ orders: [order({ creditedPersonId: 999, deliveringPersonId: 999, creditedName: 'Old Scout' })], sellers: SELLERS });
     expect(p.scouts[0].name).toBe('Old Scout');
   });
 });
@@ -129,9 +162,9 @@ describe('buildPickupList — lot pickups and troop delivery', () => {
     expect(p.troopDelivery[0].address).toBe('1 Main St, Milwaukee 53211');
   });
 
-  it('keeps pickups and deliveries out of the scout lists', () => {
+  it('keeps scout-credited pickups and deliveries on the troop lists too', () => {
     const p = buildPickupList({ orders: [order({ fulfillment: 'pickup' }), order({ fulfillment: 'delivery' })], sellers: SELLERS });
-    expect(p.scouts).toEqual([]);
+    expect([p.lotPickups.length, p.troopDelivery.length]).toEqual([1, 1]);
   });
 
   it('lists pickups by customer name', () => {

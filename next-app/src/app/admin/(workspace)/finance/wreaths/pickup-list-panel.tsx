@@ -1,6 +1,6 @@
 /**
- * Wreath sale › Pickup list (Patrick, 2026-11-21 — distribution day): one card per scout with how many of each item
- * they take home, their customers' orders underneath (and what is still to collect), then customer pickups at the lot,
+ * Wreath sale › Pickup list (Patrick, 2026-11-21 — distribution day): one card per scout with every order credited to
+ * them and how many of each item (an order the scout isn't delivering says how it goes out), their customers' orders underneath (and what is still to collect), then customer pickups at the lot,
  * troop deliveries, and donated wreaths. A totals table up top checks the stack against the Rose order. Read-only and
  * server-rendered from lib/wreaths/pickup-list; Print keeps only the list (data-pickup-print), and Print scout pages
  * keeps only the scout cards, one per page, to hand each scout to take home (2026-11-21).
@@ -49,6 +49,7 @@ export function PickupListPanel({ p, year }: { p: PickupList; year: number }) {
                     </li>
                   ))}
                 </ul>
+                {s.donated > 0 && <p className={styles.pickupDonated}>Plus {s.donated} donated to veterans (the troop delivers those)</p>}
                 <OrderList orders={s.orders} showAddress />
                 {s.due > 0 && <p className={styles.pickupDue}>To collect: {fmtMoney2(s.due)}</p>}
               </section>
@@ -89,9 +90,10 @@ function OrderList({ orders, showAddress = false }: { orders: PickupOrder[]; sho
           <span className={styles.mono}>{o.orderNumber}</span> <strong>{o.customerName}</strong>
           {o.customerPhone && <> · {o.customerPhone}</>}
           {showAddress && o.address && <> · {o.address}</>}
-          {' — '}
-          {itemsText(o.items)}
+          {o.items.length > 0 && <>{' — '}{itemsText(o.items)}</>}
+          {o.donated > 0 && <> · {o.donated} donated</>}
           {o.due > 0 && <span className={styles.pickupUnpaid}> · Unpaid {fmtMoney2(o.due)}</span>}
+          {o.how && <span className={styles.pickupHow}>{o.how}</span>}
           {o.note && <span className={styles.pickupNote}>Note: {o.note}</span>}
         </li>
       ))}
