@@ -1,6 +1,6 @@
 /**
  * /admin/finance/wreaths — the wreath sale's admin (Plans/Wreath-Sale.md, Release A): Orders, Dashboard, Rose order,
- * Reconciliation (each scout's account, line by line), Sellers, Items and Settings. finance.manage only, here and on every action. The books (per-scout totals, cost and profit,
+ * Pickup list (what each scout takes home on distribution day), Reconciliation (each scout's account, line by line), Sellers, Items and Settings. finance.manage only, here and on every action. The books (per-scout totals, cost and profit,
  * the 70/30 split) and Close sale come in Release C.
  */
 import { requireCapability } from '@/lib/require-capability';
@@ -9,6 +9,7 @@ import { fmtDay } from '@/lib/format-date';
 import { loadAdminItems, loadAdminOrders, loadAdminSale, loadAdminSellers, loadOrderHistory, loadRoseOrder, loadSellerCandidates } from '@/lib/wreaths/admin-data';
 import { buildSalesDashboard } from '@/lib/wreaths/dashboard';
 import { buildReconciliation } from '@/lib/wreaths/reconciliation';
+import { buildPickupList } from '@/lib/wreaths/pickup-list';
 import { parsePayFilter } from './pay-filter';
 import { PageTitle } from '../../_components/page-title';
 import { PublicPageLink } from '../../../_components/public-page-link';
@@ -21,12 +22,13 @@ import { SellersPanel } from './sellers-panel';
 import { SettingsForm } from './settings-form';
 import { SalesDashboardView } from './sales-dashboard';
 import { ReconciliationPanel } from './reconciliation-panel';
+import { PickupListPanel } from './pickup-list-panel';
 import styles from './wreaths.module.css';
 
 export const metadata = { title: 'Wreath Sale — Troop 79' };
 export const dynamic = 'force-dynamic';
 
-const TABS = ['orders', 'dashboard', 'reconciliation', 'rose', 'sellers', 'items', 'settings'] as const;
+const TABS = ['orders', 'dashboard', 'pickup', 'reconciliation', 'rose', 'sellers', 'items', 'settings'] as const;
 type Tab = (typeof TABS)[number];
 
 export default async function WreathSalePage({ searchParams }: { searchParams: Promise<{ tab?: string; pay?: string; scout?: string }> }) {
@@ -72,6 +74,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
           items={[
             { key: 'orders', label: 'Orders', count: placed.length, href: '/admin/finance/wreaths' },
             { key: 'dashboard', label: 'Dashboard', href: '/admin/finance/wreaths?tab=dashboard' },
+            { key: 'pickup', label: 'Pickup list', href: '/admin/finance/wreaths?tab=pickup' },
             { key: 'reconciliation', label: 'Reconciliation', href: '/admin/finance/wreaths?tab=reconciliation' },
             { key: 'rose', label: 'Rose order', href: '/admin/finance/wreaths?tab=rose' },
             { key: 'sellers', label: 'Sellers', count: sellers.filter((s) => s.active).length, href: '/admin/finance/wreaths?tab=sellers' },
@@ -99,6 +102,7 @@ export default async function WreathSalePage({ searchParams }: { searchParams: P
         </>
       )}
       {tab === 'dashboard' && <SalesDashboardView d={buildSalesDashboard({ orders, sellers, sale })} />}
+      {tab === 'pickup' && <PickupListPanel p={buildPickupList({ orders, sellers })} />}
       {tab === 'reconciliation' && (
         <ReconciliationPanel r={buildReconciliation({ orders, sellers, items: await loadAdminItems(sb, sale.id), sale })} scout={rawScout ?? ''} asOf={new Date().toISOString()} />
       )}

@@ -124,6 +124,7 @@ export const FEATURES: Feature[] = [
   { key: 'money.ledger-audit', label: 'Ledger Audit', description: 'Match the ledger to the bank statement', area: 'money', kind: 'report', href: '/admin/utilities/ledger-audit', alsoIn: ['reports'], capability: FIN, aliases: ['bank match'] },
   { key: 'money.wreath-dashboard', label: 'Wreath Sale Dashboard', area: 'money', kind: 'report', href: '/admin/finance/wreaths?tab=dashboard', alsoIn: ['reports'], capability: FIN },
   { key: 'money.wreath-reconciliation', label: 'Wreath Reconciliation', area: 'money', kind: 'report', href: '/admin/finance/wreaths?tab=reconciliation', alsoIn: ['reports'], capability: FIN },
+  { key: 'money.wreath-pickup', label: 'Wreath pickup list', description: 'What each scout takes home on pickup day', area: 'money', kind: 'report', href: '/admin/finance/wreaths?tab=pickup', alsoIn: ['reports'], capability: FIN, aliases: ['wreath distribution'] },
   { key: 'money.rose-order', label: 'Rose order', area: 'money', kind: 'report', href: '/admin/finance/wreaths?tab=rose', alsoIn: ['reports'], capability: FIN },
   { key: 'money.buckets', label: 'Buckets', area: 'money', kind: 'setup', href: '/admin/finance/report', alsoIn: ['setup'], capability: FIN },
   { key: 'money.kinds', label: 'Transaction kinds', area: 'money', kind: 'setup', href: '/admin/finance?do=kinds', alsoIn: ['setup'], capability: FIN },
