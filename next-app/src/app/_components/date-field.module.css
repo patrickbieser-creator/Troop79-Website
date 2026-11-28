@@ -194,3 +194,16 @@
 .footerBtn:hover { border-color: var(--navy); color: var(--navy); }
 .footerBtn:focus-visible { outline: var(--focus-ring); outline-offset: 1px; }
 .footerToday { border-color: var(--navy); color: var(--navy); }
+
+/* The error's live announcement, portaled to <body>: read by screen readers, never seen. */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

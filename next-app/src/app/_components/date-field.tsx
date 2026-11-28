@@ -363,9 +363,11 @@ export function DateField({
             type="button"
             className={s.iconBtn}
             onClick={() => (open ? closePopover(true) : openPopover('button'))}
-            aria-label="Open calendar"
-            aria-haspopup="dialog"
-            aria-expanded={open}
+            // A mouse shortcut only (2026-11-27, as on the admin picker): inside a wrapping <label> Chrome folded
+            // its name into the field's ("Date Open calendar"). The field itself opens the calendar.
+            tabIndex={-1}
+            aria-hidden="true"
+            title="Open calendar"
           >
             {CALENDAR_ICON}
           </button>
@@ -374,11 +376,22 @@ export function DateField({
       {/* Error sits under the field when closed, but INSIDE the popover while
           it's open — the popover would otherwise cover it exactly when the
           user is looking for it (found in browser verification 2026-08-21). */}
+      {/* The visible note is aria-hidden so a wrapping <label> doesn't fold it into the field's name; the field's
+          aria-describedby still reads it (a directly referenced node counts even when hidden), and the live
+          announcement is portaled to <body>, outside any label (2026-11-27). */}
       {invalid && !open && (
-        <span id={errorId} className={s.error} role="alert">
+        <span id={errorId} className={s.error} aria-hidden="true">
           {problem}
         </span>
       )}
+      {invalid &&
+        !open &&
+        createPortal(
+          <span className={s.srOnly} role="alert">
+            {problem}
+          </span>,
+          document.body
+        )}
       {popover}
     </div>
   );

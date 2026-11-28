@@ -75,6 +75,7 @@ describe('public DateField: the 1900 floor', () => {
     fireEvent.change(input, { target: { value: '0991-09-25' } });
     fireEvent.blur(input);
     expect(onChange).not.toHaveBeenCalled();
-    expect(screen.getByText(TOO_EARLY_MSG)).toBeTruthy();
+    // The note is shown under the field and announced from <body>, so it is found as the field's description.
+    expect(screen.getByRole('combobox', { description: TOO_EARLY_MSG })).toBeTruthy();
   });
 });

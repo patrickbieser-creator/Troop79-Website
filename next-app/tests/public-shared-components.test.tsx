@@ -276,7 +276,7 @@ describe('Public DateField (rich)', () => {
         <DateField value="" onChange={onChange} />
       </Field>
     );
-    await user.click(screen.getByRole('button', { name: /open calendar/i }));
+    await user.click(screen.getByTitle('Open calendar')); // the icon is a mouse shortcut, hidden from the a11y tree
     const dialog = screen.getByRole('dialog', { name: /choose date/i });
     expect(dialog).toBeTruthy();
     await user.click(within(dialog).getByRole('button', { name: 'Today' }));
@@ -295,7 +295,7 @@ describe('Public DateField (rich)', () => {
     );
     await user.click(screen.getByLabelText('Date of birth'));
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByRole('button', { name: /open calendar/i })).toBeNull();
+    expect(screen.queryByTitle('Open calendar')).toBeNull();
   });
 
   it('PublicDateField_HonorsAnExplicitIdAndDescribedBy_OverFieldContext', () => {
