@@ -57,7 +57,7 @@ import styles from './finance.module.css';
 import { fmtDate } from '@/lib/format-date';
 
 import { centralToday } from '@/lib/dates';
-import { EARLIEST_DATE } from '@/lib/date-entry';
+import { DatePickerField } from '../_components/date-picker-field';
 
 import type { FinanceModal } from './finance-do';
 /**
@@ -669,12 +669,7 @@ export function RecordTransactionForm({
       <form className={styles.formGrid} onSubmit={submit}>
         <label className="adminLabel">
           Date
-          <input
-            type="date" min={EARLIEST_DATE}
-            required
-            value={f.occurredOn}
-            onChange={(e) => setF((s) => ({ ...s, occurredOn: e.target.value }))}
-          />
+          <DatePickerField required value={f.occurredOn} onChange={(v) => setF((s) => ({ ...s, occurredOn: v }))} />
         </label>
         <label className="adminLabel">
           Account
@@ -809,7 +804,7 @@ function TransferForm({
       <form className={styles.formGrid} onSubmit={submit}>
         <label className="adminLabel">
           Date
-          <input type="date" min={EARLIEST_DATE} required value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
+          <DatePickerField required value={occurredOn} onChange={setOccurredOn} />
         </label>
         <label className="adminLabel">
           From
@@ -906,7 +901,7 @@ function ReconciliationPanel({
         </label>
         <label className="adminLabel">
           As of
-          <input type="date" min={EARLIEST_DATE} required value={asOf} onChange={(e) => setAsOf(e.target.value)} />
+          <DatePickerField required value={asOf} onChange={setAsOf} />
         </label>
         <label className="adminLabel">
           Statement balance

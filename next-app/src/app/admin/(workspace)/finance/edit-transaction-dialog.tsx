@@ -34,7 +34,7 @@ import { BucketPicker } from '../_components/bucket-picker';
 import { createBucketAction } from './bucket-actions';
 import type { Bucket } from '@/lib/buckets';
 import styles from './finance.module.css';
-import { EARLIEST_DATE } from '@/lib/date-entry';
+import { DatePickerField } from '../_components/date-picker-field';
 
 interface EditTransactionSaveInput {
   id: number;
@@ -169,7 +169,7 @@ function EditTransactionForm({
       )}
       <label className="adminLabel">
         Date
-        <input type="date" min={EARLIEST_DATE} required value={occurredOn} onChange={(e) => setOccurredOn(e.target.value)} />
+        <DatePickerField required value={occurredOn} onChange={setOccurredOn} />
       </label>
       <label className="adminLabel">
         Account

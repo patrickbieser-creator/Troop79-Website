@@ -7,7 +7,7 @@ import 'react-day-picker/style.css';
 import styles from './date-picker-field.module.css';
 
 import { fmtDate } from '@/lib/format-date';
-import { EARLIEST_YEAR, TOO_EARLY_MSG, typedDateTooEarly } from '@/lib/date-entry';
+import { EARLIEST_DATE, parseTypedDate, TOO_EARLY_MSG, typedDateTooEarly } from '@/lib/date-entry';
 /**
  * Shared admin date field: a text input showing the formatted date, backed
  * by a react-day-picker calendar popover. Replaces bare `<input type="date">`
@@ -61,22 +61,7 @@ function formatDisplay(iso: string): string {
   return fmtDate(iso);
 }
 
-/** Tolerant free-typed parser: ISO ('2026-07-25'), US slash ('7/25/2026'),
- *  or anything else `Date.parse` understands ('Jul 25, 2026'). */
-function parseTyped(text: string): Date | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  const iso = parseISO(trimmed);
-  if (iso) return iso;
-  const slash = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
-  if (slash) {
-    const [, mo, d, y] = slash;
-    const date = new Date(Number(y), Number(mo) - 1, Number(d));
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  const parsed = new Date(trimmed);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-}
+const INVALID_MSG = 'Unrecognized date — try 7/25/2026 or Jul 25, 2026';
 
 const MOBILE_BREAKPOINT = 560;
 
@@ -110,6 +95,13 @@ export interface DatePickerFieldProps {
    * Export, the meeting attendance report) use this control at all.
    */
   name?: string;
+  /** Native required on the visible input, so a form's own submit refuses an empty date. */
+  required?: boolean;
+  /** Latest allowed day, 'YYYY-MM-DD' (e.g. a price can't be dated in the future). The calendar greys later days
+   *  and typed text past it is refused with a note. */
+  max?: string;
+  /** Accessible name when no <label> wraps the field (inline add rows). */
+  'aria-label'?: string;
 }
 
 export function DatePickerField({
@@ -121,13 +113,16 @@ export function DatePickerField({
   className,
   id,
   name,
+  required,
+  max,
+  'aria-label': ariaLabel,
   'aria-describedby': describedBy
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(() => formatDisplay(value));
   const [invalid, setInvalid] = useState(false);
-  // Which problem the error names: a year before 1900, or text that isn't a date at all.
-  const [tooEarly, setTooEarly] = useState(false);
+  // What the error names: a year before 1900, a day past `max`, or text that isn't a date at all.
+  const [problem, setProblem] = useState(INVALID_MSG);
   const [mobile, setMobile] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const [portalTarget, setPortalTarget] = useState<Element | null>(null);
@@ -135,6 +130,7 @@ export function DatePickerField({
   const wrapRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const dialogId = useId();
+  const errorId = useId();
 
   // Keep the displayed text in sync with the committed value while closed —
   // adjusted during render (React's documented pattern for "reset state when
@@ -191,18 +187,17 @@ export function DatePickerField({
       if (value !== '') onChange('');
       return true;
     }
-    // No date before 1900 (Patrick, 2026-11-01). Checked on the TEXT first: new Date() reads a year under 100 as
-    // 19xx, so '0025-11-08' would otherwise come back as 1925; the year check catches what Date.parse lets
-    // through ('9/25/991' is the year 991).
-    const parsed = typedDateTooEarly(text) ? null : parseTyped(text);
-    const early = typedDateTooEarly(text) || (parsed != null && parsed.getFullYear() < EARLIEST_YEAR);
-    if (!parsed || early) {
-      setTooEarly(early);
+    // One grammar with the public DateField (lib/date-entry), never Date.parse: engines disagree on what it
+    // accepts and it rolls '2/30' into March (Patrick, 2026-11-27). It also refuses a year before 1900
+    // (2026-11-01); typedDateTooEarly says which of the two problems to name.
+    const iso = parseTypedDate(text);
+    if (!iso || (max && iso > max)) {
+      setProblem(!iso ? (typedDateTooEarly(text) ? TOO_EARLY_MSG : INVALID_MSG) : `The date must be ${fmtDate(max!)} or earlier`);
       setInvalid(true);
       return false;
     }
     setInvalid(false);
-    onChange(toISO(parsed));
+    onChange(iso);
     return true;
   }
 
@@ -335,6 +330,7 @@ export function DatePickerField({
                 mode="single"
                 selected={selected}
                 defaultMonth={selected ?? new Date()}
+                disabled={[{ before: parseISO(EARLIEST_DATE)! }, ...(max && parseISO(max) ? [{ after: parseISO(max)! }] : [])]}
                 onSelect={selectDay}
                 autoFocus
                 classNames={{ root: `${defaultClassNames.root} ${styles.calendarRoot}` }}
@@ -360,14 +356,19 @@ export function DatePickerField({
       : null;
 
   return (
+    // The outer box takes the caller's className (a width) and stacks the bordered field over its note, so a
+    // refused date pushes what follows down instead of printing over it (2026-11-27).
+    <div className={`${styles.field} ${className ?? ''}`}>
     <div
       ref={wrapRef}
-      className={`${styles.wrapper} ${disabled ? styles.wrapperDisabled : ''} ${className ?? ''}`}
+      className={`${styles.wrapper} ${disabled ? styles.wrapperDisabled : ''} ${invalid ? styles.wrapperInvalid : ''}`}
     >
       {name && <input type="hidden" name={name} value={value} />}
       <input
         id={id}
-        aria-describedby={describedBy}
+        aria-label={ariaLabel}
+        aria-describedby={[describedBy, invalid ? errorId : undefined].filter(Boolean).join(' ') || undefined}
+        required={required}
         type="text"
         className={styles.input}
         value={text}
@@ -405,6 +406,7 @@ export function DatePickerField({
           }
         }}
         role="combobox"
+        aria-invalid={invalid || undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? dialogId : undefined}
@@ -415,15 +417,24 @@ export function DatePickerField({
           className={styles.iconBtn}
           onClick={() => (open ? closePopover(true) : openPopover())}
           disabled={disabled}
-          aria-label="Open calendar"
-          aria-haspopup="dialog"
-          aria-expanded={open}
+          // A mouse shortcut only (2026-11-27): inside a wrapping <label> Chrome folded its name into the field's
+          // ("Date Open calendar"). Keyboard and screen-reader users open the calendar from the field itself.
+          tabIndex={-1}
+          aria-hidden="true"
+          title="Open calendar"
         >
           {CALENDAR_ICON}
         </button>
       )}
-      {invalid && <span className={styles.error}>{tooEarly ? TOO_EARLY_MSG : 'Unrecognized date — try YYYY-MM-DD'}</span>}
       {popover}
+    </div>
+      {/* aria-hidden keeps the note out of a wrapping <label>'s text (which would rename the field "Date Unrecognized
+          date…"); aria-describedby still reads it, because a directly referenced node counts even when hidden. */}
+      {invalid && (
+        <span id={errorId} className={styles.error} aria-hidden="true">
+          {problem}
+        </span>
+      )}
     </div>
   );
 }

@@ -171,7 +171,7 @@ describe('Price book', () => {
     await user.type(price, '4.99');
     expect(within(line).getByText('⚠ Big change (+43%) — flagged for a second look')).toBeTruthy();
     // Editing the price moved the as-of to today.
-    expect((within(line).getByLabelText('Price as of') as HTMLInputElement).value).toBe(TODAY);
+    expect((within(line).getByLabelText('Price as of') as HTMLInputElement).value).toBe('Sep 8, 2026'); // TODAY, as the picker shows it
 
     await user.click(within(line).getByRole('button', { name: 'Save changes' }));
     await waitFor(() => expect(updatePackage).toHaveBeenCalledTimes(1));

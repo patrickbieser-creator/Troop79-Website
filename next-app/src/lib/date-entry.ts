@@ -55,7 +55,7 @@ function build(year: number, month1: number, day: number): string | null {
  *  birth years (2010s) and parents' (1970s–80s) both land right. */
 function expandYear(raw: string): number {
   const n = Number(raw);
-  if (raw.length === 4) return n;
+  if (raw.length !== 2) return n; // a 3-digit year is taken as typed, so the 1900 floor can name it
   return n < 50 ? 2000 + n : 1900 + n;
 }
 
@@ -142,7 +142,7 @@ function parseAnyYear(text: string, today: Date): string | null {
     return build(Number(m[1]), Number(m[2]), Number(m[3]));
   }
   // US with year: 7/25/2026, 7-25-26
-  if ((m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})$/.exec(raw))) {
+  if ((m = /^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})$/.exec(raw))) {
     return build(expandYear(m[3]), Number(m[1]), Number(m[2]));
   }
   // Month/day only → this year.
@@ -167,7 +167,7 @@ function parseAnyYear(text: string, today: Date): string | null {
   const tokens = raw.replace(/,/g, ' ').split(/\s+/).filter(Boolean);
   if (tokens.length === 2 || tokens.length === 3) {
     const [a, b, c] = tokens;
-    const year = c === undefined ? thisYear : /^(\d{2}|\d{4})$/.test(c) ? expandYear(c) : NaN;
+    const year = c === undefined ? thisYear : /^\d{2,4}$/.test(c) ? expandYear(c) : NaN;
     if (Number.isNaN(year)) return null;
     const monA = monthFromName(a);
     const monB = monthFromName(b);

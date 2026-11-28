@@ -40,7 +40,7 @@ import { useArmed } from './use-armed';
 import { useAttempt, type FieldProblem } from './use-attempt';
 import lib from '../library.module.css';
 import styles from './menu-monster.module.css';
-import { EARLIEST_DATE } from '@/lib/date-entry';
+import { DatePickerField } from '../../_components/date-picker-field';
 
 const NEW_BRAND = '__new';
 
@@ -376,13 +376,11 @@ function PackageEditor({ pkg, ing, brands, today, stores, onChanged }: { pkg: Pa
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-asof`}>
             Price as of
           </label>
-          <input
+          <DatePickerField
             id={`${idp}-asof`}
-            type="date" min={EARLIEST_DATE}
             max={today ?? undefined}
-            className={lib.textInput}
             value={draft.asOf}
-            onChange={(e) => setDraft((d) => ({ ...d, asOf: e.target.value }))}
+            onChange={(v) => setDraft((d) => ({ ...d, asOf: v }))}
           />
         </div>
         <div>
@@ -701,7 +699,7 @@ function AddBoughtForm({
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-asof`}>
             Price as of
           </label>
-          <input id={`${idp}-asof`} type="date" min={EARLIEST_DATE} max={today ?? undefined} className={lib.textInput} value={asOf} onChange={(e) => setAsOf(e.target.value)} />
+          <DatePickerField id={`${idp}-asof`} max={today ?? undefined} value={asOf} onChange={setAsOf} />
         </div>
         <div>
           <label className={`adminLabel ${lib.fieldLabel}`} htmlFor={`${idp}-note`}>

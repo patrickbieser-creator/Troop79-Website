@@ -10,7 +10,7 @@ import { addEventExpenseAction, type EventMoneyData } from '../../../finance/act
 import { TRANSACTION_METHODS, type TransactionMethod } from '@/lib/finance';
 import { methodLabel, money } from '@/lib/event-money';
 import { fmtDate } from '@/lib/format-date';
-import { EARLIEST_DATE } from '@/lib/date-entry';
+import { DatePickerField } from '../../../_components/date-picker-field';
 import { Badge } from '../../../_components/badge';
 import { Button } from '../../../../_components/button';
 import styles from '../../../events/events-admin.module.css';
@@ -96,14 +96,7 @@ export function MoneyExpenses({
         </table>
       )}
       <div className={styles.addRow}>
-        <input
-          id={EXPENSE_FIRST_FIELD_ID}
-          type="date"
-          min={EARLIEST_DATE}
-          aria-label="Expense date"
-          value={xDate}
-          onChange={(e) => setXDate(e.target.value)}
-        />
+        <DatePickerField id={EXPENSE_FIRST_FIELD_ID} aria-label="Expense date" value={xDate} onChange={setXDate} />
         <input
           type="number"
           min={0.01}

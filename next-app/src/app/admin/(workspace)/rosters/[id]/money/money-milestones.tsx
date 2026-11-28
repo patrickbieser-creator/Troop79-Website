@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { addMilestone, deleteMilestone, emailPaymentReminders } from '../../../events/actions';
 import { money, type Milestone } from '@/lib/event-money';
 import { fmtDate } from '@/lib/format-date';
-import { EARLIEST_DATE } from '@/lib/date-entry';
+import { DatePickerField } from '../../../_components/date-picker-field';
 import { Button } from '../../../../_components/button';
 import styles from '../../../events/events-admin.module.css';
 
@@ -89,7 +89,7 @@ export function MoneyMilestones({
           <option value="other">Other</option>
         </select>
         <input placeholder="Label (e.g. Deposit)" aria-label="Milestone label" value={mLabel} onChange={(e) => setMLabel(e.target.value)} />
-        <input type="date" min={EARLIEST_DATE} aria-label="Milestone due date" value={mDue} onChange={(e) => setMDue(e.target.value)} />
+        <DatePickerField aria-label="Milestone due date" value={mDue} onChange={setMDue} />
         {mKind === 'payment' && (
           <input
             type="number"

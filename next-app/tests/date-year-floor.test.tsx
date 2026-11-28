@@ -30,6 +30,10 @@ describe('date-entry: the 1900 floor', () => {
     expect(typedDateTooEarly('0025-11-08')).toBe(true);
   });
 
+  it('TypedDateTooEarly_IsTrue_ForAThreeDigitYear', () => {
+    expect(typedDateTooEarly('9/25/991')).toBe(true);
+  });
+
   it('TypedDateTooEarly_IsFalse_ForAnOrdinaryDate', () => {
     expect(typedDateTooEarly('11/8/2025')).toBe(false);
   });
